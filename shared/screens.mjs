@@ -4,6 +4,7 @@ export function renderHeader({ game, room, view, status }) {
   return el('div', { class: 'header-inner' },
     button([el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, 'm'), el('span', { class: 'brand-name' }, 'multiplayer', el('small', {}, 'GOOD GAMES. GOOD COMPANY.'))], 'collection', { class: 'brand', 'aria-label': 'Multiplayer game collection' }),
     el('nav', { class: 'header-nav', 'aria-label': 'Main navigation' },
+      !game && !room ? el('a', { class: 'button text-button collection-link', href: '../games/' }, '← Browse all games') : null,
       room ? el('span', { class: 'connection-status', id: 'connection-status' }, el('i', { 'aria-hidden': 'true' }), el('span', {}, status)) : null,
       view && view.phase !== 'lobby' ? button('SCOREBOARD', 'scoreboard', { class: 'button text-button' }) : null,
       game ? button('HOW TO PLAY', 'rules', { class: 'button text-button' }) : null,
@@ -17,7 +18,8 @@ export function renderCollection(games) {
     el('section', { class: 'collection-hero' }, eyebrow('THE MULTIPLAYER COLLECTION'),
       el('h1', {}, 'Good company.', el('br'), el('em', {}, 'Great games.')),
       el('p', { class: 'hero-description' }, 'Bring your people. Pick a game. Make an evening of it.'),
-      el('div', { class: 'collection-benefits' }, el('span', {}, 'No accounts'), el('span', {}, 'Just a link'), el('span', {}, 'Any screen')),
+      el('aside', { class: 'play-promise' }, el('strong', {}, 'Serverless. No registration.'),
+        el('p', {}, 'Every game in this collection runs in your browser. No account needed — just invite your friends and play.')),
     ),
     el('div', { class: 'section-heading' }, el('h2', {}, 'Find your next favorite'), el('span', {}, 'THE COLLECTION · 01')),
     el('section', { class: 'game-collection', 'aria-label': 'Choose a game' }, games.map(game =>
@@ -39,7 +41,12 @@ export function renderCollection(games) {
     el('aside', { class: 'coming-soon' }, el('span', { class: 'coming-icon', 'aria-hidden': 'true' }, '✦'),
       el('div', {}, el('h2', {}, 'There’s more at the table.'), el('p', {}, 'More games are on the way. For now, let’s make a PLAN.')),
       el('span', { class: 'pill' }, 'COMING SOON')),
-    el('p', { class: 'collection-footer' }, 'Made for friends, near and far.'),
+    el('footer', { class: 'collection-footer' },
+      el('p', { class: 'collection-signoff' }, 'Made for friends, near and far.'),
+      el('p', { class: 'author-credit' }, 'Created by ',
+        el('a', { href: 'https://www.linkedin.com/in/grzegorz-byrka-81175515/', target: '_blank', rel: 'noopener noreferrer' },
+          'Grzegorz Byrka', el('span', { class: 'sr-only' }, ' on LinkedIn (opens in a new tab)'), el('span', { 'aria-hidden': 'true' }, ' ↗'))),
+    ),
   );
 }
 

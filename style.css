@@ -56,6 +56,7 @@ a { color: var(--gold); }
 .brand-name { font-weight: 600; font-size: 18px; letter-spacing: -.04em; }
 .brand-name small { display: block; font-size: 7px; font-weight: 500; letter-spacing: .14em; margin-top: 0; color: var(--muted); }
 .header-nav { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+.header-nav .button.collection-link { font-size: 11px; letter-spacing: .015em; }
 .connection-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; margin-right: 14px; max-width: 220px; }
 .connection-status i { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: #a5d6b6; box-shadow: 0 0 0 4px #a5d6b60d; }
 .leave-button { opacity: .7; }
@@ -66,8 +67,9 @@ a { color: var(--gold); }
 .collection-hero h1 { font-size: clamp(45px, 6.8vw, 84px); line-height: 1.07; margin-bottom: 22px; letter-spacing: -.055em; }
 .collection-hero h1 em { color: var(--gold); font-weight: 400; }
 .hero-description { color: var(--muted); font-size: 16px; }
-.collection-benefits { display: flex; gap: 22px; font-size: 11px; color: #bbc8bd; }
-.collection-benefits span::before { content: '✓'; margin-right: 7px; color: var(--gold-dark); }
+.play-promise { max-width: 580px; margin: 22px 0 0; padding: 17px 20px; border: 1px solid #ead6a730; border-left: 3px solid var(--gold); border-radius: 8px; background: #ead6a708; }
+.play-promise strong { display: block; color: var(--gold); font-size: 17px; line-height: 1.4; }
+.play-promise p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
 .section-heading h2 { font-size: 22px; margin: 0; }
 .section-heading > span { font-size: 9px; letter-spacing: .1em; color: var(--muted); flex-shrink: 0; }
@@ -94,7 +96,10 @@ a { color: var(--gold); }
 .coming-soon h2 { font-size: 21px; margin-bottom: 5px; }
 .coming-soon p { font-size: 12px; color: var(--muted); margin: 0; }
 .pill { font-size: 8px; color: #bac4b4; border: 1px solid #b6c2af24; padding: 7px 11px; border-radius: 100px; margin-left: auto; white-space: nowrap; letter-spacing: .08em; }
-.collection-footer { font-family: Georgia, serif; font-style: italic; font-size: 14px; color: #7e9688; text-align: center; margin: 30px 0 0; }
+.collection-footer { border-top: 1px solid var(--line); text-align: center; margin: 30px 0 0; padding-top: 24px; }
+.collection-signoff { font-family: Georgia, serif; font-style: italic; font-size: 14px; color: #7e9688; margin-bottom: 8px; }
+.author-credit { font-size: 12px; color: var(--muted); margin: 0; }
+.author-credit a { display: inline-flex; align-items: center; min-height: 44px; text-underline-offset: 4px; }
 .back-link { margin: -16px 0 18px -12px; }
 .home-columns { display: grid; grid-template-columns: 1fr 420px; align-items: center; gap: 80px; padding: 12px 0 45px; }
 .plan-intro { padding: 15px 0; }
@@ -389,8 +394,6 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
   .collection-hero h1 { font-size: clamp(42px, 11vw, 58px); }
   .collection-hero .eyebrow { font-size: 8px; margin-bottom: 19px; }
   .hero-description { font-size: 13px; max-width: 260px; }
-  .collection-benefits { font-size: 9px; gap: 15px; }
-  .collection-benefits span::before { margin-right: 5px; }
   .section-heading { gap: 12px; }
   .section-heading h2 { font-size: 20px; }
   .section-heading > span { font-size: 7px; }
@@ -522,7 +525,6 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 }
 @media (max-width: 360px) {
   .brand-name { font-size: 14px; }
-  .collection-benefits { gap: 10px; }
   .section-heading h2 { font-size: 18px; }
   .section-heading > span { font-size: 6px; }
   .entry-panel, .invite-panel, .lobby-players { padding: 21px; }
