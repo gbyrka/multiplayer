@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b1a">
+  <meta name="description" content="Good games. Good company. Play PLAN, a free multiplayer card game with friends in your browser. No accounts, just an invite link.">
+  <title>Multiplayer — Good games. Good company.</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <!-- Shared Google Analytics stream used by all games. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTPHWDLQ7K"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-WTPHWDLQ7K');
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header id="site-header" class="site-header"></header>
+  <main id="main" tabindex="-1">
+    <div class="boot-message"><h1>Good games. Good company.</h1><p>Setting the table…</p></div>
+  </main>
+  <div id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="modal" aria-labelledby="modal-title">
+    <div class="modal-heading"><h2 id="modal-title"></h2><button type="button" class="button icon-button" data-action="close-modal" aria-label="Close dialog">×</button></div>
+    <div id="modal-body"></div>
+  </dialog>
+  <noscript><div class="boot-message"><h1>JavaScript is needed to play.</h1><p>Enable JavaScript in your browser and reload this page.</p></div></noscript>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
