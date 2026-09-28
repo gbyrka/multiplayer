@@ -34,7 +34,7 @@ Google Analytics loads asynchronously from Google Tag Manager using the shared m
 2. In the first browser select PLAN, enter a name and choose **CREATE GAME**.
 3. Choose **COPY INVITE LINK** and open it in the second browser. The code is prefilled. If clipboard access is denied, select and copy the visible invite-link field instead.
 4. Enter a second name, choose **JOIN GAME**, then **READY**.
-5. The host chooses **START GAME**. The randomly selected dealer bids last; the player after the dealer bids and leads first.
+5. The host chooses **START GAME**. The randomly selected dealer bids last; the player after the dealer bids first. The player with the highest bid leads the first trick; tied highest bids favor the player who bid earlier.
 6. Bid in turn, then click/tap the enabled cards. The table keeps completed tricks visible briefly. Review the results; only the host can choose **NEXT HAND**.
 7. Play through 5, 4, 3, 2, 1 cards and the blind finale. In the last hand, your card is a back and your opponents’ cards are face up. Choose **PLAY MY CARD** on your turn.
 8. Check the final scores and choose **PLAY AGAIN** as host. The same room and connections are reused.
@@ -61,7 +61,8 @@ This implementation does not automatically commit, push or change your GitHub Pa
 - A fresh 52-card deck is shuffled for every hand. Cards are dealt clockwise after the dealer. The next undealt card sets trump and is not played. Ace is high.
 - Join order fixes seats. The first dealer is random and the dealer advances clockwise after every hand.
 - Bid from zero to the number of cards in the hand, starting after the dealer. **Total bids cannot equal the number of available tricks**; this restricts the last bidder.
-- The first bidder leads the first trick. Follow the lead suit if you have it; otherwise play any card. Highest trump wins, or highest lead-suit card if there is no trump. The winner leads next.
+- The player with the **highest bid leads the first trick**, including in the blind hand. If several players share the highest bid, the one who bid earlier leads. If everyone bids zero, the first bidder leads.
+- Follow the lead suit if you have it; otherwise play any card. Highest trump wins, or highest lead-suit card if there is no trump. The trick winner leads the next trick.
 - An exact prediction earns **10 + bid** points. A miss loses **abs(bid − tricks won)** points. Bid 2/win 2 gives +12; bid 3/win 1 gives −2.
 - The host advances after each hand’s results. Scores accumulate; the highest total wins. Equal highest totals are a **tie**.
 - In the blind finale, you see everybody else’s one card but cannot see your own. Trump and bidding rules are unchanged. Your card becomes public when you play it.
@@ -154,7 +155,7 @@ On Node 24+, to print every assertion group with the in-process reporter:
 node --test --test-isolation=none --test-reporter=spec tests/*.test.mjs
 ```
 
-The suite includes all fourteen requested rule/privacy checks, plus invalid moves, host permissions, disconnects, duplicate joins/actions, stale snapshots, room ID collisions, six-player limits, rematches and 40 full randomly dealt games across all supported player counts.
+The suite includes all fourteen requested rule/privacy checks, plus highest-bid first leads (including ties and the blind hand), invalid moves, host permissions, disconnects, duplicate joins/actions, stale snapshots, room ID collisions, six-player limits, rematches and 40 full randomly dealt games with varied legal bids across all supported player counts.
 
 `tests/browser-smoke.mjs` is an optional developer-only Playwright script. It requires Playwright and Chromium installed **outside the production files**, a running local static server and access to the public PeerJS Cloud. For example, if Playwright is already available:
 
@@ -172,7 +173,7 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-smoke.mjs
 
 The optional `tests/browser-ui.mjs` uses the same Playwright setup to check all six-player phases at 320–1920px, minimum touch-target sizes, reduced motion, the rules and scoreboard, CDN failure and an absent room.
 
-Verified on 2026-09-28: **36/36 Node tests passed**, including 40 complete simulated games; **12/12 real-network browser checks passed** using two independent Chromium processes and public PeerJS Cloud; **6/6 UI/failure checks passed**, including seven six-player phases at eight viewport widths. The real browser run completed all six hands, rejected an injected illegal follow-suit move, inspected normal/blind payload privacy, completed a rematch and exercised both guest and host departures. There were no unexpected browser console errors. This is not a claim of testing every browser or two geographically separate networks.
+After the first-leader rule correction, **42/42 Node tests passed**, including 40 complete simulated games and a host/guest synchronization check for the bidding winner. Initial browser verification on 2026-09-28 passed **12/12 real-network checks** using two independent Chromium processes and public PeerJS Cloud, plus **6/6 UI/failure checks**, including seven six-player phases at eight viewport widths. That browser run completed all six hands, rejected an injected illegal follow-suit move, inspected normal/blind payload privacy, completed a rematch and exercised both guest and host departures. There were no unexpected browser console errors. This is not a claim of testing every browser or two geographically separate networks.
 
 ## Connection behavior and limitations
 

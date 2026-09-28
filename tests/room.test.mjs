@@ -86,6 +86,28 @@ test('duplicate JOIN_REQUEST never adds a second player or changes their identit
   assert.equal(guest.playerId, id);
   assert.equal(guest.view.me.name, 'Guest');
 });
+test('host and guest agree that the highest bidder leads and reject an earlier play', async t => {
+  const { host, guest } = await pair(t);
+  guest.act('SET_READY', { ready: true }); await flush();
+  host.act('START_GAME'); await flush();
+  const first = host.view.currentPlayerId === host.playerId ? host : guest;
+  const last = first === host ? guest : host;
+  first.act('PLACE_BID', { bid: 0 }); await flush();
+  last.act('PLACE_BID', { bid: 2 }); await flush();
+  for (const room of [host, guest]) {
+    assert.equal(room.view.phase, 'playing');
+    assert.equal(room.view.currentPlayerId, last.playerId);
+    assert.equal(room.view.me.legalCardIds.length, room === last ? 5 : 0);
+  }
+  const revision = host.revision;
+  first.act('PLAY_CARD', { cardId: first.view.me.hand[0].id }); await flush();
+  assert.match(first.errors.at(-1), /turn/);
+  assert.equal(host.revision, revision);
+  last.act('PLAY_CARD', { cardId: last.view.me.hand[0].id }); await flush();
+  assert.equal(guest.view.trick[0].playerId, last.playerId);
+  assert.equal(host.view.currentPlayerId, first.playerId);
+  assert.equal(guest.view.currentPlayerId, first.playerId);
+});
 test('identical request IDs execute once, and delayed old actions cannot overwrite new state', async t => {
   const { host, guest } = await pair(t);
   const intent = { ...message('SET_READY', { ready: true }), baseRevision: guest.revision };

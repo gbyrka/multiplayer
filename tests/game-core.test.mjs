@@ -19,10 +19,11 @@ function lobby(count = 3) {
   return state;
 }
 function start(count = 3) { return applyAction(lobby(count), 'p0', 'START_GAME', {}, deterministic); }
-function finishBidding(state) {
+function finishBidding(state, chooseBid = legalBids => legalBids[0]) {
   while (state.phase === 'bidding') {
     const forbidden = getForbiddenFinalBid(state.players.map(p => p.bid), state.handSize);
-    state = applyAction(state, state.currentPlayerId, 'PLACE_BID', { bid: forbidden === 0 ? 1 : 0 });
+    const legalBids = Array.from({ length: state.handSize + 1 }, (_, bid) => bid).filter(bid => bid !== forbidden);
+    state = applyAction(state, state.currentPlayerId, 'PLACE_BID', { bid: chooseBid(legalBids) });
   }
   return state;
 }
@@ -100,11 +101,66 @@ test('dealer and turn rotation wrap clockwise', () => {
   assert.equal(advanceDealer(3, 4), 0);
   assert.equal(getNextPlayer(lobby(3).players, 'p2').id, 'p0');
 });
-test('the first dealer is sampled and the next player bids and leads first', () => {
+test('the first dealer is sampled and the next player bids first', () => {
   const state = start(4);
   assert.equal(state.dealerIndex, 3);
   assert.equal(state.currentPlayerId, 'p0');
-  assert.equal(finishBidding(state).currentPlayerId, 'p0');
+});
+test('the highest bidder leads the first trick and other players must wait', () => {
+  let state = start(4);
+  for (const [id, bid] of [['p0', 0], ['p1', 2], ['p2', 1], ['p3', 0]]) {
+    state = applyAction(state, id, 'PLACE_BID', { bid });
+  }
+  assert.equal(state.phase, 'playing');
+  assert.equal(state.currentPlayerId, 'p1');
+  for (const player of state.players) {
+    const view = buildViewForPlayer(state, player.id);
+    assert.equal(view.currentPlayerId, 'p1');
+    assert.equal(view.me.legalCardIds.length, player.id === 'p1' ? 5 : 0);
+  }
+  assert.throws(() => applyAction(state, 'p0', 'PLAY_CARD', { cardId: state.players[0].hand[0].id }), /turn/);
+  state = applyAction(state, 'p1', 'PLAY_CARD', { cardId: state.players[1].hand[0].id });
+  assert.equal(state.currentPlayerId, 'p2');
+});
+test('the dealer can win the bidding and lead despite bidding last', () => {
+  let state = start(3);
+  for (const [id, bid] of [['p0', 0], ['p1', 0], ['p2', 2]]) {
+    state = applyAction(state, id, 'PLACE_BID', { bid });
+  }
+  assert.equal(state.currentPlayerId, 'p2');
+  state = applyAction(state, 'p2', 'PLAY_CARD', { cardId: state.players[2].hand[0].id });
+  assert.equal(state.currentPlayerId, 'p0');
+});
+test('tied highest bids follow bidding order across the seat-array boundary', () => {
+  let state = applyAction(lobby(4), 'p0', 'START_GAME', {}, () => 0);
+  assert.equal(state.dealerIndex, 0);
+  for (const [id, bid] of [['p1', 0], ['p2', 3], ['p3', 0], ['p0', 3]]) {
+    state = applyAction(state, id, 'PLACE_BID', { bid });
+  }
+  assert.equal(state.currentPlayerId, 'p2');
+});
+test('if all bids are zero, the first bidder leads for every dealer position', () => {
+  for (let dealer = 0; dealer < 4; dealer++) {
+    const state = applyAction(lobby(4), 'p0', 'START_GAME', {}, max => dealer % max);
+    assert.equal(finishBidding(state).currentPlayerId, `p${(dealer + 1) % 4}`);
+  }
+});
+test('the blind hand also starts with the bidding winner, with ties in bidding order', () => {
+  let state = start(3);
+  for (let hand = 1; hand < 6; hand++) {
+    state = applyAction(finishHand(state), 'p0', 'NEXT_HAND', {}, deterministic);
+  }
+  assert.equal(state.blind, true);
+  assert.equal(state.currentPlayerId, 'p2');
+  for (const [id, bid] of [['p2', 0], ['p0', 1], ['p1', 1]]) {
+    state = applyAction(state, id, 'PLACE_BID', { bid });
+  }
+  assert.equal(state.currentPlayerId, 'p0');
+  assert.equal(buildViewForPlayer(state, 'p0').me.hand, null);
+  assert.throws(() => applyAction(state, 'p2', 'PLAY_BLIND_CARD'), /turn/);
+  state = applyAction(state, 'p0', 'PLAY_BLIND_CARD');
+  assert.equal(state.trick[0].playerId, 'p0');
+  assert.equal(state.currentPlayerId, 'p1');
 });
 test('start requires 2–6 players and all guests ready; join order is stable', () => {
   const one = createLobby('p0', 'Host');
@@ -140,12 +196,16 @@ test('host validates ownership, turns, repeated cards and follow suit; illegal a
   assert.deepEqual(state, before);
 });
 test('the trick winner collects one trick and becomes the next leader', () => {
-  let state = finishBidding(start(3));
+  let state = start(3);
+  for (const [id, bid] of [['p0', 0], ['p1', 0], ['p2', 2]]) {
+    state = applyAction(state, id, 'PLACE_BID', { bid });
+  }
+  assert.equal(state.currentPlayerId, 'p2');
   state.trumpSuit = 'H';
   state.players[0].hand = ['AC', '3C'].map(card);
   state.players[1].hand = ['2H', 'AH'].map(card);
   state.players[2].hand = ['KC', '2S'].map(card);
-  for (const [player, cardId] of [['p0', 'AC'], ['p1', '2H'], ['p2', 'KC']]) state = applyAction(state, player, 'PLAY_CARD', { cardId });
+  for (const [player, cardId] of [['p2', 'KC'], ['p0', 'AC'], ['p1', '2H']]) state = applyAction(state, player, 'PLAY_CARD', { cardId });
   assert.equal(state.phase, 'trick_result');
   assert.equal(state.players[1].tricksWon, 1);
   assert.equal(state.trickWinnerId, 'p1');
@@ -233,7 +293,8 @@ test('full six-hand games for every supported player count preserve all invarian
         const dealt = state.players.flatMap(p => p.hand.map(c => c.id));
         assert.equal(new Set(dealt).size, count * state.handSize);
         assert.ok(!dealt.includes(state.trumpCard.id));
-        state = finishBidding(state);
+        state = finishBidding(state, legalBids => legalBids[(game + hand) % legalBids.length]);
+        assert.equal(state.players.find(p => p.id === state.currentPlayerId).bid, Math.max(...state.players.map(p => p.bid)));
         assert.notEqual(state.players.reduce((sum, p) => sum + p.bid, 0), state.handSize);
         state = finishHand(state);
         assert.equal(state.players.reduce((sum, p) => sum + p.tricksWon, 0), state.handSize);

@@ -20,6 +20,17 @@ export function getForbiddenFinalBid(bids, handSize) {
   return forbidden >= 0 && forbidden <= handSize ? forbidden : null;
 }
 
+/** Highest bid wins; equal bids keep the earlier player in clockwise bidding order. */
+export function getBiddingWinner(players, dealerIndex) {
+  requireRule(players.length > 0 && players.every(player => Number.isInteger(player.bid) && player.bid >= 0), 'Bidding must finish before choosing a leader.');
+  let winner = players[advanceDealer(dealerIndex, players.length)];
+  for (let offset = 2; offset <= players.length; offset++) {
+    const player = players[(dealerIndex + offset) % players.length];
+    if (player.bid > winner.bid) winner = player;
+  }
+  return winner.id;
+}
+
 export function getLegalCards(hand, leadSuit = null) {
   const following = hand.filter(card => card.suit === leadSuit);
   return following.length ? following : hand;
@@ -130,7 +141,7 @@ export function applyAction(state, actorId, type, payload = {}, pick = randomInt
       player.bid = bid;
       if (next.players.every(p => p.bid !== null)) {
         next.phase = 'playing';
-        next.currentPlayerId = next.players[advanceDealer(next.dealerIndex, next.players.length)].id;
+        next.currentPlayerId = getBiddingWinner(next.players, next.dealerIndex);
       } else next.currentPlayerId = getNextPlayer(next.players, actorId).id;
       break;
     }
