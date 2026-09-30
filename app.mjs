@@ -11,6 +11,7 @@ import { ChatPanel } from './shared/chat-ui.mjs';
 
 const main = document.querySelector('#main');
 const header = document.querySelector('#site-header');
+const adPlacement = document.querySelector('#multiplayer-ad');
 const modal = document.querySelector('#modal');
 const modalBody = document.querySelector('#modal-body');
 const params = new URLSearchParams(location.search);
@@ -80,6 +81,10 @@ function render() {
     roomContent.replaceChildren(content);
     chat.setConnected(!room.closed, view.me.id);
   } else main.replaceChildren(content);
+  // Keep one ad node outside the changing game/chat DOM. Never refresh on moves.
+  const showAd = screen === 'collection' || screen === 'game-home' ||
+    (screen === 'room' && ['bidding', 'playing', 'trick_result', 'hand_result', 'game_result'].includes(view.phase));
+  window.MoDITAds?.setVisible(adPlacement, showAd);
   const handKey = view ? `${view.handNumber}-${view.phase === 'bidding' ? 'deal' : 'play'}` : '';
   if (view?.phase === 'bidding' && renderedHand !== handKey) main.querySelector('.my-cards')?.classList.add('dealing');
   renderedHand = handKey;

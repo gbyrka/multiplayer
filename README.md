@@ -61,6 +61,8 @@ This implementation does not automatically commit, push or change your GitHub Pa
 
 **`config.json` is the single source of the app version.** Before **every deployment that changes application files**, change its `version`, for example from `birch` to `cedar`. Use a new 3–16 character alphanumeric value; never reuse a previously deployed version.
 
+The standalone advertising stylesheet and helper initialise before the app loader; also update their `?v=` URLs in `index.html` when changing those files.
+
 The small inline loader reads the configuration with `cache: 'no-store'` and a fresh request URL on every visit/reload. It then loads **CSS, favicon and every JS module** with `?v=VERSION`. An [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap) also versions relative imports inside the module graph; versioning only `app.mjs` would leave its dependencies cached. A cached copy of the HTML still runs the same loader and reads the new configuration. Returning through the browser's back/forward cache reloads the app too. A game already open is not interrupted by an automatic refresh.
 
 When adding a production module, add its relative path to `config.json` → `modules`. The browser asset test verifies that this list includes every production module, checks version changes with a real year-long HTTP cache and runs under a `/multiplayer/` subpath. No build, service worker or server configuration is required. A failed configuration/assets request produces an **APP UNAVAILABLE** screen with **RELOAD**.
@@ -177,6 +179,14 @@ LICENSE
 ```
 
 Register another game in `games/registry.mjs` with a unique ID and PeerJS namespace. Supply an adapter with `createLobby`, `addPlayer`, `removePlayer`, `applyAction`, `buildViewForPlayer` and `automaticTransition`, plus game/rules/scoreboard rendering functions. Reuse the transport, room binding, invites, lobby, dialog and menu. Add any new intent schema to the centralized protocol. Game rules must stay independent of DOM and transport. The initial lobby policy (2–6 players and ready guests) is implemented in the adapter and can be reused or adjusted for a future game.
+
+## Advertising and consent
+
+One responsive AdSense `game_footer` unit (`9380002810`) lives outside `#main`, below the complete game/chat layout with at least 150px of separation. It is available in the collection, game entry and active PLAN game/result screens. It is hidden while connecting, in the lobby and on error/disconnection screens. Private chat is never the advertising surface; the active page's primary content is the game.
+
+The ad node stays attached across every move, bid and score update. The renderer only toggles visibility; it never recreates or refreshes the ad. Ads are requested once when near the viewport, and blocked/unfilled units hide their section. There are no sticky ads, overlays or ads inside the card table or chat panel.
+
+Publish `ads.css` and `monetization.js` alongside the usual files. Keep their copies in sync with the other game projects when changing shared advertising behaviour, and update their `?v=` URLs as well as the release manifest. In the AdSense Google CMP settings, enable Consent Mode for advertising and analytics; keep Auto ads off for the manual layout. Analytics remains unloaded until the CMP permits analytics storage or declares it inapplicable. Unknown or unconfigured consent stays denied. The shared policy is at `../games/privacy.html`; the root `gbyrka.github.io` repository supplies `ads.txt`.
 
 ## Automated checks
 

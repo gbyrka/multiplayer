@@ -1,0 +1,37 @@
+/* Separate from the game shell so ads never reduce the playing area. */
+.ad-placement {
+  box-sizing: border-box;
+  width: min(970px, calc(100% - 40px));
+  margin: 150px auto 32px;
+  padding: 18px 0 24px;
+  border-top: 1px solid #ffffff1c;
+  border-bottom: 1px solid #ffffff12;
+  color: inherit;
+  text-align: center;
+}
+.ad-placement[hidden] { display: none !important; }
+.ad-placement-label {
+  margin: 0 0 16px;
+  color: inherit;
+  opacity: .55;
+  font: 600 9px/1.5 Arial, Helvetica, sans-serif;
+  letter-spacing: .18em;
+}
+.ad-placement .adsbygoogle { display: block; min-height: 100px; }
+.ad-placement-catalog { width: 100%; margin-top: 24px; }
+.privacy-footer {
+  display: block;
+  width: min(970px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 0 0 28px;
+  border: 0;
+  color: inherit;
+  opacity: .75;
+  text-align: center;
+  font: 11px/1.6 Arial, Helvetica, sans-serif;
+}
+.privacy-footer a { color: inherit; text-underline-offset: 4px; }
+.privacy-footer a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
+@media (max-width: 600px) {
+  .ad-placement .adsbygoogle { min-height: 250px; }
+}
