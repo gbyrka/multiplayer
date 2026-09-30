@@ -126,7 +126,7 @@ export class StarNetwork {
       const now = Date.now();
       if (now - record.windowStart > 10000) { record.windowStart = now; record.count = 0; }
       if (++record.count > 100) { this.drop(connection); return; }
-      if (!isMessage(data, this.host ? 1024 : 32768)) return;
+      if (!isMessage(data, this.host ? 2048 : 32768)) return;
       record.lastSeen = now;
       if (data.type === 'PING') { this.send(connection, message('PONG', {}, data.requestId)); return; }
       if (data.type === 'PONG') return;

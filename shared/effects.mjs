@@ -12,7 +12,7 @@ export function getViewEffects(previous, next) {
   if (next.phase === 'game_result' && previous.phase !== 'game_result') {
     const best = Math.max(...next.players.map(player => player.totalScore));
     const winners = next.players.filter(player => player.totalScore === best);
-    effects.push({ type: 'victory', winners: winners.map(player => player.name), own: winners.some(player => player.id === next.me.id) });
+    if (winners.some(player => player.id === next.me.id)) effects.push({ type: 'victory', winners: winners.map(player => player.name), own: true });
   }
   return effects;
 }

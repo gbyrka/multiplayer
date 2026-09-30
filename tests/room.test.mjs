@@ -52,10 +52,10 @@ class MemoryNetwork {
 }
 
 function makeRoom(t, options = {}) {
-  const errors = [], ended = [], views = [];
-  const room = new GameRoom({ game, Network: MemoryNetwork, onView: view => views.push(view), onStatus: () => {}, onError: text => errors.push(text), onEnded: text => ended.push(text), ...options });
+  const errors = [], ended = [], views = [], chats = [], chatErrors = [];
+  const room = new GameRoom({ game, Network: MemoryNetwork, onView: view => views.push(view), onChat: (chat, requestId) => chats.push({ chat, requestId }), onChatError: (text, requestId) => chatErrors.push({ text, requestId }), onStatus: () => {}, onError: text => errors.push(text), onEnded: text => ended.push(text), ...options });
   t.after(() => room.close());
-  return Object.assign(room, { errors, ended, views });
+  return Object.assign(room, { errors, ended, views, chats, chatErrors });
 }
 async function pair(t) {
   const host = makeRoom(t), guest = makeRoom(t);
@@ -195,4 +195,91 @@ test('different deployments cannot join the same game and receive a clear reload
   const current = makeRoom(t, { appVersion: 'birch' });
   await current.join('Guest', host.roomCode);
   assert.equal(host.view.players.length, 2);
+});
+
+test('host relays chat to every participant using connection identity, without changing game state', async t => {
+  const { host, guest } = await pair(t);
+  const other = makeRoom(t); await other.join('Other', host.roomCode);
+  const revision = host.revision, publications = host.views.length;
+  const intent = { ...message('CHAT_SEND', { text: 'Hello\nhttps://example.com' }), playerId: host.playerId, name: 'Impostor' };
+  guest.network.send(guest.network.hostConnection, intent); await flush();
+  for (const room of [host, guest, other]) {
+    assert.equal(room.chatView.messages.length, 1);
+    assert.equal(room.chatView.messages[0].playerId, guest.playerId);
+    assert.equal(room.chatView.messages[0].name, 'Guest');
+    assert.equal(room.chatView.messages[0].text, 'Hello\nhttps://example.com');
+    assert.equal(room.revision, revision);
+  }
+  assert.equal(host.views.length, publications);
+  assert.equal(guest.chats.at(-1).requestId, intent.requestId);
+  assert.equal(other.chats.at(-1).requestId, undefined);
+  host.sendChat('Hi from the host'); await flush();
+  assert.equal(guest.chatView.messages.at(-1).playerId, host.playerId);
+  assert.equal(other.chatView.messages.length, 2);
+  assert.equal(host.views.length, publications);
+});
+
+test('chat rejects markup, impersonation and malformed content, ignores duplicates and stale snapshots', async t => {
+  const { host, guest } = await pair(t);
+  const valid = message('CHAT_SEND', { text: 'One message' });
+  guest.network.send(guest.network.hostConnection, valid);
+  guest.network.send(guest.network.hostConnection, valid); await flush();
+  assert.equal(host.chatView.messages.length, 1);
+  const previous = structuredClone(guest.chatView);
+  for (const payload of [
+    { text: '<svg onload="alert(1)"></svg>' }, { text: '<script>alert(1)</script>' },
+    { text: 'Hi', playerId: host.playerId }, { text: {} }, { text: 'x'.repeat(501) },
+  ]) guest.network.send(guest.network.hostConnection, message('CHAT_SEND', payload));
+  await flush();
+  assert.equal(host.chatView.messages.length, 1);
+  assert.equal(guest.chatErrors.length, 5);
+  assert.equal(guest.errors.length, 0, 'Chat errors never release pending game actions.');
+  guest.sendChat('&lt;script&gt;alert(1)&lt;/script&gt; javascript:alert(1)'); await flush();
+  const current = guest.chatView;
+  host.network.send(host.network.links[0], message('CHAT_UPDATE', { chat: previous }));
+  host.network.send(host.network.links[0], message('CHAT_UPDATE', { chat: { ...current, revision: current.revision + 1, messages: [{ ...current.messages[0], text: '<img src=x onerror=alert(1)>' }] } }));
+  await flush();
+  assert.equal(guest.chatView, current);
+  assert.equal(guest.chatView.messages.length, 2);
+});
+
+test('chat history stays in its room, reaches new guests and survives the start of a game', async t => {
+  const host = makeRoom(t); await host.create('Host');
+  host.sendChat('Welcome to this table');
+  const guest = makeRoom(t); await guest.join('Guest', host.roomCode); await flush();
+  assert.equal(guest.chatView.messages[0].text, 'Welcome to this table');
+  const anotherHost = makeRoom(t); await anotherHost.create('Another host');
+  assert.deepEqual(anotherHost.chatView.messages, []);
+  guest.act('SET_READY', { ready: true }); await flush();
+  host.act('START_GAME'); await flush();
+  guest.sendChat('Good luck'); await flush();
+  assert.equal(guest.view.phase, 'bidding');
+  assert.equal(guest.chatView.messages.length, 2);
+  const publicChat = JSON.stringify(guest.chatView);
+  assert.ok(!publicChat.includes('hand'));
+  for (const card of host.view.me.hand) assert.ok(!publicChat.includes(`"${card.id}"`));
+});
+
+test('chat cannot interrupt the scheduled trick transition or bypass the per-player rate limit', async t => {
+  const { host, guest } = await pair(t);
+  guest.act('SET_READY', { ready: true }); await flush();
+  host.act('START_GAME'); await flush();
+  for (let i = 0; i < 2; i++) {
+    const bidder = host.view.currentPlayerId === host.playerId ? host : guest;
+    bidder.act('PLACE_BID', { bid: i }); await flush();
+  }
+  for (let i = 0; i < 2; i++) {
+    const player = host.view.currentPlayerId === host.playerId ? host : guest;
+    player.act('PLAY_CARD', { cardId: player.view.me.legalCardIds[0] }); await flush();
+  }
+  assert.equal(host.view.phase, 'trick_result');
+  const timer = host.transitionTimer, revision = host.revision;
+  for (let i = 0; i < 6; i++) guest.sendChat(`Message ${i}`);
+  await flush();
+  assert.equal(host.chatView.messages.length, 5);
+  assert.match(guest.chatErrors.at(-1).text, /slower/);
+  assert.equal(host.transitionTimer, timer);
+  assert.equal(host.revision, revision);
+  host.sendChat('The host has a separate rate limit.'); await flush();
+  assert.equal(host.chatView.messages.length, 6);
 });

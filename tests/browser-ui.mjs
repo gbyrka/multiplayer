@@ -31,6 +31,8 @@ try {
     const core = await import('./games/plan/game-core.mjs');
     const { renderPlan, renderScoreboard } = await import('./games/plan/ui.mjs');
     const { renderLobby, renderHeader } = await import('./shared/screens.mjs');
+    const { ChatPanel } = await import('./shared/chat-ui.mjs');
+    const { el } = await import('./shared/dom.mjs');
     const names = ['Alexandra Wilson', 'Greg', 'Anna', 'Mark', 'John', 'Charlotte Brown'];
     let state = core.createLobby('p0', names[0]);
     for (let i = 1; i < 6; i++) {
@@ -58,10 +60,16 @@ try {
         state = core.applyAction(state, 'p0', 'NEXT_HAND');
       } else if (state.phase === 'game_result') { fixtures.game_result = state; break; }
     }
+    const chat = new ChatPanel(() => {});
+    chat.setConnected(true, 'p0');
+    window.__testChat = chat;
+    const content = el('div', { class: 'room-content' });
+    document.querySelector('#main').classList.add('with-chat');
+    document.querySelector('#main').replaceChildren(el('div', { class: 'room-layout' }, content, chat.element));
     window.__renderFixture = (phase, playerId = 'p0') => {
       const view = core.buildViewForPlayer(fixtures[phase], playerId);
       document.querySelector('#site-header').replaceChildren(renderHeader({ game: { title: 'PLAN' }, room: {}, view, status: 'Connected' }));
-      document.querySelector('#main').replaceChildren(phase === 'lobby' ? renderLobby(view, 'K7PX4M9Q', 'https://example.github.io/multiplayer/?room=K7PX4M9Q&game=plan', false) : renderPlan(view));
+      content.replaceChildren(phase === 'lobby' ? renderLobby(view, 'K7PX4M9Q', 'https://example.github.io/multiplayer/?room=K7PX4M9Q&game=plan', false) : renderPlan(view));
     };
     window.__renderScores = (count = 6) => {
       let scoreState = fixtures.game_result;
@@ -95,7 +103,45 @@ try {
       }
     }
   }
-  pass('Six-player lobby and every game phase fit 8 widths from 320px to 1920px, with 44px touch targets');
+  pass('Six-player lobby, every game phase and room chat fit 8 widths from 320px to 1920px, with 44px touch targets');
+  await page.evaluate(() => {
+    const chat = window.__testChat;
+    // Exercise the DOM sink directly, even bypassing the host's markup rejection.
+    chat.update({ revision: 3, messages: [
+      { id: 1, playerId: 'p1', name: '<svg/onload=1>', text: '<img src=x onerror="window.__xss=1"><script>window.__xss=2</script>', timestamp: Date.now() },
+      { id: 2, playerId: 'p1', name: 'Anna', text: '&lt;svg onload=alert(1)&gt; https://example.com\njavascript:alert(1)', timestamp: Date.now() },
+      { id: 3, playerId: 'p0', name: 'Greg', text: 'Two\nlines', timestamp: Date.now() },
+    ] });
+  });
+  assert.equal(await page.locator('.chat-messages script, .chat-messages img, .chat-messages svg, .chat-messages a, .chat-messages iframe').count(), 0);
+  assert.equal(await page.evaluate(() => window.__xss), undefined);
+  assert.ok((await page.locator('.chat-messages').innerText()).includes('<img src=x'));
+  assert.equal(await page.locator('.chat-text').last().textContent(), 'Two\nlines');
+  pass('Chat DOM treats HTML, script, entities, nicknames and URLs as inert text without clickable links');
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => {
+    const chat = window.__testChat;
+    chat.reset(); chat.setConnected(true, 'p0');
+    window.__chatHistory = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, playerId: 'p1', name: 'Anna', text: 'A long message '.repeat(30), timestamp: Date.now() }));
+    chat.update({ revision: 25, messages: window.__chatHistory });
+    chat.log.scrollTop = 0;
+  });
+  await page.locator('#chat-input').fill('Keep this draft');
+  await page.evaluate(() => {
+    window.__renderFixture('playing');
+    const last = { id: 26, playerId: 'p1', name: 'Anna', text: 'One more message', timestamp: Date.now() };
+    window.__testChat.update({ revision: 26, messages: [...window.__chatHistory.slice(1), last] });
+  });
+  assert.equal(await page.locator('#chat-input').inputValue(), 'Keep this draft');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'chat-input');
+  await page.getByRole('button', { name: '1 new message ↓', exact: true }).waitFor();
+  assert.equal(await page.locator('.chat-message').count(), 25);
+  await page.getByRole('button', { name: '1 new message ↓', exact: true }).click();
+  assert.ok(await page.locator('.chat-messages').evaluate(log => log.scrollHeight - log.scrollTop - log.clientHeight < 2));
+  assert.equal(await page.locator('.current-player').evaluate(node => getComputedStyle(node).animationName), 'none');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: `${output}/chat-mobile.png`, fullPage: true, animations: 'disabled' });
+  pass('Chat preserves drafts/focus and older-message scroll, bounds history and respects reduced-motion turn indicators');
   await page.setViewportSize({ width: 320, height: 800 });
   for (const count of [2, 3, 4, 5, 6]) {
     await page.evaluate(count => window.__renderScores(count), count);

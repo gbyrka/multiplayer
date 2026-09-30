@@ -124,6 +124,8 @@ try {
     document.querySelector('#main').replaceChildren(el('section', { class: 'results-panel panel' },
       el('h1', {}, 'Game over'), el('div', { class: 'winner-banner', 'data-winner-banner': '' }, el('h2', {}, 'Greg & Anna'), el('p', {}, 'A shared victory.'))));
     window.__testCelebration = new VictoryCelebration();
+    window.__testCelebration.play(['Greg', 'Anna'], false);
+    if (!window.__testCelebration.layer.hidden) throw new Error('Losers must not see the celebration.');
     window.__testCelebration.play(['Greg', 'Anna'], true);
   });
   await page.waitForTimeout(850);
@@ -143,7 +145,7 @@ try {
   assert.equal(await page.evaluate(() => window.__testCelebration.layer.hidden), true);
   await page.evaluate(() => window.__testCelebration.play(['Greg', 'Anna'], true));
   assert.equal(await page.evaluate(() => window.__testCelebration.layer.hidden), true);
-  pass('Sokoban-style canvas victory supports shared winners, finishes cleanly, fits a phone and respects reduced motion');
+  pass('Sokoban-style canvas victory is exclusive to winners, supports ties, fits a phone and respects reduced motion');
 
   failManifest = true;
   await page.goto(base);

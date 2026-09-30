@@ -7,6 +7,7 @@ import { renderHeader, renderCollection, renderGameHome, renderConnecting, rende
 import { GameSound } from './shared/sound.mjs';
 import { getViewEffects } from './shared/effects.mjs';
 import { VictoryCelebration } from './shared/celebration.mjs';
+import { ChatPanel } from './shared/chat-ui.mjs';
 
 const main = document.querySelector('#main');
 const header = document.querySelector('#site-header');
@@ -34,6 +35,9 @@ let libraryError = false;
 let endedHost = false;
 let dialogKind = '';
 let renderedHand = '';
+const chat = new ChatPanel((text, requestId) => room?.sendChat(text, requestId));
+const roomContent = el('div', { class: 'room-content' });
+const roomLayout = el('div', { class: 'room-layout' }, roomContent, chat.element);
 
 function inviteLink() {
   const url = new URL(window.location.origin + window.location.pathname);
@@ -70,7 +74,12 @@ function render() {
       break;
     default: content = renderCollection(GAMES);
   }
-  main.replaceChildren(content);
+  main.classList.toggle('with-chat', screen === 'room');
+  if (screen === 'room') {
+    if (!main.contains(roomLayout)) main.replaceChildren(roomLayout);
+    roomContent.replaceChildren(content);
+    chat.setConnected(!room.closed, view.me.id);
+  } else main.replaceChildren(content);
   const handKey = view ? `${view.handNumber}-${view.phase === 'bidding' ? 'deal' : 'play'}` : '';
   if (view?.phase === 'bidding' && renderedHand !== handKey) main.querySelector('.my-cards')?.classList.add('dealing');
   renderedHand = handKey;
@@ -124,6 +133,7 @@ async function connect(mode, retrying = false) {
   try { localStorage.setItem('multiplayer:name', name); } catch { /* Storage is optional. */ }
   const token = ++attempt;
   room?.close();
+  chat.reset();
   celebration.cancel();
   sound.stop();
   room = null;
@@ -139,6 +149,8 @@ async function connect(mode, retrying = false) {
     const session = new GameRoom({
       Peer, game, appVersion: document.documentElement.dataset.appVersion, debug: params.get('debug') === '1',
       onStatus: text => { if (token === attempt) updateStatus(text); },
+      onChat: (snapshot, requestId) => { if (token === attempt) chat.update(snapshot, requestId); },
+      onChatError: (text, requestId) => { if (token === attempt) chat.fail(text, requestId); },
       onView: next => {
         if (token !== attempt) return;
         const effects = getViewEffects(view, next);
@@ -149,13 +161,15 @@ async function connect(mode, retrying = false) {
         updateURL(true);
         render();
         if (oldPhase !== next.phase && ['hand_result', 'game_result', 'disconnected'].includes(next.phase)) {
-          main.focus({ preventScroll: true });
-          window.scrollTo({ top: 0, behavior: 'instant' });
+          if (!chat.element.contains(document.activeElement)) {
+            main.focus({ preventScroll: true });
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }
         }
         if (next.phase !== 'game_result') celebration.cancel();
         for (const effect of effects) {
           if (effect.type === 'card') sound.play('card', effect.own);
-          if (effect.type === 'victory') {
+          if (effect.type === 'victory' && effect.own) {
             celebration.play(effect.winners, effect.own);
             if (effect.own) sound.play('victory');
           }
@@ -167,6 +181,7 @@ async function connect(mode, retrying = false) {
         clearPending();
         celebration.cancel();
         sound.stop();
+        chat.setConnected(false);
         endedHost = Boolean(room?.isHost);
         room = null;
         view = null;
@@ -214,6 +229,7 @@ function closeDialog() { modal.close(); dialogKind = ''; }
 function goHome(collection = false) {
   ++attempt;
   room?.close();
+  chat.reset();
   celebration.cancel();
   sound.stop();
   room = null;

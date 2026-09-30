@@ -112,11 +112,43 @@ try {
   assert.equal(await guest.locator('.lobby-list li strong b').count(), 0);
   assert.ok((await host.locator('.lobby-list').innerText()).includes('<b>Anna</b>'));
   assert.ok(await host.getByRole('button', { name: 'START GAME' }).isDisabled());
+  await host.locator('#chat-input').fill('Hello, table!');
+  await host.locator('#chat-input').press('Enter');
+  await guest.getByText('Hello, table!', { exact: true }).waitFor();
+  await guest.locator('#chat-input').fill('Good luck');
+  await guest.locator('#chat-input').press('Shift+Enter');
+  await guest.locator('#chat-input').pressSequentially('https://example.com');
+  assert.equal(await guest.locator('#chat-input').inputValue(), 'Good luck\nhttps://example.com');
+  await guest.getByRole('button', { name: 'SEND', exact: true }).tap();
+  await host.locator('.chat-text').filter({ hasText: 'Good luck' }).waitFor();
+  assert.equal(await host.locator('.chat-text').last().textContent(), 'Good luck\nhttps://example.com');
+  assert.equal(await host.locator('.chat-messages a, .chat-messages b, .chat-messages script').count(), 0);
+  const revisionBeforeChatAttack = (await latest(guest)).revision;
+  await sendIntent(guest, 'CHAT_SEND', { text: '<img src=x onerror="window.__xss=1">' }, revisionBeforeChatAttack, 'chat-xss-test');
+  await guest.waitForFunction(() => window.__wire.some(entry => entry.data.type === 'ERROR' && entry.data.requestId === 'chat-xss-test' && entry.data.payload.scope === 'chat'));
+  assert.equal((await latest(guest)).revision, revisionBeforeChatAttack);
+  assert.equal(await host.locator('.chat-message').count(), 2);
+  assert.equal(await host.evaluate(() => window.__xss), undefined);
+  const hostLayout = await host.locator('.room-content').boundingBox();
+  const hostChat = await host.locator('.room-chat').boundingBox();
+  assert.ok(hostChat.x >= hostLayout.x + hostLayout.width);
+  checked('Room chat works via Enter, Shift+Enter and Send; host rejects forged HTML and URLs/names remain plain text');
   await guest.getByRole('button', { name: 'READY', exact: true }).tap();
   await host.waitForFunction(() => !document.querySelector('[data-action="start"]').disabled);
   await guest.screenshot({ path: `${output}/lobby-mobile.png`, fullPage: true, animations: 'disabled' });
+  await guest.locator('#chat-input').fill('Draft survives the start');
   await host.getByRole('button', { name: 'START GAME' }).click();
   await guest.locator('.game-layout').waitFor();
+  assert.equal(await guest.locator('#chat-input').inputValue(), 'Draft survives the start');
+  assert.equal(await guest.evaluate(() => document.activeElement.id), 'chat-input');
+  const mobileLayout = await guest.locator('.room-content').boundingBox();
+  const mobileChat = await guest.locator('.room-chat').boundingBox();
+  assert.ok(mobileChat.y >= mobileLayout.y + mobileLayout.height);
+  for (const page of [host, guest]) {
+    assert.equal(await page.locator('.player-tile.current-player[aria-current="true"]').count(), 1);
+    assert.equal(await page.locator('.current-player').evaluate(node => getComputedStyle(node).animationName), 'turn-pulse');
+  }
+  checked('Chat moves below the mobile table, retains drafts/focus and the current player visibly pulses');
   let view = await latest(guest);
   const initialRevision = view.revision;
   assert.equal(view.phase, 'bidding');
@@ -231,9 +263,9 @@ try {
     assert.equal(cards.filter(sound => Math.abs(sound.volume - .72) < .001).length, 32);
     assert.equal(cards.filter(sound => Math.abs(sound.volume - .48) < .001).length, 32);
     assert.equal(sounds.filter(sound => Math.abs(sound.duration - 2.35) < .001).length, won ? 1 : 0);
-    assert.equal(await page.locator('.celebration.playing').count(), 1);
+    assert.equal(await page.locator('.celebration.playing').count(), won ? 1 : 0);
   }
-  checked('Each accepted card sounds once; own cards are louder and only winners hear triumph during the shared animation');
+  checked('Each accepted card sounds once; own cards are louder and only winners receive the celebration and triumph');
   await guest.screenshot({ path: `${output}/results-mobile.png`, fullPage: true, animations: 'disabled' });
   checked('Complete six-round / twelve-hand game, every bidding opener, trump, scores and final standings');
   if (!rejectedFollowSuit) console.log('NOTE This random deal did not offer a guest off-suit attempt; core tests cover it deterministically.');

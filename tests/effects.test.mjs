@@ -31,7 +31,7 @@ test('a final victory triggers once, celebrates ties and identifies whether this
   const next = view({ revision: 3, phase: 'game_result' });
   assert.deepEqual(getViewEffects(previous, next), [{ type: 'victory', winners: ['Host'], own: true }]);
   assert.deepEqual(getViewEffects(next, { ...next, revision: 4 }), []);
-  assert.deepEqual(getViewEffects(previous, { ...next, me: { id: 'guest' } }), [{ type: 'victory', winners: ['Host'], own: false }]);
+  assert.deepEqual(getViewEffects(previous, { ...next, me: { id: 'guest' } }), []);
   const tie = { ...next, players: next.players.map(player => ({ ...player, totalScore: 10 })), me: { id: 'guest' } };
   assert.deepEqual(getViewEffects(previous, tie), [{ type: 'victory', winners: ['Host', 'Anna'], own: true }]);
 });

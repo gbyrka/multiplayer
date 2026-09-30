@@ -1,10 +1,12 @@
 import { randomToken } from './random.mjs';
+import { CHAT_LIMITS } from './chat.mjs';
 
 export const PROTOCOL_VERSION = 1;
 export const MESSAGE = Object.freeze(Object.fromEntries([
   'JOIN_REQUEST', 'JOIN_ACCEPTED', 'JOIN_REJECTED', 'SET_READY', 'START_GAME',
   'PLACE_BID', 'PLAY_CARD', 'PLAY_BLIND_CARD', 'STATE_UPDATE', 'NEXT_HAND',
   'PLAY_AGAIN', 'RETURN_TO_LOBBY', 'PING', 'PONG', 'ERROR',
+  'CHAT_SEND', 'CHAT_UPDATE',
 ].map(type => [type, type])));
 
 export const ACTION_TYPES = new Set([
@@ -30,9 +32,10 @@ export function isMessage(value, maxLength = 32768) {
 }
 
 export function isClientMessage(value) {
-  if (!isMessage(value, 1024)) return false;
+  if (!isMessage(value, value?.type === 'CHAT_SEND' ? 2048 : 1024)) return false;
   const { type, payload } = value;
   const keys = Object.keys(payload);
+  if (type === 'CHAT_SEND') return keys.length === 1 && typeof payload.text === 'string' && payload.text.length <= CHAT_LIMITS.length;
   if (EMPTY_PAYLOAD_TYPES.has(type)) return keys.length === 0;
   if (type === 'JOIN_REQUEST') return keys.every(key => ['nickname', 'appVersion'].includes(key)) &&
     typeof payload.nickname === 'string' && payload.nickname.length <= 16 &&

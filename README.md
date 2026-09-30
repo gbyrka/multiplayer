@@ -69,9 +69,19 @@ Guests send the loaded app version during the room handshake. The host rejects a
 
 ## Sounds and victory
 
-Web Audio generates original, short sounds locally: a soft paper/wood tap for another player's card, the same sound about 3.5 dB louder for your own card, and a gentle ascending bell phrase for a winner. Sounds follow accepted host state updates, including blind plays; clicks, rejected moves, duplicate snapshots and rerenders do not replay them. Tied winners all hear the triumph. Everyone sees the winner celebration.
+Web Audio generates original, short sounds locally: a soft paper/wood tap for another player's card, the same sound about 3.5 dB louder for your own card, and a gentle ascending bell phrase for a winner. Sounds follow accepted host state updates, including blind plays; clicks, rejected moves, duplicate snapshots and rerenders do not replay them. **Only winners see the celebration and hear the triumph**, including every tied winner. Everyone can read the final standings.
 
 Use **SOUND ON / SOUND OFF** in the header to mute or enable audio. The preference is saved on the device. Audio starts only after a user gesture, and hidden tabs do not play delayed sounds. Audio failure does not interrupt gameplay. The 2.4-second celebration has a soft halo, gold/mint particles and a medal reveal; it stops on leaving, rematch, resize or a hidden tab and respects `prefers-reduced-motion`.
+
+The current bidder or card player has a bright **YOUR TURN / THEIR TURN** label, a dot, and a gently pulsing gold border. The indicator is visible to everyone. Pulsing stops between tricks and is disabled with reduced motion, while the static label and border remain.
+
+## Room chat
+
+Chat is available in the lobby and all game phases. It appears beside the table on wide screens and below it at 900 px and narrower. Press **Enter** or **SEND** to send; **Shift + Enter** inserts a newline. Typing with an input method editor does not accidentally send. A draft, focus and message-scroll position survive game updates; a new-message button appears when you are reading older messages.
+
+The host handles `CHAT_SEND` using the connection's assigned identity, validates the text, and relays `CHAT_UPDATE` to room participants. Chat has its own increasing revision, replay protection and acknowledgements; it does not change game revisions, pending moves or trick timers. New guests receive the latest 25 messages. Rematches retain the room conversation; leaving clears the local panel. There is no external chat service, storage or database.
+
+Messages are limited to 500 characters and five accepted messages per player per ten seconds. HTML tags and unsafe control characters are rejected. Text and player names are inserted only as text nodes, never `innerHTML`, Markdown or executable code. URLs and JavaScript-looking strings stay non-clickable, inert text; HTML entities are not decoded into markup. The chat payload carries only message IDs, sender IDs/names, timestamps and user-authored text, with no game hands or cards.
 
 ## Rules
 
@@ -137,6 +147,8 @@ shared/
   peer-loader.mjs          Pinned CDN loader and graceful failure
   network.mjs              Game-independent STAR transport and health checks
   room.mjs                 Connections → identities → authoritative adapter
+  chat.mjs                 Bounded host chat, plain-text validation and rate limit
+  chat-ui.mjs              Persistent composer, messages and unread indicator
   dom.mjs                  Safe DOM/card builders and shared instructions
   screens.mjs              Collection, game entry, lobby and connection screens
   sound.mjs                Local Web Audio synthesis and persisted mute control
@@ -153,6 +165,7 @@ tests/
   game-core.test.mjs       Rules, lifecycle, privacy and full-game simulations
   protocol.test.mjs        Input validation, message schemas and replay helpers
   room.test.mjs            Room sessions through an in-memory test transport
+  chat.test.mjs            Content validation, bounded history and wire limits
   effects.test.mjs         Sound/victory events and generated waveform checks
   browser-smoke.mjs        Optional real PeerJS Cloud / WebRTC browser test
   browser-ui.mjs           Responsive fixtures and connection failure screens
@@ -179,7 +192,7 @@ On Node 24+, to print every assertion group with the in-process reporter:
 node --test --test-isolation=none --test-reporter=spec tests/*.test.mjs
 ```
 
-The suite includes all fourteen requested rule/privacy checks, plus highest-bid first leads (including ties and every blind deal), round/deal scheduling, invalid moves, host permissions, disconnects, duplicate joins/actions, stale snapshots, room ID collisions, six-player limits, version mismatches, rematches, sound/victory deduplication and waveform checks. It also simulates **40 full 12–36-hand games** with varied legal bids across all supported player counts and checks every first bidder and every recipient's card privacy at each deal.
+The suite includes all fourteen requested rule/privacy checks, plus highest-bid first leads (including ties and every blind deal), round/deal scheduling, invalid moves, host permissions, disconnects, duplicate joins/actions, stale snapshots, room ID collisions, six-player limits, version mismatches, rematches, winner-only effects and waveform checks. Chat checks cover markup/control rejection, sender identity, replay/stale protection, rate limits, bounded history, late joins, room isolation, wire size and independence from game revisions/trick timers. It also simulates **40 full 12–36-hand games** with varied legal bids across all supported player counts and checks every first bidder and every recipient's card privacy at each deal.
 
 `tests/browser-smoke.mjs` is an optional developer-only Playwright script. It requires Playwright and Chromium installed **outside the production files**, a running local static server and access to the public PeerJS Cloud. For example, if Playwright is already available:
 
@@ -195,7 +208,7 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-smoke.mjs
 
 `PLAN_URL` can change the tested URL; `SCREENSHOT_DIR` can change the output directory. The script uses separate browser processes, desktop and touch-sized views, and actual WebRTC payload inspection. Test-only instrumentation is never imported by the app. Screenshots and development dependencies are gitignored.
 
-The optional `tests/browser-ui.mjs` uses the same Playwright setup to check all six-player phases at 320–1920px, minimum touch-target sizes, reduced motion, the rules and scoreboard, CDN failure and an absent room.
+The optional `tests/browser-ui.mjs` uses the same Playwright setup to check all six-player phases with chat at 320–1920px, minimum touch-target sizes, reduced motion, inert chat rendering, drafts/focus and unread-message scrolling, the rules and scoreboard, CDN failure and an absent room.
 
 The optional `tests/browser-assets-effects.mjs` starts its own temporary static server, deliberately caches HTML/JS/CSS for a year, changes the manifest version, and checks every module is refetched. It also checks actual Web Audio playback/muting, canvas rendering, reduced motion and the loader error/reload flow:
 
@@ -203,7 +216,7 @@ The optional `tests/browser-assets-effects.mjs` starts its own temporary static 
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-assets-effects.mjs
 ```
 
-Verification on **2026-09-30** passed **48/48 Node tests** and **26/26 browser checks**: 13 real PeerJS Cloud/WebRTC checks, 6 responsive/failure checks and 7 asset/effect checks. Two independent Chromium processes completed all 12 hands, checked every bidding opener, inspected normal/blind payload privacy, rejected an illegal follow-suit move, verified each card sounded exactly once, finished a rematch and exercised both guest and host departures. Six-player fixtures covered seven phases at eight widths (320–1920px); scoreboard checks covered all player counts at 320px. There were no unexpected browser console errors or unhandled exceptions during the network game. This does not claim coverage of every browser or geographically separate networks.
+Verification on **2026-09-30** passed **56/56 Node tests** and **30/30 browser checks**: 15 real PeerJS Cloud/WebRTC checks, 8 responsive/chat/failure checks and 7 asset/effect checks. Two independent Chromium processes exchanged chat messages through Enter and Send, preserved Shift+Enter newlines and drafts/focus, rejected a forged HTML message, and completed all 12 hands. They checked every bidding opener, inspected normal/blind payload privacy, rejected an illegal follow-suit move, verified each card sounded exactly once and only winners received the celebration, finished a rematch and exercised both guest and host departures. Six-player fixtures with chat covered seven phases at eight widths (320–1920px), including inert DOM handling of XSS payloads and non-clickable URLs; scoreboard checks covered all player counts at 320px. There were no unexpected browser console errors or unhandled exceptions during the network game. This does not claim coverage of every browser or geographically separate networks.
 
 ## Connection behavior and limitations
 

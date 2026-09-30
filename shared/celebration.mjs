@@ -23,7 +23,7 @@ export class VictoryCelebration {
 
   play(winners, own) {
     this.cancel();
-    if (this.motion.matches || document.hidden) return;
+    if (!own || this.motion.matches || document.hidden) return;
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
     const banner = document.querySelector('[data-winner-banner]');
@@ -38,8 +38,8 @@ export class VictoryCelebration {
     const moment = el('div', { class: 'victory-moment' },
       el('div', { class: 'victory-emblem' }, '✦'),
       el('span', {}, winners.length > 1 ? 'A SHARED VICTORY' : 'A PLAN WELL PLAYED'),
-      el('strong', {}, own ? winners.length > 1 ? 'You share the win.' : 'Beautifully played.' : winners.join(' & ')),
-      el('i', {}, own ? 'A little foresight. A well-earned win.' : winners.length > 1 ? 'The table has its winners.' : 'The table has its winner.'),
+      el('strong', {}, winners.length > 1 ? 'You share the win.' : 'Beautifully played.'),
+      el('i', {}, 'A little foresight. A well-earned win.'),
     );
     this.layer.replaceChildren(this.canvas, moment);
     const colors = ['#f6d88f', '#e5ad59', '#fff1c3', '#a9c994', '#6ea897'];

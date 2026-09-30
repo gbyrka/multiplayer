@@ -1,15 +1,18 @@
 import { StarNetwork } from './network.mjs';
 import { ACTION_TYPES, RequestCache, acceptRevision, isClientMessage, isMessage, message } from './protocol.mjs';
 import { createRoomCode, isValidRoomCode, randomToken, validateName } from './random.mjs';
+import { RoomChat, isChatSnapshot, normalizeChatText } from './chat.mjs';
 
 /** A reusable authoritative room. A game adapter owns every game-specific rule. */
 export class GameRoom {
   #state = null;
-  constructor({ Peer, game, onView, onStatus, onError, onEnded, appVersion = 'development', debug = false, Network = StarNetwork }) {
-    Object.assign(this, { Peer, game, onView, onStatus, onError, onEnded, appVersion, debug, Network });
+  constructor({ Peer, game, onView, onStatus, onError, onEnded, onChat = () => {}, onChatError = () => {}, appVersion = 'development', debug = false, Network = StarNetwork }) {
+    Object.assign(this, { Peer, game, onView, onStatus, onError, onEnded, onChat, onChatError, appVersion, debug, Network });
     this.bindings = new Map();
     this.localRequests = new RequestCache();
     this.revision = -1;
+    this.chatRevision = -1;
+    this.chat = new RoomChat();
     this.closed = false;
   }
 
@@ -45,6 +48,7 @@ export class GameRoom {
         if (this.closed) throw new Error('Connection cancelled.');
         this.#state = this.game.adapter.createLobby(this.playerId, name);
         this.#publish();
+        this.#publishChat();
         return;
       } catch (error) {
         network.destroy();
@@ -77,12 +81,13 @@ export class GameRoom {
   #receive(connection, data) {
     if (this.isHost) {
       if (!isClientMessage(data)) {
-        if (isMessage(data, 1024)) this.#error(connection, data.requestId, 'Invalid request.');
+        if (isMessage(data, 2048)) this.#error(connection, data.requestId, 'Invalid request.', data.type === 'CHAT_SEND' ? 'chat' : null);
         return;
       }
       const binding = this.bindings.get(connection);
       if (!binding || binding.rejected) return;
       if (data.type === 'JOIN_REQUEST') { this.#joinRequest(connection, binding, data); return; }
+      if (binding.playerId && data.type === 'CHAT_SEND') { this.#chatIntent(binding.playerId, data, binding.requests, connection); return; }
       if (!binding.playerId || !ACTION_TYPES.has(data.type)) return;
       this.#action(binding.playerId, data, binding.requests, connection);
     } else {
@@ -109,8 +114,15 @@ export class GameRoom {
           this.joinResolve();
           this.joinReject = this.joinResolve = null;
         }
+      } else if (type === 'CHAT_UPDATE') {
+        if (!this.playerId || !isChatSnapshot(payload.chat) || !acceptRevision(this.chatRevision, payload.chat.revision)) return;
+        this.chatRevision = payload.chat.revision;
+        this.chatView = payload.chat;
+        this.onChat(this.chatView, payload.acceptedRequestId);
       } else if (type === 'ERROR') {
-        this.onError(typeof payload.message === 'string' ? payload.message : 'That move could not be made.');
+        const text = typeof payload.message === 'string' ? payload.message : 'That request could not be made.';
+        if (payload.scope === 'chat') this.onChatError(text, data.requestId);
+        else this.onError(text);
       }
     }
   }
@@ -119,6 +131,7 @@ export class GameRoom {
     if (binding.playerId) {
       this.network.send(connection, message('JOIN_ACCEPTED', { playerId: binding.playerId, roomCode: this.roomCode, gameId: this.game.id }, data.requestId));
       this.#sendView(connection, binding.playerId);
+      this.#sendChat(connection);
       return;
     }
     try {
@@ -130,6 +143,7 @@ export class GameRoom {
       clearTimeout(binding.timeout);
       this.network.send(connection, message('JOIN_ACCEPTED', { playerId: id, roomCode: this.roomCode, gameId: this.game.id }, data.requestId));
       this.#publish();
+      this.#sendChat(connection);
     } catch (error) {
       binding.rejected = true;
       this.network.send(connection, message('JOIN_REJECTED', { message: error.message }, data.requestId));
@@ -138,9 +152,42 @@ export class GameRoom {
     }
   }
 
-  #error(connection, requestId, text) {
-    if (connection) this.network.send(connection, message('ERROR', { message: text }, requestId));
+  #error(connection, requestId, text, scope = null) {
+    if (connection) this.network.send(connection, message('ERROR', { message: text, ...(scope ? { scope } : {}) }, requestId));
+    else if (scope === 'chat') this.onChatError(text, requestId);
     else this.onError(text);
+  }
+
+  #chatIntent(playerId, data, requests, connection = null) {
+    if (requests.has(data.requestId)) return;
+    requests.add(data.requestId);
+    try {
+      const player = this.#state?.players.find(player => player.id === playerId && player.connected);
+      if (!player) throw new Error('You are no longer at this table.');
+      this.chat.append(player, data.payload.text);
+      this.#publishChat(data.requestId, playerId);
+    } catch (error) { this.#error(connection, data.requestId, error.message, 'chat'); }
+  }
+
+  sendChat(text, requestId = randomToken(20)) {
+    if (this.closed || !this.view) return;
+    try { text = normalizeChatText(text); } catch (error) { this.onChatError(error.message, requestId); return; }
+    const data = message('CHAT_SEND', { text }, requestId);
+    if (this.isHost) this.#chatIntent(this.playerId, data, this.localRequests);
+    else if (!this.network.send(this.network.hostConnection, data)) this.#end('Connection lost.');
+  }
+
+  #sendChat(connection, acceptedRequestId) {
+    this.network.send(connection, message('CHAT_UPDATE', { chat: this.chat.snapshot(), ...(acceptedRequestId ? { acceptedRequestId } : {}) }));
+  }
+
+  #publishChat(requestId, senderId) {
+    this.chatView = this.chat.snapshot();
+    this.chatRevision = this.chatView.revision;
+    this.onChat(this.chatView, senderId === this.playerId ? requestId : undefined);
+    for (const [connection, binding] of this.bindings) {
+      if (binding.playerId && connection.open) this.#sendChat(connection, senderId === binding.playerId ? requestId : undefined);
+    }
   }
 
   #action(playerId, data, requests, connection = null) {
@@ -199,6 +246,7 @@ export class GameRoom {
       clearTimeout(binding.timeout);
       this.bindings.delete(connection);
       if (binding.playerId && this.#state) {
+        this.chat.forget(binding.playerId);
         this.#state = this.game.adapter.removePlayer(this.#state, binding.playerId);
         this.#publish();
       }

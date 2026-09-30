@@ -41,11 +41,11 @@ function handProgress(view) {
 }
 
 function playerTile(view, player) {
-  const current = view.currentPlayerId === player.id;
+  const current = ['bidding', 'playing'].includes(view.phase) && view.currentPlayerId === player.id;
   const winner = view.phase === 'trick_result' && view.trickWinnerId === player.id;
   const isMe = player.id === view.me.id;
   const blindCard = view.opponents.find(opponent => opponent.playerId === player.id)?.visibleBlindCard;
-  return el('article', { class: `player-tile${current ? ' current-player' : ''}${winner ? ' trick-winner' : ''}${isMe ? ' self-player' : ''}`, 'aria-label': `${player.name}${current ? ', current turn' : ''}`, 'data-player-id': player.id },
+  return el('article', { class: `player-tile${current ? ' current-player' : ''}${winner ? ' trick-winner' : ''}${isMe ? ' self-player' : ''}`, 'aria-label': `${player.name}${current ? ', current turn' : ''}`, 'aria-current': current ? 'true' : null, 'data-player-id': player.id },
     el('div', { class: 'player-top' },
       el('span', { class: 'avatar', 'aria-hidden': 'true' }, [...player.name][0].toUpperCase()),
       el('div', { class: 'player-name-wrap' }, el('strong', { class: 'player-name', title: player.name }, player.name),
@@ -58,7 +58,8 @@ function playerTile(view, player) {
       el('span', { class: 'player-total' }, el('b', {}, player.totalScore), ' pts'),
     ),
     view.blind && !isMe && blindCard ? el('div', { class: 'opponent-blind' }, playingCard(blindCard, { small: true }), el('small', {}, 'Their card')) : null,
-    el('span', { class: 'turn-indicator' }, winner ? '✦ TRICK WON' : current ? '→ THEIR TURN'.replace('THEIR', isMe ? 'YOUR' : 'THEIR') : player.bid !== null && view.phase === 'bidding' ? 'BID PLACED' : 'AT THE TABLE'),
+    el('span', { class: 'turn-indicator' }, current ? el('i', { class: 'turn-dot', 'aria-hidden': 'true' }) : null,
+      winner ? '✦ TRICK WON' : current ? isMe ? 'YOUR TURN' : 'THEIR TURN' : player.bid !== null && view.phase === 'bidding' ? 'BID PLACED' : 'AT THE TABLE'),
   );
 }
 

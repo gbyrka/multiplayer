@@ -1,5 +1,5 @@
 {
-  "version": "maple",
+  "version": "spruce",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -7,6 +7,8 @@
     "./shared/peer-loader.mjs",
     "./shared/network.mjs",
     "./shared/room.mjs",
+    "./shared/chat.mjs",
+    "./shared/chat-ui.mjs",
     "./shared/dom.mjs",
     "./shared/screens.mjs",
     "./shared/sound.mjs",
