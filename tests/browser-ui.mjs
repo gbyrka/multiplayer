@@ -40,7 +40,7 @@ try {
     const fixtures = { lobby: structuredClone(state) };
     state = core.applyAction(state, 'p0', 'START_GAME', {}, max => max - 1);
     fixtures.bidding = structuredClone(state);
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 1200; i++) {
       if (state.phase === 'bidding') {
         if (state.blind && !fixtures.blind) fixtures.blind = structuredClone(state);
         const forbidden = core.getForbiddenFinalBid(state.players.map(p => p.bid), state.handSize);
@@ -63,9 +63,18 @@ try {
       document.querySelector('#site-header').replaceChildren(renderHeader({ game: { title: 'PLAN' }, room: {}, view, status: 'Connected' }));
       document.querySelector('#main').replaceChildren(phase === 'lobby' ? renderLobby(view, 'K7PX4M9Q', 'https://example.github.io/multiplayer/?room=K7PX4M9Q&game=plan', false) : renderPlan(view));
     };
-    window.__renderScores = () => {
+    window.__renderScores = (count = 6) => {
+      let scoreState = fixtures.game_result;
+      if (count !== 6) {
+        scoreState = core.createLobby('p0', names[0]);
+        for (let i = 1; i < count; i++) {
+          scoreState = core.addPlayer(scoreState, `p${i}`, names[i]);
+          scoreState = core.applyAction(scoreState, `p${i}`, 'SET_READY', { ready: true });
+        }
+        scoreState = core.applyAction(scoreState, 'p0', 'START_GAME');
+      }
       document.querySelector('#modal-title').textContent = 'Scoreboard';
-      document.querySelector('#modal-body').replaceChildren(renderScoreboard(core.buildViewForPlayer(fixtures.game_result, 'p0')));
+      document.querySelector('#modal-body').replaceChildren(renderScoreboard(core.buildViewForPlayer(scoreState, 'p0')));
       document.querySelector('#modal').showModal();
     };
   });
@@ -88,8 +97,16 @@ try {
   }
   pass('Six-player lobby and every game phase fit 8 widths from 320px to 1920px, with 44px touch targets');
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.evaluate(() => window.__renderScores());
-  assert.ok(await page.locator('dialog .score-scroll').evaluate(node => node.scrollWidth > node.clientWidth));
+  for (const count of [2, 3, 4, 5, 6]) {
+    await page.evaluate(count => window.__renderScores(count), count);
+    assert.ok(await page.locator('dialog .score-scroll').evaluate(node => node.scrollWidth > node.clientWidth));
+    assert.ok(await page.locator('dialog .score-table tbody tr').first().evaluate(row => {
+      const name = row.querySelector('th').getBoundingClientRect();
+      const firstDeal = row.querySelector('td').getBoundingClientRect();
+      const total = row.querySelector('.total-score').getBoundingClientRect();
+      return firstDeal.left >= name.right - 1 && firstDeal.right <= total.left + 1;
+    }), `Sticky columns must leave a full deal visible for ${count} players on a 320px phone.`);
+  }
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   pass('The scoreboard scrolls locally without scrolling the page horizontally');
   assert.deepEqual(exceptions, []);

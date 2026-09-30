@@ -34,7 +34,9 @@ export function isClientMessage(value) {
   const { type, payload } = value;
   const keys = Object.keys(payload);
   if (EMPTY_PAYLOAD_TYPES.has(type)) return keys.length === 0;
-  if (type === 'JOIN_REQUEST') return keys.length === 1 && typeof payload.nickname === 'string' && payload.nickname.length <= 16;
+  if (type === 'JOIN_REQUEST') return keys.every(key => ['nickname', 'appVersion'].includes(key)) &&
+    typeof payload.nickname === 'string' && payload.nickname.length <= 16 &&
+    (payload.appVersion === undefined || typeof payload.appVersion === 'string' && /^[a-z0-9]{3,16}$/i.test(payload.appVersion));
   if (type === 'SET_READY') return keys.length === 1 && typeof payload.ready === 'boolean';
   if (type === 'PLACE_BID') return keys.length === 1 && Number.isInteger(payload.bid) && payload.bid >= 0 && payload.bid <= 5;
   if (type === 'PLAY_CARD') return keys.length === 1 && typeof payload.cardId === 'string' && /^(?:[2-9]|10|J|Q|K|A)[CDHS]$/.test(payload.cardId);

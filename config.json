@@ -1,0 +1,21 @@
+{
+  "version": "maple",
+  "modules": [
+    "./app.mjs",
+    "./shared/random.mjs",
+    "./shared/protocol.mjs",
+    "./shared/peer-loader.mjs",
+    "./shared/network.mjs",
+    "./shared/room.mjs",
+    "./shared/dom.mjs",
+    "./shared/screens.mjs",
+    "./shared/sound.mjs",
+    "./shared/effects.mjs",
+    "./shared/celebration.mjs",
+    "./games/registry.mjs",
+    "./games/plan/cards.mjs",
+    "./games/plan/game-core.mjs",
+    "./games/plan/ui.mjs",
+    "./games/plan/rules.mjs"
+  ]
+}

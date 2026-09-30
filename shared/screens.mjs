@@ -1,6 +1,6 @@
 import { el, button, eyebrow, playingCard, friendsInstructions } from './dom.mjs';
 
-export function renderHeader({ game, room, view, status }) {
+export function renderHeader({ game, room, view, status, soundEnabled = true }) {
   return el('div', { class: 'header-inner' },
     button([el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, 'm'), el('span', { class: 'brand-name' }, 'multiplayer', el('small', {}, 'GOOD GAMES. GOOD COMPANY.'))], 'collection', { class: 'brand', 'aria-label': 'Multiplayer game collection' }),
     el('nav', { class: 'header-nav', 'aria-label': 'Main navigation' },
@@ -8,6 +8,10 @@ export function renderHeader({ game, room, view, status }) {
       room ? el('span', { class: 'connection-status', id: 'connection-status' }, el('i', { 'aria-hidden': 'true' }), el('span', {}, status)) : null,
       view && view.phase !== 'lobby' ? button('SCOREBOARD', 'scoreboard', { class: 'button text-button' }) : null,
       game ? button('HOW TO PLAY', 'rules', { class: 'button text-button' }) : null,
+      button(soundEnabled ? 'SOUND ON' : 'SOUND OFF', 'toggle-sound', {
+        class: 'button text-button sound-button', 'aria-pressed': String(soundEnabled),
+        'aria-label': soundEnabled ? 'Mute sounds' : 'Enable sounds', title: soundEnabled ? 'Mute sounds' : 'Enable sounds',
+      }),
       room ? button('LEAVE GAME', 'leave', { class: 'button text-button leave-button' }) : null,
     ),
   );
@@ -56,7 +60,7 @@ export function renderGameHome(game, { name = '', code = '', join = false } = {}
     el('div', { class: 'home-columns' },
       el('section', { class: 'plan-intro' }, eyebrow(game.category), el('h1', { class: 'plan-title' }, game.title),
         el('p', { class: 'plan-tagline' }, game.subtitle),
-        el('p', { class: 'intro-description' }, 'Six hands. One blind finale. A card game about knowing when to aim high — and when to play it safe.'),
+        el('p', { class: 'intro-description' }, 'Six rounds. Everyone opens the bidding once per round. A card game about knowing when to aim high — and when to play it safe.'),
         el('div', { class: 'intro-cards', 'aria-hidden': 'true' }, playingCard({ rank: 'A', suit: 'S' }), playingCard({ rank: '7', suit: 'H' }), playingCard(null, { back: true })),
         el('div', { class: 'game-facts' }, el('span', {}, game.players), el('span', {}, game.duration), el('span', {}, 'Play anywhere')),
         button('HOW TO PLAY ↗', 'rules', { class: 'button secondary' }),

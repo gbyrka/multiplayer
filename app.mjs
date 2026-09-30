@@ -4,12 +4,17 @@ import { loadPeerJS } from './shared/peer-loader.mjs';
 import { normalizeRoomCode, validateName, isValidRoomCode } from './shared/random.mjs';
 import { el, button } from './shared/dom.mjs';
 import { renderHeader, renderCollection, renderGameHome, renderConnecting, renderConnectionError, renderLobby, renderDisconnected } from './shared/screens.mjs';
+import { GameSound } from './shared/sound.mjs';
+import { getViewEffects } from './shared/effects.mjs';
+import { VictoryCelebration } from './shared/celebration.mjs';
 
 const main = document.querySelector('#main');
 const header = document.querySelector('#site-header');
 const modal = document.querySelector('#modal');
 const modalBody = document.querySelector('#modal-body');
 const params = new URLSearchParams(location.search);
+const sound = new GameSound();
+const celebration = new VictoryCelebration();
 let game = getGame(params.get('game'));
 let screen = params.has('room') || params.has('game') ? 'game-home' : 'collection';
 let code = normalizeRoomCode(params.get('room')).slice(0, 8);
@@ -50,8 +55,8 @@ function render() {
   const focusAction = active?.dataset?.action;
   const focusCard = active?.dataset?.cardId;
   const focusBid = active?.dataset?.bid;
-  const focusInMain = main.contains(active);
-  header.replaceChildren(renderHeader({ game: screen === 'collection' ? null : game, room, view, status }));
+  const focusInMain = main.contains(active) || header.contains(active);
+  header.replaceChildren(renderHeader({ game: screen === 'collection' ? null : game, room, view, status, soundEnabled: sound.enabled }));
   let content;
   switch (screen) {
     case 'collection': content = renderCollection(GAMES); break;
@@ -70,7 +75,7 @@ function render() {
   if (view?.phase === 'bidding' && renderedHand !== handKey) main.querySelector('.my-cards')?.classList.add('dealing');
   renderedHand = handKey;
   if (focusInMain && focusAction) {
-    const target = [...main.querySelectorAll('[data-action]')].find(node => node.dataset.action === focusAction && node.dataset.cardId === focusCard && node.dataset.bid === focusBid && !node.disabled);
+    const target = [...document.querySelectorAll('[data-action]')].find(node => node.dataset.action === focusAction && node.dataset.cardId === focusCard && node.dataset.bid === focusBid && !node.disabled);
     if (target) target.focus({ preventScroll: true });
   }
   if (dialogKind === 'scoreboard' && modal.open && view) modalBody.replaceChildren(game.renderScoreboard(view));
@@ -119,6 +124,8 @@ async function connect(mode, retrying = false) {
   try { localStorage.setItem('multiplayer:name', name); } catch { /* Storage is optional. */ }
   const token = ++attempt;
   room?.close();
+  celebration.cancel();
+  sound.stop();
   room = null;
   view = null;
   clearPending();
@@ -130,10 +137,11 @@ async function connect(mode, retrying = false) {
     const Peer = await loadPeerJS();
     if (token !== attempt) return;
     const session = new GameRoom({
-      Peer, game, debug: params.get('debug') === '1',
+      Peer, game, appVersion: document.documentElement.dataset.appVersion, debug: params.get('debug') === '1',
       onStatus: text => { if (token === attempt) updateStatus(text); },
       onView: next => {
         if (token !== attempt) return;
+        const effects = getViewEffects(view, next);
         const oldPhase = view?.phase;
         view = next;
         screen = 'room';
@@ -144,11 +152,21 @@ async function connect(mode, retrying = false) {
           main.focus({ preventScroll: true });
           window.scrollTo({ top: 0, behavior: 'instant' });
         }
+        if (next.phase !== 'game_result') celebration.cancel();
+        for (const effect of effects) {
+          if (effect.type === 'card') sound.play('card', effect.own);
+          if (effect.type === 'victory') {
+            celebration.play(effect.winners, effect.own);
+            if (effect.own) sound.play('victory');
+          }
+        }
       },
       onError: text => { if (token === attempt) { clearPending(); render(); showToast(text, true); } },
       onEnded: text => {
         if (token !== attempt) return;
         clearPending();
+        celebration.cancel();
+        sound.stop();
         endedHost = Boolean(room?.isHost);
         room = null;
         view = null;
@@ -196,6 +214,8 @@ function closeDialog() { modal.close(); dialogKind = ''; }
 function goHome(collection = false) {
   ++attempt;
   room?.close();
+  celebration.cancel();
+  sound.stop();
   room = null;
   view = null;
   clearPending();
@@ -219,14 +239,18 @@ function leave(collection = false) {
 document.addEventListener('submit', event => {
   if (event.target.id !== 'entry-form') return;
   event.preventDefault();
+  sound.unlock();
   void connect(event.target.dataset.mode);
 });
+
+document.addEventListener('pointerdown', () => sound.unlock(), { passive: true });
 
 document.addEventListener('click', async event => {
   const target = event.target.closest('[data-action]');
   if (!target || target.disabled) return;
   const action = target.dataset.action;
   switch (action) {
+    case 'toggle-sound': sound.setEnabled(!sound.enabled); render(); showToast(sound.enabled ? 'Sounds on.' : 'Sounds muted.'); break;
     case 'select-game': game = getGame(target.dataset.game); screen = 'game-home'; joining = false; updateURL(); render(); window.scrollTo({ top: 0 }); break;
     case 'collection': rememberForm(); leave(true); break;
     case 'home': goHome(); break;
@@ -272,7 +296,8 @@ modal.addEventListener('click', event => { if (event.target === modal) { const r
 window.addEventListener('beforeunload', event => {
   if (room && view && !['lobby', 'game_result', 'disconnected'].includes(view.phase)) { event.preventDefault(); event.returnValue = ''; }
 });
-window.addEventListener('pagehide', () => room?.close());
-window.addEventListener('pageshow', event => { if (event.persisted) goHome(); });
+window.addEventListener('pagehide', () => { room?.close(); celebration.cancel(); sound.stop(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) sound.stop(); });
+window.addEventListener('pageshow', event => { if (event.persisted) { goHome(screen === 'collection'); location.reload(); } });
 
 render();

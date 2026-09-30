@@ -6,8 +6,29 @@
   <meta name="theme-color" content="#101b1a">
   <meta name="description" content="Free, serverless multiplayer games with no accounts or registration required. Play PLAN with friends in your browser — just share an invite link.">
   <title>Multiplayer — Good games. Good company.</title>
-  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css">
+  <meta property="og:title" content="PLAN — Predict your tricks.">
+  <meta property="og:description" content="A free multiplayer card game for 2–6 players. Play with friends on desktop, phone or tablet. Serverless. No registration required.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gbyrka.github.io/multiplayer/">
+  <meta property="og:site_name" content="MoD-IT Multiplayer">
+  <meta property="og:image" content="https://gbyrka.github.io/multiplayer/assets/plan-social.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="675">
+  <meta property="og:image:alt" content="PLAN — Predict your tricks. An elegant emerald card table with ivory playing cards, for 2–6 players. Serverless. No sign-up.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PLAN — Predict your tricks.">
+  <meta name="twitter:description" content="A free browser card game for 2–6 friends. Serverless. No registration.">
+  <meta name="twitter:image" content="https://gbyrka.github.io/multiplayer/assets/plan-social.jpg">
+  <link rel="canonical" href="https://gbyrka.github.io/multiplayer/">
+  <link id="app-icon" rel="icon" type="image/svg+xml">
+  <style>
+    body { margin: 0; background: #101b1a; color: #f4f1e7; font-family: system-ui, sans-serif; }
+    .boot-message { padding: 64px 24px; text-align: center; }
+    .boot-message button { min-width: 100px; min-height: 46px; padding: 12px 20px; border: 0; border-radius: 8px; background: #ead6a7; color: #172b22; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+    [hidden] { display: none !important; }
+    .skip-link:not(:focus) { position: absolute; left: -10000px; }
+  </style>
   <!-- Shared Google Analytics stream used by all games. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTPHWDLQ7K"></script>
   <script>
@@ -30,6 +51,52 @@
     <div id="modal-body"></div>
   </dialog>
   <noscript><div class="boot-message"><h1>JavaScript is needed to play.</h1><p>Enable JavaScript in your browser and reload this page.</p></div></noscript>
-  <script type="module" src="./app.mjs"></script>
+  <!-- Keep this tiny loader inline: a cached document still reads the current version. -->
+  <script type="module">
+    try {
+      if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      let config;
+      try {
+        const response = await fetch(`./config.json?check=${Date.now().toString(36)}`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Configuration unavailable.');
+        config = await response.json();
+      } finally { clearTimeout(timeout); }
+      if (!/^[a-z0-9]{3,16}$/i.test(config.version) || !Array.isArray(config.modules) || !config.modules.includes('./app.mjs')) throw new Error('Invalid configuration.');
+      const imports = {};
+      for (const path of config.modules) {
+        if (!/^\.\/[a-z0-9/-]+\.mjs$/i.test(path)) throw new Error('Invalid module path.');
+        const url = new URL(path, location.href);
+        imports[url.href] = `${url.href}?v=${encodeURIComponent(config.version)}`;
+      }
+      const map = document.createElement('script');
+      document.documentElement.dataset.appVersion = config.version;
+      map.type = 'importmap';
+      map.textContent = JSON.stringify({ imports });
+      document.head.append(map);
+      const style = document.createElement('link');
+      style.rel = 'stylesheet';
+      style.href = `./style.css?v=${encodeURIComponent(config.version)}`;
+      const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = () => reject(new Error('Styles unavailable.')); });
+      document.head.append(style);
+      document.querySelector('#app-icon').href = `./favicon.svg?v=${encodeURIComponent(config.version)}`;
+      await styled;
+      await import(imports[new URL('./app.mjs', location.href).href]);
+    } catch (error) {
+      const panel = document.createElement('div');
+      panel.className = 'boot-message';
+      const heading = document.createElement('h1');
+      heading.textContent = 'APP UNAVAILABLE';
+      const message = document.createElement('p');
+      message.textContent = error.message === 'Please update your browser to play.' ? error.message : "We couldn't load the latest app files. Please check your internet connection and reload the page.";
+      const reload = document.createElement('button');
+      reload.className = 'button primary';
+      reload.textContent = 'RELOAD';
+      reload.onclick = () => location.reload();
+      panel.append(heading, message, reload);
+      document.querySelector('#main').replaceChildren(panel);
+    }
+  </script>
 </body>
 </html>

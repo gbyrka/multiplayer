@@ -51,9 +51,9 @@ class MemoryNetwork {
   }
 }
 
-function makeRoom(t) {
+function makeRoom(t, options = {}) {
   const errors = [], ended = [], views = [];
-  const room = new GameRoom({ game, Network: MemoryNetwork, onView: view => views.push(view), onStatus: () => {}, onError: text => errors.push(text), onEnded: text => ended.push(text) });
+  const room = new GameRoom({ game, Network: MemoryNetwork, onView: view => views.push(view), onStatus: () => {}, onError: text => errors.push(text), onEnded: text => ended.push(text), ...options });
   t.after(() => room.close());
   return Object.assign(room, { errors, ended, views });
 }
@@ -185,4 +185,14 @@ test('room ID collisions are retried automatically', async t => {
   await host.create('Host');
   assert.equal(host.view.phase, 'lobby');
   assert.equal(MemoryNetwork.collisions, -1);
+});
+test('different deployments cannot join the same game and receive a clear reload instruction', async t => {
+  const host = makeRoom(t, { appVersion: 'birch' });
+  await host.create('Host');
+  const old = makeRoom(t, { appVersion: 'older' });
+  await assert.rejects(() => old.join('Guest', host.roomCode), /different app version.*reload/);
+  assert.equal(host.view.players.length, 1);
+  const current = makeRoom(t, { appVersion: 'birch' });
+  await current.join('Guest', host.roomCode);
+  assert.equal(host.view.players.length, 2);
 });

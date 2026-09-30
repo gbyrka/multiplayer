@@ -5,8 +5,8 @@ import { createRoomCode, isValidRoomCode, randomToken, validateName } from './ra
 /** A reusable authoritative room. A game adapter owns every game-specific rule. */
 export class GameRoom {
   #state = null;
-  constructor({ Peer, game, onView, onStatus, onError, onEnded, debug = false, Network = StarNetwork }) {
-    Object.assign(this, { Peer, game, onView, onStatus, onError, onEnded, debug, Network });
+  constructor({ Peer, game, onView, onStatus, onError, onEnded, appVersion = 'development', debug = false, Network = StarNetwork }) {
+    Object.assign(this, { Peer, game, onView, onStatus, onError, onEnded, appVersion, debug, Network });
     this.bindings = new Map();
     this.localRequests = new RequestCache();
     this.revision = -1;
@@ -70,7 +70,7 @@ export class GameRoom {
         this.joinReject = this.joinResolve = null;
         reject(new Error('Connection failed. The host did not respond. Please try again.'));
       }, 15000);
-      network.send(network.hostConnection, message('JOIN_REQUEST', { nickname: name }));
+      network.send(network.hostConnection, message('JOIN_REQUEST', { nickname: name, appVersion: this.appVersion }));
     });
   }
 
@@ -122,6 +122,7 @@ export class GameRoom {
       return;
     }
     try {
+      if (data.payload.appVersion !== this.appVersion) throw new Error('This room uses a different app version. Both players should reload the page and create a new room.');
       const nickname = validateName(data.payload.nickname);
       const id = randomToken();
       this.#state = this.game.adapter.addPlayer(this.#state, id, nickname);

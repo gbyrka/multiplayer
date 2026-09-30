@@ -19,6 +19,19 @@ const checked = label => { checks++; console.log(`PASS ${label}`); };
 function observeWire() {
   window.__wire = [];
   window.__channels = [];
+  window.__audioPlays = [];
+  const sourcePrototype = window.AudioBufferSourceNode?.prototype;
+  if (sourcePrototype) {
+    const connect = sourcePrototype.connect, start = sourcePrototype.start;
+    sourcePrototype.connect = function (destination, ...args) {
+      if (destination instanceof GainNode) this.__testVolume = destination.gain.value;
+      return connect.call(this, destination, ...args);
+    };
+    sourcePrototype.start = function (...args) {
+      window.__audioPlays.push({ duration: this.buffer?.duration, volume: this.__testVolume });
+      return start.call(this, ...args);
+    };
+  }
   const capture = (direction, value) => {
     try {
       const json = typeof value === 'string' ? value : new TextDecoder().decode(value);
@@ -128,11 +141,16 @@ try {
   let finalBidChecked = false;
   let blindChecked = false;
   const seenHands = new Set();
-  for (let iteration = 0; iteration < 200; iteration++) {
+  const openingBidders = new Map();
+  for (let iteration = 0; iteration < 500; iteration++) {
     view = await latest(guest);
     seenHands.add(view.handNumber);
     const active = view.currentPlayerId === view.me.id ? guest : host;
     if (view.phase === 'bidding') {
+      if (view.players.every(player => player.bid === null)) {
+        if (!openingBidders.has(view.roundNumber)) openingBidders.set(view.roundNumber, new Set());
+        openingBidders.get(view.roundNumber).add(view.currentPlayerId);
+      }
       if (view.blind && !blindChecked) {
         const hostCard = view.opponents[0].visibleBlindCard;
         assert.ok(hostCard);
@@ -197,12 +215,27 @@ try {
   }
   view = await latest(guest);
   assert.equal(view.phase, 'game_result');
-  assert.deepEqual([...seenHands], [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual([...seenHands], Array.from({ length: 12 }, (_, i) => i + 1));
+  assert.equal(openingBidders.size, 6);
+  assert.ok([...openingBidders.values()].every(bidders => bidders.size === 2));
   assert.equal(blindChecked, true);
   assert.equal(finalBidChecked, true);
-  assert.ok(view.players.every(p => p.history.length === 6 && p.history.reduce((sum, h) => sum + h.score, 0) === p.totalScore));
+  assert.ok(view.players.every(p => p.history.length === 12 && p.history.reduce((sum, h) => sum + h.score, 0) === p.totalScore));
+  const bestScore = Math.max(...view.players.map(player => player.totalScore));
+  const guestWon = view.players.find(player => player.id === view.me.id).totalScore === bestScore;
+  const hostWon = view.players.find(player => player.id !== view.me.id).totalScore === bestScore;
+  for (const [page, won] of [[host, hostWon], [guest, guestWon]]) {
+    const sounds = await page.evaluate(() => window.__audioPlays);
+    const cards = sounds.filter(sound => Math.abs(sound.duration - .19) < .001);
+    assert.equal(cards.length, 64, 'One sound per accepted card, including blind plays; no rerender duplicates.');
+    assert.equal(cards.filter(sound => Math.abs(sound.volume - .72) < .001).length, 32);
+    assert.equal(cards.filter(sound => Math.abs(sound.volume - .48) < .001).length, 32);
+    assert.equal(sounds.filter(sound => Math.abs(sound.duration - 2.35) < .001).length, won ? 1 : 0);
+    assert.equal(await page.locator('.celebration.playing').count(), 1);
+  }
+  checked('Each accepted card sounds once; own cards are louder and only winners hear triumph during the shared animation');
   await guest.screenshot({ path: `${output}/results-mobile.png`, fullPage: true, animations: 'disabled' });
-  checked('Complete six-hand game, trump, winners, scores, dealer turns and final standings');
+  checked('Complete six-round / twelve-hand game, every bidding opener, trump, scores and final standings');
   if (!rejectedFollowSuit) console.log('NOTE This random deal did not offer a guest off-suit attempt; core tests cover it deterministically.');
 
   await guest.getByRole('button', { name: 'SCOREBOARD' }).click();
@@ -214,6 +247,8 @@ try {
   view = await latest(guest);
   assert.equal(view.handNumber, 1);
   assert.ok(view.players.every(p => p.totalScore === 0 && p.history.length === 0));
+  assert.equal(await host.locator('.celebration').isHidden(), true);
+  assert.equal(await guest.locator('.celebration').isHidden(), true);
   assert.equal(new URL(await host.url()).searchParams.get('room'), code);
   assert.ok(view.revision > initialRevision);
   checked('Scoreboard and rematch preserve the room and reset all scores');

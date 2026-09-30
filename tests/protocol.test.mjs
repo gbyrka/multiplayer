@@ -25,11 +25,14 @@ test('only known bounded versioned envelopes are accepted', () => {
 test('client schemas reject forged identity, wrong types, excess keys and fake host updates', () => {
   assert.ok(isClientMessage(message('PLACE_BID', { bid: 2 })));
   assert.ok(isClientMessage(message('PLAY_BLIND_CARD')));
+  assert.ok(isClientMessage(message('JOIN_REQUEST', { nickname: 'Anna', appVersion: 'birch' })));
   for (const value of [
     message('PLACE_BID', { bid: 1.2 }), message('PLACE_BID', { bid: 6 }), message('PLACE_BID', { bid: '2' }),
     message('PLAY_CARD', { cardId: 'BAD' }), message('PLAY_CARD', { cardId: 'AS', playerId: 'host' }),
     message('SET_READY', { ready: 'true' }), message('JOIN_REQUEST', { nickname: 'x'.repeat(17) }),
     message('STATE_UPDATE', { view: {} }), message('JOIN_ACCEPTED', { playerId: 'hacked' }),
+    message('JOIN_REQUEST', { nickname: 'Anna', appVersion: 'x'.repeat(17) }),
+    message('JOIN_REQUEST', { nickname: 'Anna', appVersion: { version: 'birch' } }),
   ]) assert.equal(isClientMessage(value), false);
 });
 test('replay cache is bounded and revisions must strictly increase', () => {

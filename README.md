@@ -2,9 +2,11 @@
 
 A small collection of browser games to play with friends. **PLAN — Predict your tricks.** is the first game; the collection menu is ready for more games.
 
-PLAN is a complete, silent, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. Cards are drawn with HTML/CSS; there are no external images, fonts, frameworks or sound assets.
+PLAN is a complete, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. Cards are drawn with HTML/CSS; there are no external images, fonts, frameworks or sound assets.
 
-**Preview:** a dark emerald card table, cream and gold details, white playing cards, a lobby with an invite link, mobile player tiles, bidding controls and a six-hand scoreboard. Running the optional browser test saves screenshots in `test-results/`.
+**Preview:** a dark emerald card table, cream and gold details, white playing cards, a lobby with an invite link, mobile player tiles, bidding controls and a scoreboard grouped by round and deal. A gold/mint victory animation follows the visual style of Sokoban. Running the optional browser tests saves screenshots in `test-results/`.
+
+**Campaign artwork:** `marketing/plan-social.png` is the full-resolution PLAN image for LinkedIn and Facebook posts. `marketing/PROMPTS.md` records the final prompt used with the built-in image tool. The optimized `assets/plan-social.jpg` is linked in the static HTML's [Open Graph](https://ogp.me/) and large-image card metadata, so social link previews do not depend on JavaScript. The catalog keeps its own optimized copy for its PLAN link.
 
 ## Run locally
 
@@ -36,7 +38,7 @@ Google Analytics loads asynchronously from Google Tag Manager using the shared m
 4. Enter a second name, choose **JOIN GAME**, then **READY**.
 5. The host chooses **START GAME**. The randomly selected dealer bids last; the player after the dealer bids first. The player with the highest bid leads the first trick; tied highest bids favor the player who bid earlier.
 6. Bid in turn, then click/tap the enabled cards. The table keeps completed tricks visible briefly. Review the results; only the host can choose **NEXT HAND**.
-7. Play through 5, 4, 3, 2, 1 cards and the blind finale. In the last hand, your card is a back and your opponents’ cards are face up. Choose **PLAY MY CARD** on your turn.
+7. Play two deals each with 5, 4, 3, 2, 1 cards, then two blind deals: **12 hands** for two players. Each player opens the bidding once per round. In every blind deal, your card is a back and your opponent’s card is face up. Choose **PLAY MY CARD** on your turn.
 8. Check the final scores and choose **PLAY AGAIN** as host. The same room and connections are reused.
 
 Keep the host’s tab open and devices awake throughout the game. When testing other devices, open the deployed HTTPS site rather than sending them a `localhost` link.
@@ -45,7 +47,7 @@ Keep the host’s tab open and devices awake throughout the game. When testing o
 
 This **`multiplayer/` directory is the root of the `gbyrka/multiplayer` repository**. Publish its contents, including `index.html` at the repository root; do not wrap them in another `multiplayer` directory.
 
-1. Commit and push the files to the `main` branch of that repository.
+1. Change `version` in `config.json` to a new short string, then commit and push the files to the `main` branch of that repository.
 2. Open **Settings → Pages**.
 3. Select **Deploy from a branch**.
 4. Select **main** and **/(root)**, then save.
@@ -55,9 +57,25 @@ There are no GitHub Actions or build dependencies. `.nojekyll` is included. Asse
 
 This implementation does not automatically commit, push or change your GitHub Pages settings.
 
+## Refreshing assets after a deployment
+
+**`config.json` is the single source of the app version.** Before **every deployment that changes application files**, change its `version`, for example from `birch` to `cedar`. Use a new 3–16 character alphanumeric value; never reuse a previously deployed version.
+
+The small inline loader reads the configuration with `cache: 'no-store'` and a fresh request URL on every visit/reload. It then loads **CSS, favicon and every JS module** with `?v=VERSION`. An [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap) also versions relative imports inside the module graph; versioning only `app.mjs` would leave its dependencies cached. A cached copy of the HTML still runs the same loader and reads the new configuration. Returning through the browser's back/forward cache reloads the app too. A game already open is not interrupted by an automatic refresh.
+
+When adding a production module, add its relative path to `config.json` → `modules`. The browser asset test verifies that this list includes every production module, checks version changes with a real year-long HTTP cache and runs under a `/multiplayer/` subpath. No build, service worker or server configuration is required. A failed configuration/assets request produces an **APP UNAVAILABLE** screen with **RELOAD**.
+
+Guests send the loaded app version during the room handshake. The host rejects another version with a readable reload instruction, preventing games from mixing incompatible deployed rules.
+
+## Sounds and victory
+
+Web Audio generates original, short sounds locally: a soft paper/wood tap for another player's card, the same sound about 3.5 dB louder for your own card, and a gentle ascending bell phrase for a winner. Sounds follow accepted host state updates, including blind plays; clicks, rejected moves, duplicate snapshots and rerenders do not replay them. Tied winners all hear the triumph. Everyone sees the winner celebration.
+
+Use **SOUND ON / SOUND OFF** in the header to mute or enable audio. The preference is saved on the device. Audio starts only after a user gesture, and hidden tabs do not play delayed sounds. Audio failure does not interrupt gameplay. The 2.4-second celebration has a soft halo, gold/mint particles and a medal reveal; it stops on leaving, rematch, resize or a hidden tab and respects `prefers-reduced-motion`.
+
 ## Rules
 
-- A game has exactly **six hands: 5, 4, 3, 2, 1, then 1 blind card** per player.
+- A game has **six rounds: 5, 4, 3, 2, 1, then 1 blind card** per player. Each round has **one deal per player**, so everyone opens the bidding once with each card count, including blind. There are **6 × player count** hands: 12 with 2 players, 24 with 4, or 36 with 6.
 - A fresh 52-card deck is shuffled for every hand. Cards are dealt clockwise after the dealer. The next undealt card sets trump and is not played. Ace is high.
 - Join order fixes seats. The first dealer is random and the dealer advances clockwise after every hand.
 - Bid from zero to the number of cards in the hand, starting after the dealer. **Total bids cannot equal the number of available tricks**; this restricts the last bidder.
@@ -67,7 +85,7 @@ This implementation does not automatically commit, push or change your GitHub Pa
 - The host advances after each hand’s results. Scores accumulate; the highest total wins. Equal highest totals are a **tie**.
 - In the blind finale, you see everybody else’s one card but cannot see your own. Trump and bidding rules are unchanged. Your card becomes public when you play it.
 
-The in-app **HOW TO PLAY** explains all rules and examples in short sections. **SCOREBOARD** shows PLAYER, H1–H5, BLIND and TOTAL and scrolls locally on narrow screens.
+The in-app **HOW TO PLAY** explains all rules and examples in short sections. **SCOREBOARD** shows every deal, grouped into six rounds, with PLAYER and TOTAL kept visible while scrolling locally on narrow screens. History records each deal's round, card count, prediction, tricks won and score.
 
 ## Multiplayer architecture and privacy
 
@@ -108,10 +126,11 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 ## Shared code and adding another game
 
 ```text
-index.html                 Static shell, accessible dialog and announcements
+index.html                 Inline version loader, shell, dialog and announcements
+config.json                Central version and complete production module list
 style.css                  Collection, shared UI and responsive PLAN table
 app.mjs                    Navigation, input, dialogs and session lifecycle
-favicon.svg                Local vector icon
+favicon.svg                Emerald playing-card vector icon
 shared/
   random.mjs               Crypto randomness, room codes and name validation
   protocol.mjs             Central protocol, schemas, replay/revision helpers
@@ -120,6 +139,9 @@ shared/
   room.mjs                 Connections → identities → authoritative adapter
   dom.mjs                  Safe DOM/card builders and shared instructions
   screens.mjs              Collection, game entry, lobby and connection screens
+  sound.mjs                Local Web Audio synthesis and persisted mute control
+  effects.mjs              Deduplicated effects from accepted public views
+  celebration.mjs          Sokoban-inspired canvas victory, reduced-motion aware
 games/
   registry.mjs             Game descriptors and adapter registration
   plan/
@@ -131,8 +153,10 @@ tests/
   game-core.test.mjs       Rules, lifecycle, privacy and full-game simulations
   protocol.test.mjs        Input validation, message schemas and replay helpers
   room.test.mjs            Room sessions through an in-memory test transport
+  effects.test.mjs         Sound/victory events and generated waveform checks
   browser-smoke.mjs        Optional real PeerJS Cloud / WebRTC browser test
   browser-ui.mjs           Responsive fixtures and connection failure screens
+  browser-assets-effects.mjs Real HTTP cache, Web Audio and victory checks
 .nojekyll
 .gitignore
 README.md
@@ -155,7 +179,7 @@ On Node 24+, to print every assertion group with the in-process reporter:
 node --test --test-isolation=none --test-reporter=spec tests/*.test.mjs
 ```
 
-The suite includes all fourteen requested rule/privacy checks, plus highest-bid first leads (including ties and the blind hand), invalid moves, host permissions, disconnects, duplicate joins/actions, stale snapshots, room ID collisions, six-player limits, rematches and 40 full randomly dealt games with varied legal bids across all supported player counts.
+The suite includes all fourteen requested rule/privacy checks, plus highest-bid first leads (including ties and every blind deal), round/deal scheduling, invalid moves, host permissions, disconnects, duplicate joins/actions, stale snapshots, room ID collisions, six-player limits, version mismatches, rematches, sound/victory deduplication and waveform checks. It also simulates **40 full 12–36-hand games** with varied legal bids across all supported player counts and checks every first bidder and every recipient's card privacy at each deal.
 
 `tests/browser-smoke.mjs` is an optional developer-only Playwright script. It requires Playwright and Chromium installed **outside the production files**, a running local static server and access to the public PeerJS Cloud. For example, if Playwright is already available:
 
@@ -173,7 +197,13 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-smoke.mjs
 
 The optional `tests/browser-ui.mjs` uses the same Playwright setup to check all six-player phases at 320–1920px, minimum touch-target sizes, reduced motion, the rules and scoreboard, CDN failure and an absent room.
 
-After the first-leader rule correction, **42/42 Node tests passed**, including 40 complete simulated games and a host/guest synchronization check for the bidding winner. Initial browser verification on 2026-09-28 passed **12/12 real-network checks** using two independent Chromium processes and public PeerJS Cloud, plus **6/6 UI/failure checks**, including seven six-player phases at eight viewport widths. That browser run completed all six hands, rejected an injected illegal follow-suit move, inspected normal/blind payload privacy, completed a rematch and exercised both guest and host departures. There were no unexpected browser console errors. This is not a claim of testing every browser or two geographically separate networks.
+The optional `tests/browser-assets-effects.mjs` starts its own temporary static server, deliberately caches HTML/JS/CSS for a year, changes the manifest version, and checks every module is refetched. It also checks actual Web Audio playback/muting, canvas rendering, reduced motion and the loader error/reload flow:
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-assets-effects.mjs
+```
+
+Verification on **2026-09-30** passed **48/48 Node tests** and **26/26 browser checks**: 13 real PeerJS Cloud/WebRTC checks, 6 responsive/failure checks and 7 asset/effect checks. Two independent Chromium processes completed all 12 hands, checked every bidding opener, inspected normal/blind payload privacy, rejected an illegal follow-suit move, verified each card sounded exactly once, finished a rematch and exercised both guest and host departures. Six-player fixtures covered seven phases at eight widths (320–1920px); scoreboard checks covered all player counts at 320px. There were no unexpected browser console errors or unhandled exceptions during the network game. This does not claim coverage of every browser or geographically separate networks.
 
 ## Connection behavior and limitations
 

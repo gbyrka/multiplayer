@@ -1,27 +1,41 @@
 import { el, button, eyebrow, playingCard, signed } from '../../shared/dom.mjs';
 import { SUITS } from './cards.mjs';
-import { getStandings } from './game-core.mjs';
+import { getStandings, HAND_SIZES } from './game-core.mjs';
 
 const playerName = (view, id) => view.players.find(player => player.id === id)?.name ?? 'Player';
 
 export function renderScoreboard(view) {
-  const header = el('tr', {}, ['PLAYER', 'H1', 'H2', 'H3', 'H4', 'H5', 'BLIND', 'TOTAL'].map(text => el('th', { scope: 'col' }, text)));
-  return el('div', { class: 'score-scroll', tabindex: '0', role: 'region', 'aria-label': 'Scores by hand; scroll horizontally on small screens' },
-    el('table', { class: 'score-table' },
-      el('caption', { class: 'sr-only' }, 'Scores for all six hands'), el('thead', {}, header),
-      el('tbody', {}, getStandings(view.players).map(player => el('tr', { class: player.id === view.me.id ? 'my-score' : '' },
-        el('th', { scope: 'row' }, player.name, player.id === view.me.id ? el('small', {}, ' YOU') : null),
-        Array.from({ length: 6 }, (_, i) => el('td', { class: (player.history[i]?.score ?? 0) < 0 ? 'negative' : 'positive' }, player.history[i] ? signed(player.history[i].score) : '—')),
-        el('td', { class: 'total-score' }, player.totalScore),
-      ))),
-    ),
+  const count = view.players.length;
+  const header = el('tr', {}, el('th', { scope: 'col', rowspan: 2 }, 'PLAYER'),
+    HAND_SIZES.map((size, i) => el('th', { scope: 'colgroup', colspan: count, class: 'score-round' },
+      el('span', { class: 'score-round-label' }, `R${i + 1} · ${i === 5 ? 'BLIND' : `${size} ${size === 1 ? 'CARD' : 'CARDS'}`}`))),
+    el('th', { scope: 'col', rowspan: 2, class: 'total-score' }, 'TOTAL'));
+  const deals = el('tr', {}, Array.from({ length: view.totalHands }, (_, i) => el('th', {
+    scope: 'col', class: i % count === 0 ? 'round-start' : '',
+    'aria-label': `Round ${Math.floor(i / count) + 1}, deal ${i % count + 1}`,
+  }, `D${i % count + 1}`)));
+  return el('div', {},
+    el('p', { class: 'score-help' }, `Six rounds · ${count} deals per round · ${view.totalHands} hands. Scroll to see every deal.`),
+    el('div', { class: 'score-scroll', tabindex: '0', role: 'region', 'aria-label': 'Scores by round and deal; scroll horizontally' },
+      el('table', { class: 'score-table', style: `--score-deals:${view.totalHands}` },
+        el('caption', { class: 'sr-only' }, `Scores for all ${view.totalHands} hands, grouped into six rounds`), el('thead', {}, header, deals),
+        el('tbody', {}, getStandings(view.players).map(player => el('tr', { class: player.id === view.me.id ? 'my-score' : '' },
+          el('th', { scope: 'row' }, player.name, player.id === view.me.id ? el('small', {}, ' YOU') : null),
+          Array.from({ length: view.totalHands }, (_, i) => el('td', {
+            class: `${(player.history[i]?.score ?? 0) < 0 ? 'negative' : 'positive'}${i % count === 0 ? ' round-start' : ''}`,
+            title: player.history[i] ? `Bid ${player.history[i].bid}, won ${player.history[i].won}` : 'Not played yet',
+          }, player.history[i] ? signed(player.history[i].score) : '—')),
+          el('td', { class: 'total-score' }, player.totalScore),
+        ))),
+      )),
   );
 }
 
 function handProgress(view) {
   return el('ol', { class: 'hand-progress', 'aria-label': 'Game progress' }, [5, 4, 3, 2, 1, 'Blind'].map((size, i) =>
-    el('li', { class: `${i + 1 === view.handNumber ? 'active' : ''} ${i + 1 < view.handNumber ? 'complete' : ''}`, 'aria-current': i + 1 === view.handNumber ? 'step' : null },
-      el('span', {}, `H${i + 1}`), el('strong', {}, size), el('small', {}, i === 5 ? '1 card' : size === 1 ? 'card' : 'cards'),
+    el('li', { class: `${i + 1 === view.roundNumber ? 'active' : ''} ${i + 1 < view.roundNumber ? 'complete' : ''}`, 'aria-current': i + 1 === view.roundNumber ? 'step' : null },
+      el('span', {}, `R${i + 1}`), el('strong', {}, size),
+      el('small', {}, i + 1 === view.roundNumber ? `${view.dealInRound}/${view.players.length} deals` : `${view.players.length} deals`),
     ),
   ));
 }
@@ -114,13 +128,13 @@ function handResults(view, pending) {
   const standings = getStandings(view.players);
   const winners = standings.filter(player => player.totalScore === standings[0].totalScore);
   return el('section', { class: 'results-panel panel' },
-    eyebrow(over ? 'SIX HANDS. WELL PLAYED.' : `HAND ${view.handNumber} OF 6 COMPLETE`),
+    eyebrow(over ? `${view.totalHands} HANDS. WELL PLAYED.` : `ROUND ${view.roundNumber} / 6 · DEAL ${view.dealInRound} / ${view.players.length}`),
     el('h1', {}, over ? 'Game over' : 'Hand results'),
-    over ? el('div', { class: 'winner-banner' }, el('span', { class: 'winner-star', 'aria-hidden': 'true' }, '✦'),
+    over ? el('div', { class: 'winner-banner', 'data-winner-banner': '' }, el('span', { class: 'winner-star', 'aria-hidden': 'true' }, '✦'),
       eyebrow(winners.length > 1 ? 'TIE' : 'WINNER'), el('h2', {}, winners.map(player => player.name).join(' & ')),
       el('p', {}, `${winners[0].totalScore} points${winners.length > 1 ? ' each' : ''}`)) :
-      el('p', { class: 'muted' }, 'A good plan deserves a moment. Here’s how this hand played out.'),
-    el('h2', { class: 'section-label' }, over ? 'BLIND HAND RESULTS' : 'THIS HAND'),
+      el('p', { class: 'muted' }, `Hand ${view.handNumber} of ${view.totalHands} complete. ${view.dealInRound === view.players.length ? 'Everyone has opened the bidding in this round.' : 'The next player opens the bidding in the next deal.'}`),
+    el('h2', { class: 'section-label' }, over ? 'FINAL BLIND HAND RESULTS' : 'THIS HAND'),
     el('div', { class: 'hand-results-grid' }, (over ? standings : view.players).map(player => {
       const result = view.handResults.find(entry => entry.playerId === player.id);
       return el('article', { class: `hand-result-card${result.bid === result.won ? ' exact-result' : ''}` },
@@ -138,7 +152,7 @@ function handResults(view, pending) {
 export function renderPlan(view, { pending = false } = {}) {
   if (['hand_result', 'game_result'].includes(view.phase)) return handResults(view, pending);
   return el('div', { class: 'game-layout', 'data-phase': view.phase },
-    el('div', { class: 'game-heading' }, el('div', {}, eyebrow(`PLAN · HAND ${view.handNumber} / 6`),
+    el('div', { class: 'game-heading' }, el('div', {}, eyebrow(`PLAN · ROUND ${view.roundNumber} / 6 · DEAL ${view.dealInRound} / ${view.players.length}`),
       el('h1', {}, view.blind ? 'The blind finale.' : `${view.handSize} ${view.handSize === 1 ? 'card' : 'cards'}. Make them count.`)),
       handProgress(view)),
     el('section', { class: 'players-row', style: `--players:${view.players.length}`, 'aria-label': 'Players in clockwise order' }, view.players.map(player => playerTile(view, player))),

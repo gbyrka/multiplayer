@@ -13,6 +13,18 @@ export const advanceDealer = (index, count) => (index + 1) % count;
 export const getNextPlayer = (players, playerId) => players[(players.findIndex(p => p.id === playerId) + 1) % players.length];
 export const calculateHandScore = (bid, won) => bid === won ? 10 + bid : -Math.abs(bid - won);
 
+/** Each card-count round gives every seat one turn as the first bidder. */
+export function getHandDetails(handNumber, playerCount) {
+  requireRule(Number.isInteger(playerCount) && playerCount >= 2 && playerCount <= 6, 'A game needs 2–6 players.');
+  const totalHands = HAND_SIZES.length * playerCount;
+  requireRule(Number.isInteger(handNumber) && handNumber >= 1 && handNumber <= totalHands, 'Invalid hand number.');
+  const roundIndex = Math.floor((handNumber - 1) / playerCount);
+  return {
+    roundNumber: roundIndex + 1, dealInRound: (handNumber - 1) % playerCount + 1,
+    totalHands, handSize: HAND_SIZES[roundIndex], blind: roundIndex === HAND_SIZES.length - 1,
+  };
+}
+
 export function getForbiddenFinalBid(bids, handSize) {
   const missing = bids.filter(bid => bid === null).length;
   if (missing !== 1) return null;
@@ -51,7 +63,8 @@ function makePlayer(id, name, host = false) {
 export function createLobby(hostId, name) {
   return {
     revision: 0, phase: 'lobby', hostId, players: [makePlayer(hostId, name, true)],
-    handNumber: 0, handSize: 0, blind: false, dealerIndex: 0, currentPlayerId: null,
+    handNumber: 0, roundNumber: 0, dealInRound: 0, totalHands: 0,
+    handSize: 0, blind: false, dealerIndex: 0, currentPlayerId: null,
     trumpCard: null, trumpSuit: null, trick: [], trickNumber: 0, trickWinnerId: null,
     handResults: [], disconnectedNames: [],
   };
@@ -88,8 +101,7 @@ export function canStart(state) {
 }
 
 function setupHand(state, pick) {
-  state.handSize = HAND_SIZES[state.handNumber - 1];
-  state.blind = state.handNumber === 6;
+  Object.assign(state, getHandDetails(state.handNumber, state.players.length));
   const deal = dealHand(shuffleDeck(createDeck(), pick), state.players.length, state.handSize, state.dealerIndex);
   state.players.forEach((player, i) => { player.hand = deal.hands[i]; player.bid = null; player.tricksWon = 0; });
   state.trumpCard = deal.trumpCard;
@@ -165,7 +177,7 @@ export function applyAction(state, actorId, type, payload = {}, pick = randomInt
     }
     case 'NEXT_HAND':
       hostOnly();
-      requireRule(state.phase === 'hand_result' && state.handNumber < 6, 'The next hand is not available yet.');
+      requireRule(state.phase === 'hand_result' && state.handNumber < state.totalHands, 'The next hand is not available yet.');
       next.handNumber++;
       next.dealerIndex = advanceDealer(next.dealerIndex, next.players.length);
       setupHand(next, pick);
@@ -197,10 +209,13 @@ export function resolveTrick(state) {
     next.handResults = next.players.map(player => {
       const score = calculateHandScore(player.bid, player.tricksWon);
       player.totalScore += score;
-      player.history.push({ bid: player.bid, won: player.tricksWon, score });
+      player.history.push({
+        handNumber: next.handNumber, roundNumber: next.roundNumber, dealInRound: next.dealInRound,
+        handSize: next.handSize, blind: next.blind, bid: player.bid, won: player.tricksWon, score,
+      });
       return { playerId: player.id, bid: player.bid, won: player.tricksWon, score, totalScore: player.totalScore };
     });
-    next.phase = next.handNumber === 6 ? 'game_result' : 'hand_result';
+    next.phase = next.handNumber === next.totalHands ? 'game_result' : 'hand_result';
   } else {
     next.phase = 'playing';
     next.currentPlayerId = next.trickWinnerId;
@@ -225,6 +240,8 @@ export function buildViewForPlayer(state, playerId) {
   return {
     revision: state.revision, phase: state.phase,
     handNumber: state.handNumber, handSize: state.handSize, blind: state.blind,
+    roundNumber: state.roundNumber, dealInRound: state.dealInRound,
+    totalHands: state.totalHands, totalRounds: HAND_SIZES.length,
     trumpCard: state.trumpCard ? { ...state.trumpCard } : null, trumpSuit: state.trumpSuit,
     currentPlayerId: state.currentPlayerId, dealerId: state.players[state.dealerIndex]?.id ?? null,
     leadSuit: state.trick[0]?.card.suit ?? null, trickNumber: state.trickNumber,

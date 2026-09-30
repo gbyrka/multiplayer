@@ -60,6 +60,7 @@ a { color: var(--gold); }
 .connection-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; margin-right: 14px; max-width: 220px; }
 .connection-status i { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: #a5d6b6; box-shadow: 0 0 0 4px #a5d6b60d; }
 .leave-button { opacity: .7; }
+.sound-button[aria-pressed="false"] { color: var(--muted); }
 #main { max-width: 1160px; margin: auto; padding: 38px 0 54px; width: calc(100% - 64px); min-height: calc(100dvh - 90px); }
 .boot-message { padding: 64px 24px; text-align: center; }
 .collection-hero { padding: 32px 0 45px; position: relative; }
@@ -264,12 +265,18 @@ input:focus { border-color: var(--gold-dark); }
 .result-total { border-top: 1px solid var(--line); padding: 12px 0; font-size: 8px; color: #a0b293; }
 .result-total b { font-size: 13px; color: var(--gold); padding-left: 5px; }
 .score-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #15231c; scrollbar-color: #8da281 #172b20; }
-.score-table { width: 100%; min-width: 535px; border-collapse: collapse; font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.score-help { color: var(--muted); font-size: 11px; text-align: left; margin: 0 0 10px; }
+.score-table { width: calc(var(--score-deals) * 44px + 195px); min-width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
 .score-table th, .score-table td { padding: 14px 12px; border-bottom: 1px solid var(--line); }
 .score-table thead { color: #c2cdb4; font-size: 8px; letter-spacing: .06em; background: #1e3023; }
 .score-table tbody th { color: #e1e8d4; font-size: 12px; font-weight: 500; text-align: left; max-width: 160px; overflow-wrap: anywhere; }
-.score-table th:first-child { padding-left: 20px; text-align: left; }
-.score-table th:last-child, .score-table td:last-child { position: sticky; right: 0; background: #253925; color: var(--gold); border-left: 1px solid #8b9e7424; }
+.score-table thead th[rowspan]:first-child, .score-table tbody th { position: sticky; left: 0; width: 130px; padding-left: 20px; text-align: left; background: #1e3023; z-index: 1; }
+.score-table .total-score { position: sticky; left: auto; right: 0; width: 65px; text-align: center; padding: 14px 12px; background: #253925; color: var(--gold); border-left: 1px solid #8b9e7424; z-index: 2; }
+.score-table thead .total-score { font-size: 9px; }
+.score-table .score-round { border-left: 1px solid #ead6a730; white-space: nowrap; text-align: left; }
+.score-round-label { position: sticky; left: 130px; display: inline-block; }
+.score-table .round-start { border-left: 1px solid #ead6a730; }
+.score-table td { min-width: 44px; }
 .score-table tr:last-child > * { border-bottom: 0; }
 .score-table small { font-size: 7px; color: var(--muted); }
 .score-table .my-score { background: #35503530; }
@@ -281,6 +288,17 @@ input:focus { border-color: var(--gold-dark); }
 .winner-banner .eyebrow { margin-bottom: 8px; }
 .winner-banner h2 { color: #f4e4b9; font-size: 32px; overflow-wrap: anywhere; margin-bottom: 10px; }
 .winner-banner p { color: #c4ccad; font-size: 13px; margin: 0; }
+/* A brief celebration in the same gold/mint palette and rhythm as Sokoban. */
+.celebration { position: fixed; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; }
+.celebration canvas { width: 100%; height: 100%; display: block; }
+.victory-moment { position: absolute; top: var(--victory-y); left: 50%; width: min(92vw, 480px); text-align: center; transform: translate(-50%, -50%); color: #fff3d2; text-shadow: 0 2px 20px #000; isolation: isolate; }
+.victory-moment::before { content: ''; position: absolute; inset: -45px -25px; background: radial-gradient(ellipse, #12241bf2 10%, #12241bc9 40%, #12241b00 72%); z-index: -1; }
+.victory-emblem { display: grid; place-items: center; margin: 0 auto 18px; width: 76px; height: 76px; border: 1px solid #f3d692; border-radius: 50%; color: #ffedb6; font-size: 40px; background: radial-gradient(circle at 30% 20%, #667549, #283e2e 65%); box-shadow: 0 0 0 7px #edcd8420, 0 0 0 15px #edcd8409, 0 0 50px #dfb86740, inset 0 1px 10px #ffe6a533; }
+.victory-moment span { display: block; font-size: 10px; letter-spacing: 3px; color: #e6c78a; }
+.victory-moment strong { display: block; margin: 12px 0 9px; font: 700 clamp(29px, 6vw, 44px)/1.1 Georgia, serif; letter-spacing: -1px; overflow-wrap: anywhere; }
+.victory-moment i { font: 13px Georgia, serif; color: #d3dfc3; }
+.celebration.playing .victory-moment { animation: victory-reveal 2.4s both; }
+.celebration.playing .victory-emblem { animation: medal-arrive .8s .22s both cubic-bezier(.2, .8, .2, 1.25); }
 .connection-panel { max-width: 600px; padding: 52px; text-align: center; margin: 45px auto; }
 .connection-panel h1 { font-size: 36px; margin-bottom: 22px; }
 .connection-panel .button { margin: 8px 5px; }
@@ -390,6 +408,10 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
   .header-nav:has(.leave-button) { flex-basis: 100%; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 5px; }
   .header-nav:has(.leave-button) .connection-status { display: inline-flex; margin-right: 0; font-size: 8px; flex: 1 1 100%; max-width: none; padding: 6px 8px 0; }
   .header-nav .text-button { font-size: 8px; padding: 11px 8px; }
+  .score-table { width: calc(var(--score-deals) * 44px + 151px); }
+  .score-table thead th[rowspan]:first-child, .score-table tbody th { width: 95px; padding-left: 10px; }
+  .score-table .total-score { width: 56px; padding: 14px 8px; }
+  .score-round-label { left: 95px; }
   .collection-hero { padding: 23px 0 30px; }
   .collection-hero h1 { font-size: clamp(42px, 11vw, 58px); }
   .collection-hero .eyebrow { font-size: 8px; margin-bottom: 19px; }
@@ -546,6 +568,8 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 @keyframes score-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes collect-trick { 0%, 88% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: translateY(-7px) scale(.96); } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes victory-reveal { 0%, 10% { opacity: 0; transform: translate(-50%, -40%) scale(.88); } 28%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -55%) scale(1.035); } }
+@keyframes medal-arrive { from { opacity: 0; transform: scale(.4) rotate(-25deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

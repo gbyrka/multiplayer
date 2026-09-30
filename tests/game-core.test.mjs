@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { isMessage } from '../shared/protocol.mjs';
 import {
   createDeck, shuffleDeck, dealHand, createLobby, addPlayer, removePlayer, canStart,
   applyAction, getLegalCards, isLegalPlay, getTrickWinner, getForbiddenFinalBid,
-  calculateHandScore, advanceDealer, getNextPlayer, resolveTrick, buildViewForPlayer, getStandings,
+  calculateHandScore, advanceDealer, getNextPlayer, resolveTrick, buildViewForPlayer, getStandings, getHandDetails,
 } from '../games/plan/game-core.mjs';
 
 const card = id => createDeck().find(item => item.id === id);
@@ -34,6 +35,14 @@ function finishHand(state) {
     const player = state.players.find(p => p.id === state.currentPlayerId);
     const cardId = getLegalCards(player.hand, state.trick[0]?.card.suit)[0].id;
     state = applyAction(state, player.id, state.blind ? 'PLAY_BLIND_CARD' : 'PLAY_CARD', state.blind ? {} : { cardId });
+  }
+  return state;
+}
+
+function firstBlindHand(count) {
+  let state = start(count);
+  for (let hand = 1; hand <= count * 5; hand++) {
+    state = applyAction(finishHand(state), 'p0', 'NEXT_HAND', {}, deterministic);
   }
   return state;
 }
@@ -146,21 +155,18 @@ test('if all bids are zero, the first bidder leads for every dealer position', (
   }
 });
 test('the blind hand also starts with the bidding winner, with ties in bidding order', () => {
-  let state = start(3);
-  for (let hand = 1; hand < 6; hand++) {
-    state = applyAction(finishHand(state), 'p0', 'NEXT_HAND', {}, deterministic);
-  }
+  let state = firstBlindHand(3);
   assert.equal(state.blind, true);
-  assert.equal(state.currentPlayerId, 'p2');
-  for (const [id, bid] of [['p2', 0], ['p0', 1], ['p1', 1]]) {
+  assert.equal(state.currentPlayerId, 'p0');
+  for (const [id, bid] of [['p0', 0], ['p1', 1], ['p2', 1]]) {
     state = applyAction(state, id, 'PLACE_BID', { bid });
   }
-  assert.equal(state.currentPlayerId, 'p0');
-  assert.equal(buildViewForPlayer(state, 'p0').me.hand, null);
-  assert.throws(() => applyAction(state, 'p2', 'PLAY_BLIND_CARD'), /turn/);
-  state = applyAction(state, 'p0', 'PLAY_BLIND_CARD');
-  assert.equal(state.trick[0].playerId, 'p0');
   assert.equal(state.currentPlayerId, 'p1');
+  assert.equal(buildViewForPlayer(state, 'p1').me.hand, null);
+  assert.throws(() => applyAction(state, 'p0', 'PLAY_BLIND_CARD'), /turn/);
+  state = applyAction(state, 'p1', 'PLAY_BLIND_CARD');
+  assert.equal(state.trick[0].playerId, 'p1');
+  assert.equal(state.currentPlayerId, 'p2');
 });
 test('start requires 2–6 players and all guests ready; join order is stable', () => {
   const one = createLobby('p0', 'Host');
@@ -232,11 +238,7 @@ test('normal network view has only the recipient’s hand, with no private oppon
   }
 });
 test('blind view excludes the recipient’s own card in the entire payload, for host and guests', () => {
-  let state = start(6);
-  for (let hand = 1; hand < 6; hand++) {
-    state = finishHand(state);
-    state = applyAction(state, 'p0', 'NEXT_HAND', {}, deterministic);
-  }
+  let state = firstBlindHand(6);
   assert.equal(state.blind, true);
   for (const player of state.players) {
     const view = buildViewForPlayer(state, player.id);
@@ -280,39 +282,74 @@ test('lobby departures remove seats; active departures pause with idempotent clo
   assert.equal(state.players[1].ready, false);
   assert.ok(state.players.every(p => p.hand.length === 0 && p.totalScore === 0));
 });
-test('full six-hand games for every supported player count preserve all invariants and support rematches', () => {
+test('full six-round games give every player one opening per round, preserve privacy and support rematches', () => {
   for (let count = 2; count <= 6; count++) {
     for (let game = 0; game < 8; game++) {
       let state = applyAction(lobby(count), 'p0', 'START_GAME');
       const initialDealer = state.dealerIndex;
       let revision = state.revision;
-      for (let hand = 1; hand <= 6; hand++) {
+      const total = count * 6;
+      let firstBidders = new Set();
+      for (let hand = 1; hand <= total; hand++) {
         assert.equal(state.handNumber, hand);
-        assert.equal(state.handSize, [5, 4, 3, 2, 1, 1][hand - 1]);
+        assert.equal(state.totalHands, total);
+        assert.equal(state.roundNumber, Math.floor((hand - 1) / count) + 1);
+        assert.equal(state.dealInRound, (hand - 1) % count + 1);
+        assert.equal(state.handSize, [5, 4, 3, 2, 1, 1][state.roundNumber - 1]);
+        assert.equal(state.blind, state.roundNumber === 6);
         assert.equal(state.dealerIndex, (initialDealer + hand - 1) % count);
+        firstBidders.add(state.currentPlayerId);
+        if (state.dealInRound === count) {
+          assert.equal(firstBidders.size, count);
+          firstBidders = new Set();
+        }
         const dealt = state.players.flatMap(p => p.hand.map(c => c.id));
         assert.equal(new Set(dealt).size, count * state.handSize);
         assert.ok(!dealt.includes(state.trumpCard.id));
+        for (const player of state.players) {
+          const view = buildViewForPlayer(state, player.id);
+          const forbiddenCards = state.blind ? player.hand : state.players.filter(p => p.id !== player.id).flatMap(p => p.hand);
+          for (const card of forbiddenCards) assert.ok(!JSON.stringify(view).includes(`"${card.id}"`));
+          assert.equal(view.me.hand === null, state.blind);
+          assert.equal(view.opponents.length, state.blind ? count - 1 : 0);
+        }
         state = finishBidding(state, legalBids => legalBids[(game + hand) % legalBids.length]);
         assert.equal(state.players.find(p => p.id === state.currentPlayerId).bid, Math.max(...state.players.map(p => p.bid)));
         assert.notEqual(state.players.reduce((sum, p) => sum + p.bid, 0), state.handSize);
         state = finishHand(state);
+        for (const player of state.players) assert.ok(isMessage({ v: 1, type: 'STATE_UPDATE', requestId: 'size-check', payload: { view: buildViewForPlayer(state, player.id) } }), 'The entire score history must fit the network envelope.');
         assert.equal(state.players.reduce((sum, p) => sum + p.tricksWon, 0), state.handSize);
         assert.ok(state.revision > revision);
         revision = state.revision;
         assert.ok(state.players.every(p => p.history.length === hand && p.totalScore === p.history.reduce((sum, h) => sum + h.score, 0)));
-        assert.equal(state.phase, hand === 6 ? 'game_result' : 'hand_result');
-        if (hand < 6) state = applyAction(state, 'p0', 'NEXT_HAND');
+        assert.ok(state.players.every(p => p.history.at(-1).handNumber === hand && p.history.at(-1).roundNumber === state.roundNumber));
+        assert.equal(state.phase, hand === total ? 'game_result' : 'hand_result');
+        if (hand < total) state = applyAction(state, 'p0', 'NEXT_HAND');
       }
       const ids = state.players.map(p => p.id);
       state = applyAction(state, 'p0', 'PLAY_AGAIN', {}, () => 0);
       assert.equal(state.handNumber, 1);
+      assert.equal(state.roundNumber, 1);
+      assert.equal(state.dealInRound, 1);
       assert.equal(state.dealerIndex, 0);
       assert.deepEqual(state.players.map(p => p.id), ids);
       assert.ok(state.players.every(p => p.totalScore === 0 && p.history.length === 0 && p.hand.length === 5));
       assert.ok(state.revision > revision);
     }
   }
+});
+test('round boundaries keep the card count for one full dealer rotation, including all blind deals', () => {
+  for (let count = 2; count <= 6; count++) {
+    for (let round = 1; round <= 6; round++) {
+      for (let deal = 1; deal <= count; deal++) {
+        assert.deepEqual(getHandDetails((round - 1) * count + deal, count), {
+          roundNumber: round, dealInRound: deal, totalHands: count * 6,
+          handSize: [5, 4, 3, 2, 1, 1][round - 1], blind: round === 6,
+        });
+      }
+    }
+  }
+  for (const [hand, count] of [[0, 2], [13, 2], [1.5, 3], [1, 1], [1, 7]]) assert.throws(() => getHandDetails(hand, count));
 });
 test('standings preserve equal scores without an artificial tie breaker', () => {
   const players = [{ id: 'a', totalScore: 10 }, { id: 'b', totalScore: 20 }, { id: 'c', totalScore: 20 }];
