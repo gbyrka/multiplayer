@@ -5,10 +5,15 @@ import { RaceSession } from './session.mjs';
 import { Prediction } from './prediction.mjs';
 import { RaceScene, COLORS } from './scene.mjs';
 import { STEP, INPUT, clamp } from './physics.mjs';
-import { COUNTDOWN_TICKS } from './race.mjs';
+import { COUNTDOWN_TICKS, MIN_PLAYERS, MAX_PLAYERS, rankRace } from './race.mjs';
 import { RaceSound } from './sound.mjs';
 
 const $ = id => document.getElementById(id), scene = new RaceScene($('game'), $('minimap'));
+// The version loader can pair new modules with an older cached HTML page.
+if (!$('mode-switch')) {
+  document.querySelector('.mode-tabs')?.remove();
+  $('connect').after(el('button', { id: 'mode-switch', class: 'quiet', type: 'button' }, 'Use a room code'));
+}
 const sound = new RaceSound();
 const params = new URLSearchParams(location.search), keys = new Set(), pointers = new Map();
 document.documentElement.classList.toggle('has-touch', navigator.maxTouchPoints > 0);
@@ -28,7 +33,8 @@ function showScreen(next) {
 }
 function setMode(join) {
   joining = join; $('code-field').hidden = !join;
-  $('create-tab').setAttribute('aria-pressed', String(!join)); $('join-tab').setAttribute('aria-pressed', String(join));
+  $('mode-switch').textContent = join ? 'Start a new room' : 'Use a room code';
+  $('room-code-input').required = join;
   $('connect').textContent = join ? 'JOIN GAME' : 'CREATE GAME'; $('form-error').textContent = '';
 }
 function status(text) { $('connection-status').textContent = text; $('connecting-detail').textContent = text; }
@@ -64,13 +70,13 @@ function renderLobby(view) {
   showScreen('lobby'); updateURL(true); $('room-code').textContent = view.roomCode; $('invite-link').value = inviteLink();
   const players = view.players.map((player, i) => el('li', {}, el('span', { class: 'driver-dot', style: `background:${COLORS[i]}` }),
     el('strong', {}, `${player.name}${i === session.slot ? ' (you)' : ''}`), el('small', {}, i === 0 ? 'HOST · READY' : player.ready ? 'READY' : 'NOT READY')));
-  if (players.length < 2) players.push(el('li', { class: 'waiting' }, '2 · Waiting for your friend…'));
+  for (let i = players.length; i < MAX_PLAYERS; i++) players.push(el('li', { class: 'waiting' }, `${i + 1} · Waiting for a driver…`));
   $('players').replaceChildren(...players); $('ready').hidden = session.isHost; $('start').hidden = !session.isHost;
-  $('ready').disabled = !view.fast; $('ready').textContent = view.players[1]?.ready ? 'NOT READY' : 'READY';
-  $('start').disabled = view.players.length !== 2 || !view.players.every(p => p.ready) || !view.fast;
-  $('lobby-title').textContent = session.isHost ? 'Bring a friend.' : 'You are on the grid.';
-  $('lobby-hint').textContent = view.players.length < 2 ? 'Share the invite link to fill the second spot.' :
-    !view.fast ? 'Establishing the racing connection…' : session.isHost ? 'Start when your friend is ready.' : 'Choose READY, then wait for the host.';
+  $('ready').disabled = !view.fast; $('ready').textContent = view.players[session.slot]?.ready ? 'NOT READY' : 'READY';
+  $('start').disabled = view.players.length < MIN_PLAYERS || !view.players.every(p => p.ready) || !view.fast;
+  $('lobby-title').textContent = session.isHost ? 'Bring your friends.' : 'You are on the grid.';
+  $('lobby-hint').textContent = view.players.length < MIN_PLAYERS ? 'Invite at least one driver. Up to four can race.' :
+    !view.fast ? 'Establishing the racing connections…' : session.isHost ? `${view.players.length} / ${MAX_PLAYERS} drivers. Start when everyone is ready.` : 'Choose READY, then wait for the host.';
   if (entered) (session.isHost ? $('copy-link') : $('ready')).focus({ preventScroll: true });
 }
 
@@ -93,11 +99,9 @@ function updateHUD(now) {
   $('gear').textContent = car.speed < -1 ? 'R' : car.speed > 1 ? 'D' : 'N'; $('brake-indicator').classList.toggle('active', car.braking);
   const fraction = clamp((state.progress[slot] - prediction.track.start) / (prediction.track.finish - prediction.track.start), 0, 1);
   $('progress-fill').style.transform = `scaleX(${fraction})`; $('progress-label').textContent = `${Math.round(fraction * 100)}% OF ROUTE`;
-  const other = 1 - slot;
-  const ahead = state.finished[slot] !== null ? state.finished[other] === null || state.finished[slot] <= state.finished[other] : state.finished[other] === null && state.progress[slot] >= state.progress[other];
-  $('position').textContent = `${ahead ? 1 : 2} / 2`;
+  $('position').textContent = `${rankRace(state).indexOf(slot) + 1} / ${state.rigs.length}`;
   $('race-clock').textContent = formatTime(state.finished[slot] ?? Math.max(0, state.tick - COUNTDOWN_TICKS) * STEP);
-  $('mission').textContent = state.finished[slot] !== null ? 'Finished! Waiting for the other driver.' : state.phase === 'paused' ? 'Race paused by the host.' :
+  $('mission').textContent = state.finished[slot] !== null ? 'Finished! Waiting for the other drivers.' : state.phase === 'paused' ? 'Race paused by the host.' :
     state.penalties[slot] ? `Follow the arrows · reset penalty +${state.penalties[slot]}s` : 'Follow the arrows to the finish.';
   $('ping').textContent = !session.isHost && now - prediction.receivedAt > 1000 ? 'Waiting for race updates…' :
     `PING ${Math.round(session.rtt)} ms${session.delay || session.loss ? ` · test: +${session.delay} ms / ${session.loss}% loss` : ''}`;
@@ -114,13 +118,13 @@ function updateOverlay() {
   $('race-overlay').hidden = !['paused', 'results'].includes(state.phase); $('resume').hidden = true; $('rematch').hidden = true; $('results').replaceChildren();
   if (state.phase === 'paused') {
     clearKeys(); $('overlay-eyebrow').textContent = 'A MOMENT IN THE PIT'; $('overlay-title').textContent = 'Race paused.';
-    $('overlay-copy').textContent = session.isHost ? 'Both cars and the race clock are paused. Resume when you are ready.' : 'Waiting for the host to resume.';
+    $('overlay-copy').textContent = session.isHost ? 'All cars and the race clock are paused. Resume when you are ready.' : 'Waiting for the host to resume.';
     $('resume').hidden = !session.isHost; if (session.isHost && !document.hidden) $('resume').focus({ preventScroll: true });
   }
   if (state.phase === 'results') {
     clearKeys();
-    const ranked = [0, 1].sort((a, b) => (state.finished[a] ?? Infinity) - (state.finished[b] ?? Infinity) || state.progress[b] - state.progress[a]);
-    const winner = ranked[0], tie = state.finished.every(t => t !== null) && Math.abs(state.finished[0] - state.finished[1]) <= STEP;
+    const ranked = rankRace(state);
+    const winner = ranked[0], tie = state.finished[winner] !== null && state.finished[ranked[1]] !== null && Math.abs(state.finished[winner] - state.finished[ranked[1]]) <= STEP;
     $('overlay-eyebrow').textContent = 'THE FINISHING LINE';
     $('overlay-title').textContent = state.finished[winner] === null ? 'Time is up.' : tie ? 'A shared finish.' : `${session.players[winner].name} wins!`;
     $('overlay-copy').textContent = session.isHost ? 'Race again on a freshly generated road.' : 'Wait for the host to start a new race.';
@@ -164,10 +168,10 @@ function leave() {
 }
 
 $('connect-form').addEventListener('submit', connect);
-$('create-tab').addEventListener('click', () => setMode(false)); $('join-tab').addEventListener('click', () => setMode(true));
+$('mode-switch').addEventListener('click', () => setMode(!joining));
 $('room-code-input').addEventListener('input', event => { event.target.value = normalizeRoomCode(event.target.value); });
 $('leave').addEventListener('click', leave); $('cancel').addEventListener('click', leave); $('back-home').addEventListener('click', leave);
-$('ready').addEventListener('click', () => session?.ready(!lobby.players[1].ready));
+$('ready').addEventListener('click', () => session?.ready(!lobby.players[session.slot].ready));
 $('start').addEventListener('click', () => session?.start()); $('rematch').addEventListener('click', () => session?.start());
 $('pause').addEventListener('click', () => session?.pause()); $('resume').addEventListener('click', () => session?.resume()); $('reset').addEventListener('click', () => session?.reset());
 $('copy-link').addEventListener('click', async () => {

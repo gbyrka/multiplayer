@@ -1,5 +1,5 @@
 {
-  "version": "towmove1",
+  "version": "towfour1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

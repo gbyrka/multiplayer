@@ -26,7 +26,7 @@ export class Prediction {
     }
     if (!fresh && state.epoch !== this.latest.epoch) { this.frames.clear(); this.tick = state.tick; this.accumulator = 0; }
     this.latest = state; this.receivedAt = at;
-    const base = state.rigs.map((data, i) => deserializeRig(data, this.track, i));
+    const base = state.rigs.map((data, i) => deserializeRig(data, this.track, i, state.rigs.length));
     this.buffer.push({ tick: state.tick, rigs: base });
     if (this.buffer.length > 40) this.buffer.shift();
     for (const tick of this.frames.keys()) if (tick <= state.tick) this.frames.delete(tick);
@@ -51,7 +51,7 @@ export class Prediction {
     this.frames.set(this.tick, mask);
     if (this.tick < COUNTDOWN_TICKS || !['countdown', 'racing'].includes(this.latest.phase)) return;
     const masks = [...this.latest.masks]; masks[this.slot] = mask;
-    for (let i = 0; i < 2; i++) if (this.latest.finished[i] !== null) masks[i] = INPUT.BRAKE;
+    for (let i = 0; i < this.rigs.length; i++) if (this.latest.finished[i] !== null) masks[i] = INPUT.BRAKE;
     stepWorld(this.rigs, masks, this.track, STEP, this.latest.finished.map(time => time !== null));
   }
 
@@ -77,7 +77,7 @@ export class Prediction {
     const b = this.buffer.find(entry => entry.tick >= target) ?? this.buffer.at(-1);
     const index = this.buffer.indexOf(b), a = this.buffer[Math.max(0, index - 1)];
     const fraction = b.tick === a.tick ? 1 : clamp((target - a.tick) / (b.tick - a.tick), 0, 1);
-    rigs[1 - this.slot] = interpolateRig(a.rigs[1 - this.slot], b.rigs[1 - this.slot], fraction);
+    for (let i = 0; i < rigs.length; i++) if (i !== this.slot) rigs[i] = interpolateRig(a.rigs[i], b.rigs[i], fraction);
     if (this.visualCorrection) for (const name of ['car', 'trailer']) {
       const c = this.visualCorrection[name]; rigs[this.slot][name].x += c.x; rigs[this.slot][name].y += c.y; rigs[this.slot][name].a += c.a;
     }

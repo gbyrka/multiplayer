@@ -1,4 +1,4 @@
-/** Real WebRTC, locally signaled. No test hooks or fake transport in production. */
+/** 2–4 real WebRTC drivers, locally signaled. No production test hooks. */
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -96,23 +96,24 @@ async function noOverflow(page, width) {
 }
 async function driveRoad(page, slot) {
   await page.evaluate(async slot => {
-    const { makeTrack, project, pointAt } = await import('./track.mjs');
-    const { wrap } = await import('./physics.mjs');
-    const track = makeTrack(window.__tow.snapshots.at(-1).state.seed);
+    const { makeTrack } = await import('./track.mjs');
+    const { drivingLine, drivingMask } = await import('../../tests/tow-driver.mjs');
+    const track = makeTrack(window.__tow.snapshots.at(-1).state.seed), line = drivingLine(track);
     window.__bot = setInterval(() => {
       const state = window.__tow.snapshots.at(-1)?.state;
       if (!state || state.phase !== 'racing') return;
-      const car = state.rigs[slot][0], x = car[0] + car[3] * .12, y = car[1] + car[4] * .12, angle = car[2] + car[5] * .12;
-      const p = project(track, x, y), target = pointAt(track, p.s + Math.max(100, Math.hypot(car[3], car[4]) * .65));
-      const error = wrap(Math.atan2(target.x - x, -(target.y - y)) - angle);
-      for (const [code, down] of [['ArrowUp', true], ['ArrowLeft', error < -.04], ['ArrowRight', error > .04]]) {
+      const car = state.rigs[slot][0], mask = drivingMask(track, line, {
+        x: car[0] + car[3] * .12, y: car[1] + car[4] * .12, a: car[2] + car[5] * .12, vx: car[3], vy: car[4],
+      });
+      for (const [code, bit] of [['ArrowUp', 1], ['ArrowLeft', 4], ['ArrowRight', 8], ['Space', 16]]) {
+        const down = !!(mask & bit);
         document.querySelector('#game').dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true }));
       }
     }, 30);
   }, slot);
 }
 async function stopDriving(page) {
-  await page.evaluate(() => { clearInterval(window.__bot); for (const code of ['ArrowUp', 'ArrowLeft', 'ArrowRight']) document.querySelector('#game').dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })); });
+  await page.evaluate(() => { clearInterval(window.__bot); for (const code of ['ArrowUp', 'ArrowLeft', 'ArrowRight', 'Space']) document.querySelector('#game').dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })); });
 }
 
 try {
@@ -122,6 +123,13 @@ try {
   assert.equal(await host.locator('a[href*="tow"], [data-game="tow"]').count(), 0);
   pass('TOW is absent from the multiplayer menu');
   await host.goto(base); await host.locator('#home').waitFor();
+  assert.equal(await host.getByRole('button', { name: /^CREATE/ }).count(), 1);
+  assert.equal(await host.locator('#create-tab, #join-tab').count(), 0);
+  await host.locator('#mode-switch').click(); assert.ok(await host.locator('#code-field').isVisible());
+  assert.equal(await host.locator('#connect').textContent(), 'JOIN GAME');
+  await host.locator('#mode-switch').click(); assert.ok(await host.locator('#code-field').isHidden());
+  assert.equal(await host.locator('#connect').textContent(), 'CREATE GAME');
+  pass('The form has one active submit button and a working room-code switch');
   await host.getByRole('button', { name: 'Mute sounds' }).click(); await host.reload(); await host.locator('#home').waitFor();
   assert.equal(await host.locator('#sound-toggle').textContent(), 'SOUND OFF');
   await host.getByRole('button', { name: 'Enable sounds' }).click();
@@ -136,6 +144,7 @@ try {
   pass('Room creation, subpath invite URL, disabled start and clipboard fallback');
 
   await guest.goto(link); await guest.locator('#home').waitFor(); assert.equal(await guest.locator('#room-code-input').inputValue(), code);
+  assert.equal(await guest.getByRole('button', { name: /^JOIN/ }).count(), 1);
   await guest.locator('#your-name').fill('<b>Anna</b>'); await guest.locator('#connect').tap(); await guest.locator('#lobby').waitFor();
   await guest.waitForFunction(() => !document.querySelector('#ready').disabled);
   assert.equal(await host.locator('#players b').count(), 0); assert.ok((await host.locator('#players').innerText()).includes('<b>Anna</b>'));
@@ -145,12 +154,6 @@ try {
   assert.ok(channels.some(c => c.label === 'tow-state-v1' && !c.ordered && c.retries === 0));
   assert.ok(channels.some(c => c.label === 'multiplayer-v1' && c.ordered && c.retries === null));
   pass('Two independent clients join and ready over reliable control plus unordered transient WebRTC');
-
-  const third = await page(); await third.goto(link); await third.locator('#home').waitFor();
-  await third.locator('#your-name').fill('Third'); await third.locator('#connect').click();
-  await third.waitForFunction(() => document.querySelector('#form-error').textContent.length > 0);
-  assert.equal(await host.locator('#players li').count(), 2); await third.close();
-  pass('A third player cannot enter the two-player room');
 
   await host.locator('#start').click(); await guest.locator('#race').waitFor();
   const initial = await latest(guest); assert.equal(initial.phase, 'countdown');
@@ -173,6 +176,12 @@ try {
   assert.ok(pixels); assert.ok(await guest.locator('#minimap').isVisible());
   await host.screenshot({ path: `${output}/race-desktop.png`, fullPage: true }); await guest.screenshot({ path: `${output}/race-mobile.png`, fullPage: true });
   pass('Shared seed, synchronized countdown, immediate steering, moving trailers, camera and minimap');
+
+  const late = await page(); await late.goto(link); await late.locator('#home').waitFor();
+  await late.locator('#your-name').fill('Late'); await late.locator('#connect').click();
+  await late.getByText('A race is already in progress. Join when the drivers return to the lobby.', { exact: true }).waitFor();
+  assert.equal((await latest(host)).rigs.length, 2); await late.close();
+  pass('A running race cannot acquire a late driver');
 
   await host.keyboard.down('KeyH'); await guest.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[0] === true);
   await host.keyboard.up('KeyH'); await guest.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[0] === false);
@@ -227,9 +236,118 @@ try {
   await untilTick(guest, after.tick + 15); assert.ok((await latest(guest)).progress[1] < 15000);
   pass('The host ignores forged future ticks and never accepts client positions');
 
+  await host.locator('#delay').selectOption('0'); await guest.locator('#delay').selectOption('0'); await guest.locator('#loss').selectOption('0');
   await guest.locator('#leave').click(); await host.locator('#lobby').waitFor(); assert.ok(await host.locator('#start').isDisabled());
-  assert.ok((await host.locator('#players').innerText()).includes('Waiting for your friend'));
-  assert.deepEqual(errors, []); pass('Leaving returns the host to the reusable lobby without browser errors');
+  assert.ok((await host.locator('#players').innerText()).includes('Waiting for a driver'));
+  pass('Leaving returns the host to the reusable lobby');
+
+  const third = await page(), fourth = await page();
+  const racers = [host, guest, third, fourth];
+  for (const [index, driver] of racers.entries()) if (index) {
+    await driver.goto(link); await driver.locator('#home').waitFor();
+    await driver.locator('#your-name').fill(`Driver ${index + 1}`); await driver.locator('#connect').click();
+    await driver.locator('#lobby').waitFor(); await driver.waitForFunction(() => !document.querySelector('#ready').disabled);
+    assert.ok(await host.locator('#start').isDisabled());
+    await driver.locator('#ready').click(); await host.waitForFunction(() => !document.querySelector('#start').disabled);
+  }
+  for (const driver of racers) assert.equal(await driver.locator('#players li:not(.waiting)').count(), 4);
+  await fourth.locator('#ready').click(); await host.waitForFunction(() => document.querySelector('#start').disabled);
+  assert.equal(await guest.locator('#ready').textContent(), 'NOT READY');
+  await fourth.locator('#ready').click(); await host.waitForFunction(() => !document.querySelector('#start').disabled);
+  pass('Four clients get distinct slots; the host waits for every driver to choose READY');
+
+  const fifth = await page(); await fifth.goto(link); await fifth.locator('#home').waitFor();
+  await fifth.locator('#your-name').fill('Fifth'); await fifth.locator('#connect').click();
+  await fifth.getByText('This room already has four players.', { exact: true }).waitFor();
+  assert.equal(await host.locator('#players li:not(.waiting)').count(), 4); await fifth.close();
+  pass('A fifth driver is rejected without disrupting the four-player room');
+
+  await host.locator('#start').click();
+  for (const driver of racers) { await driver.locator('#race').waitFor(); await driver.locator('#countdown').waitFor({ state: 'hidden' }); }
+  const race4 = await latest(host);
+  for (const driver of racers) {
+    const state = await latest(driver); assert.equal(state.id, race4.id); assert.equal(state.seed, race4.seed); assert.equal(state.rigs.length, 4);
+    assert.match(await driver.locator('#position').textContent(), /^[1-4] \/ 4$/);
+    assert.ok(await driver.locator('#minimap').isVisible());
+    assert.ok(await audible(driver) > .001);
+  }
+  const channels4 = await host.evaluate(() => window.__tow.channels.filter(channel => channel.readyState === 'open').map(channel => channel.label));
+  assert.equal(channels4.filter(label => label === 'tow-state-v1').length, 3);
+  assert.equal(channels4.filter(label => label === 'multiplayer-v1').length, 3);
+  pass('Four drivers share a countdown, track, four-car HUD and audio over three separate WebRTC links');
+
+  for (const driver of racers) await driver.keyboard.down('ArrowUp');
+  await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.masks.every(mask => mask & 1));
+  await untilTick(host, race4.tick + 170);
+  const moved4 = await latest(host);
+  for (const driver of racers) await driver.keyboard.up('ArrowUp');
+  assert.ok(moved4.progress.every((s, slot) => s > race4.progress[slot] + 50), `all four drivers independently accelerate: ${moved4.progress}`);
+  assert.ok(moved4.rigs.flat(2).every(Number.isFinite));
+  await fourth.keyboard.down('KeyH');
+  for (const driver of racers.slice(0, 3)) await driver.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[3] === true);
+  await fourth.keyboard.up('KeyH');
+  for (const driver of racers.slice(0, 3)) await driver.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[3] === false);
+  await third.locator('#reset').click(); await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.penalties[2] === 3);
+  assert.deepEqual((await latest(host)).penalties, [0, 0, 3, 0]);
+  await host.screenshot({ path: `${output}/race-four-players.png`, fullPage: true });
+  pass('All four cars move independently; the fourth horn reaches everyone and the third reset affects its own car');
+
+  // Spoof another slot on the wire: ownership still comes from the accepted connection.
+  await fourth.evaluate(({ id }) => window.__tow.channels.find(c => c.label === 'multiplayer-v1' && c.readyState === 'open').send(new TextEncoder().encode(JSON.stringify({
+    v: 1, requestId: 'forged-slot-horn', type: 'PLAY_AGAIN', payload: { action: 'horn', id, pressed: true, slot: 1 },
+  }))), moved4);
+  await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[3] === true);
+  assert.equal((await latest(host)).horns[1], false);
+  await fourth.keyboard.down('KeyH'); await fourth.keyboard.up('KeyH');
+  await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[3] === false);
+  pass('A driver cannot take over another slot by forging a slot field');
+
+  await fourth.locator('summary').click(); await fourth.locator('#delay').selectOption('100'); await fourth.locator('#loss').selectOption('15');
+  await host.locator('#delay').selectOption('50');
+  for (const [slot, driver] of racers.entries()) { await driver.locator('#game').focus(); await driveRoad(driver, slot); }
+  const lag4 = await latest(host); await untilTick(host, lag4.tick + 600);
+  for (const driver of racers) await stopDriving(driver);
+  const afterLag4 = await latest(host);
+  // Cars can block one another while the test drivers converge on a passing lane.
+  // Verify queue delivery and fresh shared physics independently of those collisions.
+  assert.ok(afterLag4.progress.some((s, slot) => s > lag4.progress[slot] + 200), 'the shared world keeps moving');
+  for (const slot of [1, 2, 3]) {
+    assert.ok(await host.evaluate(({ slot, tick, id }) => window.__tow.snapshots.some(({ state }) =>
+      state.id === id && state.tick > tick && (state.masks[slot] & 1)), { slot, tick: lag4.tick, id: lag4.id }), `slot ${slot} keeps receiving its own inputs`);
+  }
+  for (const driver of racers.slice(1)) {
+    const state = await latest(driver); assert.equal(state.id, afterLag4.id);
+    assert.ok(Math.abs(state.tick - afterLag4.tick) < 80, 'each guest receives recent four-car snapshots');
+    assert.ok(state.rigs.flat(2).every(Number.isFinite));
+  }
+  assert.ok(afterLag4.rigs.flat(2).every(Number.isFinite));
+  pass('Four-player driving continues while one guest has 150ms added round-trip delay and 15% packet loss');
+
+  await host.locator('#pause').click();
+  for (const driver of racers) await driver.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.phase === 'paused');
+  const paused4 = await latest(host); await new Promise(resolve => setTimeout(resolve, 200));
+  for (const driver of racers) { assert.equal((await latest(driver)).tick, paused4.tick); assert.ok(await audible(driver) < .00001); }
+  await host.locator('#resume').click(); for (const driver of racers) await untilTick(driver, paused4.tick + 10);
+  pass('Pause and resume freeze and restart all four clocks and sound mixes');
+
+  await guest.locator('#leave').click();
+  for (const driver of [host, third, fourth]) await driver.locator('#lobby').waitFor();
+  assert.equal(await host.locator('#players li:not(.waiting)').count(), 3); assert.ok(await host.locator('#start').isDisabled());
+  assert.ok((await fourth.locator('#players').innerText()).includes('Driver 4 (you)'));
+  await third.locator('#ready').click(); await fourth.locator('#ready').click();
+  await host.waitForFunction(() => !document.querySelector('#start').disabled);
+  await host.locator('#start').click();
+  for (const driver of [host, third, fourth]) await driver.locator('#race').waitFor();
+  for (const driver of [host, third, fourth]) {
+    assert.equal((await latest(driver)).rigs.length, 3); assert.match(await driver.locator('#position').textContent(), /^[1-3] \/ 3$/);
+  }
+  await fourth.keyboard.down('KeyH'); await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[2] === true);
+  await fourth.keyboard.up('KeyH'); await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[2] === false);
+  pass('A guest departure returns remaining drivers to the lobby, reassigns slots and permits a three-player race');
+
+  await host.locator('#leave').click();
+  for (const driver of [third, fourth]) await driver.locator('#disconnected').waitFor();
+  assert.deepEqual(errors, []); pass('Host departure ends every guest connection without browser errors');
   console.log(`TOW browser checks: ${checks} passed.`);
 } catch (error) {
   failure = true; console.error(error); if (errors.length) console.error('Browser errors:', [...new Set(errors)]);

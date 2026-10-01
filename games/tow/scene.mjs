@@ -1,7 +1,7 @@
 import { VehicleArt } from './vehicles.mjs';
 import { pointAt, project, seededRandom } from './track.mjs';
 
-export const COLORS = ['#f1ba58', '#84bec7'];
+export const COLORS = ['#f1ba58', '#84bec7', '#ec9389', '#b7a0d8'];
 
 export class RaceScene {
   constructor(canvas, minimap) {
@@ -112,10 +112,10 @@ export class RaceScene {
     const finish = pointAt(this.track, this.track.finish);
     this.art.text(ctx, '⚑', mx(finish.x), my(finish.y) + 3, 15, '#e9efdf', 800);
     rigs.forEach((rig, i) => {
-      const p = project(this.track, rig.car.x, rig.car.y), x = mx(p.x) + (i ? 5 : -5), y = my(p.y);
+      const p = project(this.track, rig.car.x, rig.car.y), x = mx(p.x) + (i - (rigs.length - 1) / 2) * 11, y = my(p.y);
       ctx.beginPath(); ctx.arc(x, y, i === slot ? 5 : 4, 0, Math.PI * 2); ctx.fillStyle = COLORS[i]; ctx.fill();
       ctx.strokeStyle = '#17251d'; ctx.lineWidth = 2; ctx.stroke();
-      this.art.text(ctx, String(i + 1), x + (i ? 13 : -13), y + 4, 10, COLORS[i], 800);
+      this.art.text(ctx, String(i + 1), x, y + 2.5, 7, '#17251d', 800);
     });
     this.art.text(ctx, 'ROUTE OVERVIEW', 85, 185, 8, '#a7b69f', 650);
   }

@@ -192,19 +192,6 @@ input[readonly] {
   text-transform:uppercase;
   letter-spacing:.14em;
 }
-.mode-tabs {
-  display:flex;
-  gap:8px;
-  margin:8px 0;
-}
-.mode-tabs button {
-  flex:1;
-}
-.mode-tabs button[aria-pressed=true] {
-  border-color:var(--lime);
-  color:var(--lime);
-  background:#c4ee9110;
-}
 .error {
   color:#ffaf95;
   min-height:18px;

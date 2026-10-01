@@ -26,7 +26,7 @@ try {
     const { RaceSound } = await import('./sound.mjs');
     const { makeRig, INPUT } = await import('./physics.mjs'); const { makeTrack } = await import('./track.mjs');
     const track = makeTrack(34);
-    async function render({ other = 2400, speed = 0, horn = false, skid = false } = {}) {
+    async function render({ other = 2400, speed = 0, horn = false, skid = false, players = 2 } = {}) {
       const offline = new OfflineAudioContext(2, 21600, 24000);
       // Only replace the context constructor: all production buffers, filters,
       // envelopes, panners and mixing remain unchanged and run natively.
@@ -37,13 +37,13 @@ try {
       const NativeAudio = window.AudioContext; let sound;
       try { window.AudioContext = function () { return context; }; sound = new RaceSound(); sound.enabled = true; sound.unlock(); }
       finally { window.AudioContext = NativeAudio; }
-      const rigs = [makeRig(track, 0), makeRig(track, 1)];
+      const rigs = Array.from({ length: players }, (_, slot) => makeRig(track, slot, track.start, players));
       rigs.forEach((rig, i) => {
         Object.assign(rig.car, { x: i ? other : 0, y: 0, a: 0, vx: 0, vy: i ? 0 : -speed, speed: i ? 0 : speed, omega: !i && skid ? 2 : 0 });
         Object.assign(rig.trailer, { x: rig.car.x, y: 94, a: 0, vx: 0, vy: rig.car.vy, omega: rig.car.omega });
       });
       if (horn) sound.horn(true);
-      sound.update(rigs, 0, { phase: 'racing', masks: [speed ? INPUT.UP : 0, 0], horns: [false, false] }, speed ? INPUT.UP : 0, .4);
+      sound.update(rigs, 0, { phase: 'racing', masks: rigs.map((_, i) => !i && speed ? INPUT.UP : 0), horns: rigs.map(() => false) }, speed ? INPUT.UP : 0, .4);
       const buffer = await offline.startRendering(), left = buffer.getChannelData(0), right = buffer.getChannelData(1);
       const first = 4800, last = 18000;
       const rms = values => Math.sqrt(values.slice(first, last).reduce((sum, value) => sum + value * value, 0) / (last - first));
@@ -61,7 +61,8 @@ try {
       return { left: rms(left), right: rms(right), frequency, peak, finite, horn350: power(350), horn440: power(440), highPower };
     }
     return { idle: await render(), fast: await render({ speed: 300 }), nearRight: await render({ other: 120 }),
-      nearLeft: await render({ other: -120 }), horn: await render({ horn: true }), skid: await render({ speed: 300, skid: true }) };
+      nearLeft: await render({ other: -120 }), horn: await render({ horn: true }), skid: await render({ speed: 300, skid: true }),
+      fourCars: await render({ other: 120, players: 4, horn: true }) };
   });
   for (const sound of Object.values(result)) { assert.ok(sound.finite); assert.ok(sound.peak < .99); assert.ok(sound.left > .001 && sound.right > .001); }
   assert.ok(Math.abs(result.idle.left - result.idle.right) < .00001);

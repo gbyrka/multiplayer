@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17251e">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="description" content="TOW — a two-player trailer racing prototype. Share a room link and race a new road together.">
+  <meta name="description" content="TOW — trailer racing for 2–4 players. Share a room link and race a new road together.">
   <title>TOW — Trailer racing prototype</title>
   <link rel="icon" href="../../favicon.svg">
   <style>body{margin:0;background:#17251e;color:#e5eadc;font-family:system-ui,sans-serif}[hidden]{display:none!important}.boot{padding:48px;text-align:center}</style>
@@ -13,28 +13,28 @@
 <body>
   <main class="app">
     <header class="masthead">
-      <div class="identity"><span class="road-sign" aria-hidden="true">T<span>↗</span></span><div><h1>TO<span>W</span></h1><p class="eyebrow">TWO DRIVERS. TWO TRAILERS. ONE FINISH.</p></div></div>
-      <span class="prototype">2-PLAYER PROTOTYPE</span>
+      <div class="identity"><span class="road-sign" aria-hidden="true">T<span>↗</span></span><div><h1>TO<span>W</span></h1><p class="eyebrow">FOUR DRIVERS. ONE FINISH.</p></div></div>
+      <span class="prototype">2–4 PLAYER PROTOTYPE</span>
       <p id="connection-status" role="status">Private test track</p>
       <button id="sound-toggle" class="quiet" type="button" aria-label="Mute sounds" aria-pressed="true">SOUND ON</button>
       <button id="leave" class="quiet" type="button" hidden>LEAVE ROOM</button>
     </header>
 
     <section id="home" class="panel" aria-labelledby="home-title" hidden>
-      <div class="home-intro"><p class="eyebrow">A LITTLE SPEED. A LITTLE SWING.</p><h2 id="home-title">Keep your trailer close.</h2><p>Race a friend along a new winding road. Watch the corners, avoid the barrels, and make room for your trailer.</p><div class="rig-preview" aria-hidden="true"><span class="preview-car"></span><i></i><span class="preview-trailer"></span><b>→</b></div><p class="muted">2 players · about 1–3 minutes · a new route every race</p></div>
+      <div class="home-intro"><p class="eyebrow">A LITTLE SPEED. A LITTLE SWING.</p><h2 id="home-title">Keep your trailer close.</h2><p>Race your friends along a new winding road. Watch the corners, avoid the barrels, and make room for your trailer.</p><div class="rig-preview" aria-hidden="true"><span class="preview-car"></span><i></i><span class="preview-trailer"></span><b>→</b></div><p class="muted">2–4 players · about 1–3 minutes · a new route every race</p></div>
       <form id="connect-form" class="connect-form">
         <label for="your-name">YOUR NAME</label><input id="your-name" maxlength="16" autocomplete="nickname" placeholder="Driver name" required>
-        <div class="mode-tabs"><button type="button" id="create-tab" aria-pressed="true">CREATE</button><button type="button" id="join-tab" aria-pressed="false">JOIN</button></div>
         <div id="code-field" hidden><label for="room-code-input">ROOM CODE</label><input id="room-code-input" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="8-character code"></div>
         <p id="form-error" class="error" role="alert"></p><button id="connect" class="primary" type="submit">CREATE GAME</button>
-        <p class="muted small">Share the invite link, wait for your friend to choose READY, then start. Keep the host's tab open during the race.</p>
+        <button id="mode-switch" class="quiet" type="button">Use a room code</button>
+        <p class="muted small">Share the invite link, wait for the other drivers to choose READY, then start with 2–4 players. Keep the host's tab open during the race.</p>
       </form>
     </section>
 
     <section id="connecting" class="panel centered" hidden><p class="eyebrow">MEETING AT THE START LINE</p><h2>Connecting…</h2><p id="connecting-detail">Opening the room.</p><button id="cancel" type="button">CANCEL</button></section>
 
     <section id="lobby" class="panel" aria-labelledby="lobby-title" hidden>
-      <div><p class="eyebrow">YOUR STARTING GRID</p><h2 id="lobby-title">Bring a friend.</h2><p class="muted">ROOM CODE</p><strong id="room-code" class="room-code"></strong><label for="invite-link">INVITE LINK</label><input id="invite-link" readonly><button id="copy-link" type="button">COPY INVITE LINK</button><p class="muted small">Both players use the same generated road. The host starts each race.</p></div>
+      <div><p class="eyebrow">YOUR STARTING GRID</p><h2 id="lobby-title">Bring your friends.</h2><p class="muted">ROOM CODE</p><strong id="room-code" class="room-code"></strong><label for="invite-link">INVITE LINK</label><input id="invite-link" readonly><button id="copy-link" type="button">COPY INVITE LINK</button><p class="muted small">All drivers use the same generated road. The host starts each race with 2–4 players.</p></div>
       <div class="grid-panel"><ol id="players" class="player-list"></ol><p id="lobby-hint" class="muted"></p><button id="ready" class="primary" type="button" hidden>READY</button><button id="start" class="primary" type="button" disabled>START RACE</button></div>
     </section>
 
@@ -43,7 +43,7 @@
         <div class="mission-bar"><span id="mission">Follow the arrows to the finish.</span><span id="race-clock">0:00.0</span></div>
         <div class="board-wrap">
           <canvas id="game" tabindex="0" aria-label="Race track. Use arrow keys to drive, Space to brake, and H for the horn."></canvas>
-          <div class="minimap"><canvas id="minimap" aria-label="Map showing both racers"></canvas></div>
+          <div class="minimap"><canvas id="minimap" aria-label="Map showing all racers"></canvas></div>
           <div id="countdown" class="countdown" role="status" aria-live="polite" hidden></div>
           <section id="race-overlay" class="race-overlay" hidden aria-labelledby="overlay-title">
             <p id="overlay-eyebrow" class="eyebrow"></p><h2 id="overlay-title"></h2><p id="overlay-copy"></p><ol id="results" class="result-list"></ol>

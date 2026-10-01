@@ -41,7 +41,7 @@ export class SoundTimeline {
     if (!fresh && (state.tick < this.tick || state.audioSeq < this.sequence)) return [];
     if (fresh) {
       this.id = state.id; this.sequence = 0; this.tick = state.tick; this.count = 0; this.go = state.tick >= COUNTDOWN_TICKS;
-      this.finished = [null, null]; this.gates = [...state.nextGate]; this.resets = [...state.lastReset];
+      this.finished = state.finished.map(() => null); this.gates = [...state.nextGate]; this.resets = [...state.lastReset];
     }
     const events = [];
     if (state.phase === 'countdown') {
@@ -50,7 +50,7 @@ export class SoundTimeline {
     }
     if (state.phase === 'racing' && !this.go) { events.push({ type: 'go' }); this.go = true; }
     for (const event of state.audioEvents) if (event.id > this.sequence && state.tick - event.tick <= 90) events.push(event);
-    for (let slot = 0; slot < 2; slot++) {
+    for (let slot = 0; slot < state.rigs.length; slot++) {
       if (state.finished[slot] !== null && this.finished[slot] === null) events.push({ type: 'finish', slot });
       else if (state.nextGate[slot] > this.gates[slot]) events.push({ type: 'checkpoint', slot });
       if (state.lastReset[slot] > this.resets[slot]) events.push({ type: 'reset', slot });

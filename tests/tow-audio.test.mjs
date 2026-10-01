@@ -83,3 +83,18 @@ test('effects play once across repeated/lost snapshots; countdown is 3–2–1�
   setHorn(race, 1, true); race.tick += 91; assert.deepEqual(timeline.receive(snapshot(race)), [], 'do not play an old horn after returning');
   const fresh = createRace(10, 'rematch'); assert.equal(timeline.receive(snapshot(fresh))[0].count, 3);
 });
+
+test('third and fourth drivers have independent horns, finish, checkpoint and reset sounds', () => {
+  const race = createRace(9, 'four-sounds', 4), timeline = new SoundTimeline();
+  timeline.receive(snapshot(race));
+  assert.ok(setHorn(race, 2, true)); assert.ok(setHorn(race, 3, true));
+  assert.deepEqual(timeline.receive(snapshot(race)).map(e => [e.type, e.slot]), [['horn', 2], ['horn', 3]]);
+  assert.ok(validSnapshot(snapshot(race)));
+  assert.equal(setHorn(race, 4, true), false);
+  const invalid = snapshot(race); invalid.audioEvents[0].slot = 4; assert.equal(validSnapshot(invalid), false);
+  race.finished[2] = 70; race.nextGate[3]++; race.lastReset[3] = 100;
+  assert.deepEqual(timeline.receive(snapshot(race)).map(e => [e.type, e.slot]), [['finish', 2], ['checkpoint', 3], ['reset', 3]]);
+  assert.deepEqual(timeline.receive(snapshot(race)), []);
+  for (let tick = 0; tick < 120; tick++) advanceRace(race, [0, 0, 0, 0]);
+  assert.deepEqual(race.horns, [false, false, false, false]);
+});

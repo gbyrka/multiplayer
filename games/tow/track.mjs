@@ -31,14 +31,18 @@ export function makeTrack(seed) {
   track.gates = [];
   for (let distance = 1800; distance < track.finish - 500; distance += 1800) track.gates.push(distance);
   track.gates.push(track.finish);
-  // Leave a continuous central corridor and generous clearance for a complete rig.
-  for (let distance = 1250; distance < track.finish - 600; distance += 650 + random() * 600) {
-    const side = random() < .5 ? -1 : 1, count = 1 + Math.floor(random() * 3);
+  // Each cluster occupies one lateral band. Leave room to pass with a trailer
+  // and to change sides between clusters; keep the starting grid and finish clear.
+  let station = 0;
+  for (let distance = 1150; distance < track.finish - 1000; distance += 850 + random() * 250, station++) {
+    const side = random() < .5 ? -1 : 1, count = 4 + Math.floor(random() * 3);
+    const offset = station % 3 === 0 ? (random() - .5) * 24 :
+      side * (station % 3 === 1 ? 52 + random() * 22 : 124 + random() * 10);
     for (let n = 0; n < count; n++) {
-      const p = pointAt(track, distance + n * 43), offset = side * (125 + random() * 14);
-      track.obstacles.push({ x: p.x + p.nx * offset, y: p.y + p.ny * offset,
-        a: p.a + random() * .25, w: 30 + random() * 10, h: 30 + random() * 12,
-        kind: random() < .7 ? 'barrel' : 'crate', s: distance + n * 43 });
+      const p = pointAt(track, distance + n * 48), lateral = offset + (random() - .5) * 10;
+      track.obstacles.push({ x: p.x + p.nx * lateral, y: p.y + p.ny * lateral,
+        a: p.a + (random() - .5) * .25, w: 30 + random() * 10, h: 30 + random() * 12,
+        kind: random() < .7 ? 'barrel' : 'crate', s: distance + n * 48 });
     }
   }
   track.bounds = { minX: Math.min(...points.map(p => p.x)) - 220, maxX: Math.max(...points.map(p => p.x)) + 220,

@@ -3,12 +3,22 @@ import { STEP, INPUT, makeRig, stepWorld, corners, contact, serializeRig } from 
 
 export const COUNTDOWN_TICKS = 360;
 export const MAX_RACE_TICKS = 240 / STEP;
-export function createRace(seed, id) {
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 4;
+
+export function createRace(seed, id, players = MIN_PLAYERS) {
+  if (!Number.isInteger(players) || players < MIN_PLAYERS || players > MAX_PLAYERS) throw new RangeError('A race needs 2–4 drivers.');
   const track = makeTrack(seed);
-  return { id, seed, track, tick: 0, epoch: 0, phase: 'countdown', rigs: [makeRig(track, 0), makeRig(track, 1)],
-    masks: [0, 0], progress: [track.start, track.start], nextGate: [0, 0], finished: [null, null],
-    penalties: [0, 0], lastReset: [-2000, -2000], firstFinish: null,
-    horns: [false, false], hornUntil: [0, 0], audioSeq: 0, audioEvents: [], lastImpact: [-1000, -1000] };
+  const fill = value => Array(players).fill(value);
+  return { id, seed, track, tick: 0, epoch: 0, phase: 'countdown', rigs: Array.from({ length: players }, (_, slot) => makeRig(track, slot, track.start, players)),
+    masks: fill(0), progress: fill(track.start), nextGate: fill(0), finished: fill(null),
+    penalties: fill(0), lastReset: fill(-2000), firstFinish: null,
+    horns: fill(false), hornUntil: fill(0), audioSeq: 0, audioEvents: [], lastImpact: fill(-1000) };
+}
+
+export function rankRace(state) {
+  return state.rigs.map((_, slot) => slot).sort((a, b) =>
+    (state.finished[a] ?? Infinity) - (state.finished[b] ?? Infinity) || state.progress[b] - state.progress[a] || a - b);
 }
 
 function audioEvent(race, event) {
@@ -18,6 +28,7 @@ function audioEvent(race, event) {
 
 /** Reliable horn intent, refreshed while held; expiry recovers a lost key release. */
 export function setHorn(race, slot, pressed) {
+  if (!Number.isInteger(slot) || slot < 0 || slot >= race.rigs.length || typeof pressed !== 'boolean') return false;
   if (pressed && !['countdown', 'racing'].includes(race.phase)) return false;
   if (race.horns[slot] === pressed) { if (pressed) race.hornUntil[slot] = race.tick + 120; return false; }
   race.horns[slot] = pressed;
@@ -29,9 +40,9 @@ export function setHorn(race, slot, pressed) {
 export function advanceRace(race, masks) {
   if (!['countdown', 'racing'].includes(race.phase)) return;
   race.tick++;
-  for (let slot = 0; slot < 2; slot++) if (race.horns[slot] && race.tick >= race.hornUntil[slot]) setHorn(race, slot, false);
+  for (let slot = 0; slot < race.rigs.length; slot++) if (race.horns[slot] && race.tick >= race.hornUntil[slot]) setHorn(race, slot, false);
   race.audioEvents = race.audioEvents.filter(event => race.tick - event.tick <= 180);
-  race.masks = masks.map((mask, i) => race.finished[i] === null ? mask : INPUT.BRAKE);
+  race.masks = race.rigs.map((_, i) => race.finished[i] === null ? masks[i] ?? 0 : INPUT.BRAKE);
   if (race.tick < COUNTDOWN_TICKS) return;
   race.phase = 'racing';
   const impacts = [];
@@ -41,7 +52,7 @@ export function advanceRace(race, masks) {
     impact.slots.forEach(slot => { race.lastImpact[slot] = race.tick; });
     audioEvent(race, { type: 'impact', ...impact, speed: Math.min(1400, impact.speed) });
   }
-  for (let slot = 0; slot < 2; slot++) {
+  for (let slot = 0; slot < race.rigs.length; slot++) {
     const rig = race.rigs[slot], p = project(race.track, rig.car.x, rig.car.y);
     race.progress[slot] = p.s;
     while (race.nextGate[slot] < race.track.gates.length && p.s >= race.track.gates[race.nextGate[slot]]) race.nextGate[slot]++;
@@ -57,14 +68,15 @@ export function advanceRace(race, masks) {
 
 /** A reset is a host decision with a time penalty and collision-free checkpoint. */
 export function resetRig(race, slot) {
+  if (!Number.isInteger(slot) || slot < 0 || slot >= race.rigs.length) return false;
   if (race.phase !== 'racing' || race.finished[slot] !== null || race.tick - race.lastReset[slot] < 8 / STEP) return false;
   const gate = race.nextGate[slot] ? race.track.gates[race.nextGate[slot] - 1] : race.track.start;
-  for (let back = 0; back < 500; back += 50) for (const lane of [slot, 1 - slot]) {
-    const rig = makeRig(race.track, lane, Math.max(race.track.start, gate - back));
-    const other = race.rigs[1 - slot];
+  const lanes = [slot, ...race.rigs.map((_, i) => i).filter(i => i !== slot)];
+  for (let back = 0; back < 500; back += 50) for (const lane of lanes) {
+    const rig = makeRig(race.track, lane, Math.max(race.track.start, gate - back), race.rigs.length);
     const blocked = [rig.car, rig.trailer].some(b =>
       race.track.obstacles.some(o => contact(b, o)) ||
-      (race.finished[1 - slot] === null && [other.car, other.trailer].some(o => contact(b, o))) ||
+      race.rigs.some((other, i) => i !== slot && race.finished[i] === null && [other.car, other.trailer].some(o => contact(b, o))) ||
       corners(b).some(p => project(race.track, p.x, p.y).distance > race.track.halfWidth - 2));
     if (blocked) continue;
     race.rigs[slot] = rig; race.progress[slot] = project(race.track, rig.car.x, rig.car.y).s;
@@ -82,21 +94,24 @@ export function snapshot(race) {
 }
 
 export function validSnapshot(data) {
-  const pair = (value, test) => Array.isArray(value) && value.length === 2 && value.every(test);
+  const players = data?.rigs?.length;
+  if (!Number.isInteger(players) || players < MIN_PLAYERS || players > MAX_PLAYERS) return false;
+  const vector = (value, test) => Array.isArray(value) && value.length === players && value.every(test);
+  const slot = value => Number.isInteger(value) && value >= 0 && value < players;
   const finite = value => Number.isFinite(value) && Math.abs(value) < 1000000;
   return !!data && typeof data.id === 'string' && data.id.length <= 64 && Number.isInteger(data.seed) && data.seed >= 0 && data.seed <= 0xffffffff &&
     Number.isInteger(data.tick) && data.tick >= 0 && data.tick <= MAX_RACE_TICKS + COUNTDOWN_TICKS + 1 && Number.isInteger(data.epoch) && data.epoch >= 0 && data.epoch <= 10000 &&
     ['countdown', 'racing', 'paused', 'results'].includes(data.phase) &&
-    pair(data.rigs, rig => pair(rig, b => Array.isArray(b) && b.length === 8 && b.every(finite))) &&
-    pair(data.masks, mask => Number.isInteger(mask) && mask >= 0 && mask <= 31) && pair(data.progress, finite) &&
-    pair(data.nextGate, n => Number.isInteger(n) && n >= 0 && n <= 100) &&
-    pair(data.finished, t => t === null || (finite(t) && t >= 0)) && pair(data.penalties, t => finite(t) && t >= 0) && pair(data.lastReset, finite) &&
-    pair(data.horns, value => typeof value === 'boolean') && Number.isSafeInteger(data.audioSeq) && data.audioSeq >= 0 && data.audioSeq <= 100000 &&
+    vector(data.rigs, rig => Array.isArray(rig) && rig.length === 2 && rig.every(b => Array.isArray(b) && b.length === 8 && b.every(finite))) &&
+    vector(data.masks, mask => Number.isInteger(mask) && mask >= 0 && mask <= 31) && vector(data.progress, finite) &&
+    vector(data.nextGate, n => Number.isInteger(n) && n >= 0 && n <= 100) &&
+    vector(data.finished, t => t === null || (finite(t) && t >= 0)) && vector(data.penalties, t => finite(t) && t >= 0) && vector(data.lastReset, finite) &&
+    vector(data.horns, value => typeof value === 'boolean') && Number.isSafeInteger(data.audioSeq) && data.audioSeq >= 0 && data.audioSeq <= 100000 &&
     Array.isArray(data.audioEvents) && data.audioEvents.length <= 24 && data.audioEvents.every(event =>
       event && Number.isSafeInteger(event.id) && event.id > 0 && event.id <= data.audioSeq && Number.isInteger(event.tick) && event.tick >= 0 && event.tick <= data.tick &&
-      (event.type === 'horn' ? event.slot === 0 || event.slot === 1 : event.type === 'impact' &&
+      (event.type === 'horn' ? slot(event.slot) : event.type === 'impact' &&
         finite(event.x) && finite(event.y) && Number.isFinite(event.speed) && event.speed >= 0 && event.speed <= 1400 &&
-        ['curb', 'obstacle', 'trailer', 'vehicle'].includes(event.kind) && Array.isArray(event.slots) && event.slots.length >= 1 && event.slots.length <= 2 && event.slots.every(slot => slot === 0 || slot === 1)));
+        ['curb', 'obstacle', 'trailer', 'vehicle'].includes(event.kind) && Array.isArray(event.slots) && event.slots.length >= 1 && event.slots.length <= 2 && event.slots.every(slot)));
 }
 
 export function acceptInputFrames(race, queue, packet) {

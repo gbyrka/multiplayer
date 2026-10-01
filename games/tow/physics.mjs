@@ -11,8 +11,9 @@ function body(x, y, a, w, h, mass) {
   return { x, y, a, w, h, vx: 0, vy: 0, omega: 0, im: 1 / mass, ii: 12 / (mass * (w * w + h * h)), steer: 0, speed: 0, braking: false };
 }
 
-export function makeRig(track, slot, distance = track.start) {
-  const p = pointAt(track, distance), offset = slot === 0 ? -56 : 56;
+export function makeRig(track, slot, distance = track.start, players = 2) {
+  const spacing = players === 2 ? 112 : players === 3 ? 88 : 74;
+  const p = pointAt(track, distance), offset = (slot - (players - 1) / 2) * spacing;
   const car = body(p.x + p.nx * offset, p.y + p.ny * offset, p.a, 34, 64, 1200);
   const trailer = body(car.x - Math.sin(p.a) * 94, car.y + Math.cos(p.a) * 94, p.a, 32, 58, 450);
   return { car, trailer };
@@ -204,8 +205,8 @@ export function hitchError(rig) {
 export function serializeRig(rig) {
   return [rig.car, rig.trailer].map(b => [b.x, b.y, b.a, b.vx, b.vy, b.omega, b.steer, b.braking ? 1 : 0]);
 }
-export function deserializeRig(data, track, slot) {
-  const rig = makeRig(track, slot);
+export function deserializeRig(data, track, slot, players = 2) {
+  const rig = makeRig(track, slot, track.start, players);
   [rig.car, rig.trailer].forEach((b, i) => {
     [b.x, b.y, b.a, b.vx, b.vy, b.omega, b.steer] = data[i]; b.braking = data[i][7] === 1;
     b.speed = b.vx * Math.sin(b.a) - b.vy * Math.cos(b.a);
