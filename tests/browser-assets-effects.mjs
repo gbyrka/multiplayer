@@ -43,9 +43,10 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base);
   await page.locator('.featured-game').waitFor();
-  const expected = [...config.modules.map(path => path.slice(2)), 'style.css'];
+  // TOW has its own private entry point; the collection must not load its modules.
+  const expected = [...config.modules.filter(path => !path.startsWith('./games/tow/')).map(path => path.slice(2)), 'style.css'];
   const assertAssets = async current => {
-    const assets = await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /\.(mjs|css)(\?|$)/.test(entry.name)).map(entry => entry.name));
+    const assets = await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /\.(mjs|css)(\?|$)/.test(entry.name) && !new URL(entry.name).pathname.endsWith('/ads.css')).map(entry => entry.name));
     assert.deepEqual(assets.map(value => new URL(value).pathname.replace('/multiplayer/', '')).sort(), [...expected].sort());
     assert.ok(assets.every(value => new URL(value).searchParams.get('v') === current));
     assert.equal(await page.locator('#app-icon').getAttribute('href'), `./favicon.svg?v=${current}`);

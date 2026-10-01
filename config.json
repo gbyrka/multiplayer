@@ -1,5 +1,5 @@
 {
-  "version": "adlaunch1",
+  "version": "towmove1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -18,6 +18,16 @@
     "./games/plan/cards.mjs",
     "./games/plan/game-core.mjs",
     "./games/plan/ui.mjs",
-    "./games/plan/rules.mjs"
+    "./games/plan/rules.mjs",
+    "./games/tow/app.mjs",
+    "./games/tow/audio-model.mjs",
+    "./games/tow/physics.mjs",
+    "./games/tow/prediction.mjs",
+    "./games/tow/race.mjs",
+    "./games/tow/scene.mjs",
+    "./games/tow/session.mjs",
+    "./games/tow/sound.mjs",
+    "./games/tow/track.mjs",
+    "./games/tow/vehicles.mjs"
   ]
 }

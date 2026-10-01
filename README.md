@@ -2,6 +2,8 @@
 
 A small collection of browser games to play with friends. **PLAN — Predict your tricks.** is the first game; the collection menu is ready for more games.
 
+A private two-player trailer racing prototype is available at `./games/tow/`, without a catalog entry. See [TOW's test instructions](games/tow/README.md).
+
 PLAN is a complete, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. Cards are drawn with HTML/CSS; there are no external images, fonts, frameworks or sound assets.
 
 **Preview:** a dark emerald card table, cream and gold details, white playing cards, a lobby with an invite link, mobile player tiles, bidding controls and a scoreboard grouped by round and deal. A gold/mint victory animation follows the visual style of Sokoban. Running the optional browser tests saves screenshots in `test-results/`.
