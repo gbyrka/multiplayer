@@ -42,9 +42,9 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base);
-  await page.locator('.featured-game').waitFor();
-  // TOW has its own private entry point; the collection must not load its modules.
-  const expected = [...config.modules.filter(path => !path.startsWith('./games/tow/')).map(path => path.slice(2)), 'style.css'];
+  await page.locator('.featured-game').first().waitFor();
+  // TOW links to its own entry point; the collection must not load its racing modules.
+  const expected = [...config.modules.filter(path => !path.startsWith('./games/tow/') && !path.startsWith('./games/hamster/')).map(path => path.slice(2)), 'style.css'];
   const assertAssets = async current => {
     const assets = await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /\.(mjs|css)(\?|$)/.test(entry.name) && !new URL(entry.name).pathname.endsWith('/ads.css')).map(entry => entry.name));
     assert.deepEqual(assets.map(value => new URL(value).pathname.replace('/multiplayer/', '')).sort(), [...expected].sort());
@@ -58,7 +58,7 @@ try {
   version = 'bravo';
   await page.goto('about:blank');
   await page.goto(base);
-  await page.locator('.featured-game').waitFor();
+  await page.locator('.featured-game').first().waitFor();
   await assertAssets('bravo');
   const fresh = requests.filter(url => /\.(mjs|css)$/.test(url.pathname) && url.searchParams.get('v') === 'bravo');
   assert.equal(fresh.length, expected.length);
@@ -67,7 +67,7 @@ try {
 
   await page.goto('about:blank');
   await page.goto(base);
-  await page.locator('.featured-game').waitFor();
+  await page.locator('.featured-game').first().waitFor();
   assert.equal(requests.filter(url => /\.(mjs|css)$/.test(url.pathname) && url.searchParams.get('v') === 'bravo').length, expected.length);
   assert.equal(requests.filter(url => url.pathname.endsWith('config.json')).length, 3);
   pass('Unchanged assets reuse HTTP cache while the version configuration is always fetched afresh');
@@ -76,7 +76,7 @@ try {
   version = 'cedar';
   await page.goBack();
   await page.waitForFunction(() => document.documentElement.dataset.appVersion === 'cedar');
-  await page.locator('.featured-game').waitFor();
+  await page.locator('.featured-game').first().waitFor();
   await assertAssets('cedar');
   pass('Returning with browser Back also discovers a newer deployment instead of restoring old modules');
 
@@ -155,7 +155,7 @@ try {
   assert.ok(reloadSize.width >= 44 && reloadSize.height >= 44);
   failManifest = false;
   await page.getByRole('button', { name: 'RELOAD', exact: true }).click();
-  await page.locator('.featured-game').waitFor();
+  await page.locator('.featured-game').first().waitFor();
   assert.deepEqual(errors, []);
   pass('A failed version fetch has a readable fallback and a reload button that recovers');
   console.log(`Browser assets/effects test: ${checks} checks passed.`);

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script data-site-https>
+    (() => {
+      const { hostname, protocol, pathname, search, hash } = location;
+      const publicHosts = ['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'];
+      if (publicHosts.includes(hostname) && (protocol !== 'https:' || hostname !== 'mod-it.games')) {
+        location.replace(`https://mod-it.games${pathname}${search}${hash}`);
+      }
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#142d32">
+  <meta name="description" content="HAMSTER multiplayer. Little paws, big company. A three-minute picnic for 2–4 friends: gather, nibble, bump and share the fun.">
+  <title>HAMSTER multiplayer — Little paws. Big company.</title>
+  <meta property="og:title" content="HAMSTER multiplayer — Little paws. Big company.">
+  <meta property="og:description" content="A cozy, slightly chaotic picnic for 2–4 friends. Share a room, fill your cheeks and snack your way to the top.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="./favicon.svg">
+  <link rel="stylesheet" href="../../ads.css?v=towlaunch1">
+  <script src="../../monetization.js?v=towlaunch1"></script>
+  <meta name="google-adsense-account" content="ca-pub-3806610967714181">
+  <script id="adsense-script" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3806610967714181" crossorigin="anonymous" onerror="window.MoDITAds.unavailable()"></script>
+  <style>body{margin:0;background:#142d32;color:#faf1dc;font-family:system-ui,sans-serif}[hidden]{display:none!important}.boot{padding:48px;text-align:center}</style>
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <a class="brand" href="../../" aria-label="All multiplayer games"><span class="brand-mark" aria-hidden="true"><i></i><b>ω</b></span><span>HAMSTER<small>MULTIPLAYER</small></span></a>
+      <span class="room-badge">2–4 FRIENDS · ONE BIG PICNIC</span>
+      <div class="header-actions"><span id="connection-status" role="status">Little paws. Big company.</span><button id="sound-toggle" class="quiet icon-button" type="button" aria-label="Mute sounds" aria-pressed="true">SOUND ON</button><button id="leave" class="quiet" type="button" hidden>LEAVE ROOM</button></div>
+    </header>
+
+    <section id="home" class="home-layout" hidden aria-labelledby="home-title">
+      <div class="home-intro"><div class="hero-art" aria-hidden="true"><img src="./assets/hamster-simulator-cover.png" alt="" fetchpriority="high"><span class="art-caption">A LITTLE COZY. A LITTLE CHAOTIC.</span></div><div class="intro-copy"><p class="eyebrow">THE MORE PAWS, THE MERRIER</p><h1 id="home-title">Full cheeks.<br><em>Good company.</em></h1><p>Three minutes. One tiny world. Gather treats, find a quiet spot to nibble, and give your friends a playful nudge.</p><div class="feature-pills"><span>✦ Shared 3D habitat</span><span>♥ Friendly rivalry</span><span>↗ Plenty of little detours</span></div></div></div>
+      <div class="entry-panel"><div class="four-friends" aria-hidden="true"><i>ω</i><i>ω</i><i>ω</i><i>ω</i></div><p class="eyebrow">YOUR NEXT LITTLE GET-TOGETHER</p><h2>Bring your people.</h2><p class="muted">No sign-up. Just a name and an invite.</p>
+        <form id="connect-form"><label for="your-name">YOUR NAME</label><input id="your-name" maxlength="16" autocomplete="nickname" placeholder="Hamster name" required><div id="code-field" hidden><label for="room-code-input">ROOM CODE</label><input id="room-code-input" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="8-character code"></div><p id="form-error" class="error" role="alert"></p><button id="connect" class="primary" type="submit">CREATE GAME <span aria-hidden="true">↗</span></button><button id="mode-switch" class="quiet" type="button">Use a room code</button></form>
+        <div class="entry-note"><strong>A picnic for 2–4 friends.</strong><p>Share the invite. Everyone chooses READY, then the host starts. Keep the host’s tab open.</p></div><p class="keyboard-note">Best with a keyboard · W A S D or arrows<br>WebGL 2 · Desktop recommended</p>
+      </div>
+      <div class="how-strip"><article><span>01</span><h3>Gather a little.</h3><p>Five treats fit in your cheeks. Seeds, carrots and broccoli are worth 10, 20 and 30 points.</p></article><article><span>02</span><h3>Stop for a nibble.</h3><p>Hold Space to eat your whole pouch. Only eaten treats count. A quick picnic keeps your points safe.</p></article><article><span>03</span><h3>Make some mischief.</h3><p>Tap Q to dash. Bump a friend to spill one treat. Watch for golden snacks every 30 seconds!</p></article></div>
+    </section>
+
+    <section id="connecting" class="panel centered" hidden><div class="four-friends" aria-hidden="true"><i>ω</i><i>ω</i></div><p class="eyebrow">MAKING ROOM FOR LITTLE PAWS</p><h2>Meeting your friends…</h2><p id="connecting-detail" class="muted">Opening the room.</p><button id="cancel" class="quiet" type="button">CANCEL</button></section>
+
+    <section id="lobby" class="panel lobby-layout" hidden aria-labelledby="lobby-title"><div><p class="eyebrow">THE PICNIC IS ALMOST READY</p><h2 id="lobby-title">Save a spot for your friends.</h2><p class="muted">ROOM CODE</p><strong id="room-code" class="room-code"></strong><label for="invite-link">INVITE LINK</label><input id="invite-link" readonly><button id="copy-link" class="primary" type="button">COPY INVITE LINK ↗</button><p class="muted small">Same habitat, same treats, same three-minute clock.<br>Different plans for getting the fullest cheeks.</p></div><div class="grid-panel"><ol id="players" class="player-list"></ol><p id="lobby-hint" class="muted"></p><button id="ready" class="primary" type="button" hidden>READY</button><button id="start" class="primary" type="button" disabled>START PICNIC</button></div></section>
+
+    <section id="picnic" class="picnic-layout" hidden aria-label="Multiplayer hamster picnic">
+      <div class="game-shell"><div class="mission-bar"><span id="mission">Fill your cheeks. Remember to nibble.</span><strong id="round-clock">3:00</strong></div><div id="shell" class="board-wrap"><canvas id="game" tabindex="0" aria-label="3D hamster habitat. W A S D or arrows to move, hold Space to eat, Q to dash, E for the wheel."></canvas><div class="minimap"><span>YOUR LITTLE WORLD</span><canvas id="map" width="180" height="148" aria-label="Map with treats and all players"></canvas></div><div id="bloom-banner" class="bloom-banner" role="status" hidden>✦ GOLDEN SNACKS!</div><div id="countdown" class="countdown" aria-live="polite" role="status" hidden></div><div id="action-feedback" class="action-feedback" role="status" hidden></div>
+        <section id="picnic-overlay" class="picnic-overlay" aria-labelledby="overlay-title" hidden><p id="overlay-eyebrow" class="eyebrow"></p><h2 id="overlay-title" data-winner-banner></h2><p id="overlay-copy" class="muted"></p><ol id="results" class="result-list"></ol><button id="resume" class="primary" type="button" hidden>RESUME PICNIC</button><button id="rematch" class="primary" type="button" hidden>ONE MORE PICNIC ↗</button><button id="return-lobby" class="quiet" type="button" hidden>BACK TO LOBBY</button></section></div>
+        <div class="dashboard"><div class="score-meter"><small>YOUR POINTS</small><strong id="score">0</strong></div><div class="pouch-meter"><div><small>CHEEK POUCH</small><span id="pouch-value">0 / 5</span></div><div id="pouch" class="pouch-slots" aria-label="Treats in your cheeks"></div><span id="pouch-hint">Collect a treat to start your picnic.</span></div><div class="energy-meter"><div><small>ENERGY</small><span id="energy-value">100%</span></div><div class="meter-track"><i id="energy-fill"></i></div><small id="dash-status">Q · DASH READY</small></div></div><div id="interaction" class="interaction" role="status">Hold Space to eat · Q to dash</div>
+      </div>
+      <aside class="scoreboard"><p class="eyebrow">THE PICNIC TABLE</p><h2>Little paws.<br><em>Big appetites.</em></h2><ol id="standings" class="standings" aria-label="Live scores"></ol><div class="snack-card"><span>✦</span><div><strong id="snack-title">A golden opportunity.</strong><p id="snack-copy">Golden snacks appear every 30 seconds. Each is worth 50 points.</p></div></div><p id="ping" class="connection-detail">Connection ready</p><div class="side-actions"><button id="camera" class="quiet" type="button">C · CAMERA</button><button id="pause" class="quiet" type="button">PAUSE</button></div></aside>
+      <div class="picnic-toolbar"><p class="controls"><span><kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd> Move</span><span><kbd>Shift</kbd> Walk & rest</span><span><kbd>Space</kbd> Hold to eat / drink</span><span><kbd>Q</kbd> Dash</span><span><kbd>E</kbd> Wheel</span><span><kbd>H</kbd> Squeak</span></p><details class="rules"><summary>THE LITTLE RULES</summary><div><p>Gather up to five treats, then hold Space for 0.85 seconds to eat them all and earn points. Letting go early cancels the bite. Uneaten treats score nothing when time runs out. Highest score wins; equal scores share the win.</p><p>Q gives a short dash: 12 energy, four seconds between dashes. A forward bump spills at most one uneaten treat and gives the bumped hamster two seconds of protection. Ordinary nudges never spill treats. Your banked score is always safe.</p><p>Use Shift to walk and restore energy. E enters or leaves the wheel near its open front. Only one hamster fits in the wheel; running earns 10 points every five seconds, up to three times per round. All players share the same three-minute clock.</p><p>Face the water spout and hold Space for 1.2 seconds for 2 points and 8 energy, with a five-second cooldown. Walk into the pastel tubes: W moves, S turns around, A / D chooses the fork. Eating and exploring work just like HAMSTER. Tubes and the wheel are sheltered from bumps.</p><p>Six golden treats appear every 30 seconds, rotating between the bedding, wooden loft and lookout deck. Pick them up within ten seconds, then eat them for 50 points each. The host can pause for everyone; a hidden host tab pauses the picnic. If a guest disconnects, everyone returns to the lobby. If the host leaves, the room ends.</p></div></details></div>
+      <div class="touch-controls" aria-label="Touch hamster controls"><div><button type="button" data-key="ArrowLeft" aria-label="Turn left">←</button><button type="button" data-key="ArrowUp" aria-label="Move forward">↑</button><button type="button" data-key="ArrowRight" aria-label="Turn right">→</button><button type="button" data-key="ArrowDown" aria-label="Move backward">↓</button></div><div><button type="button" data-key="ShiftLeft" aria-label="Walk and recover energy">WALK</button><button type="button" data-key="Space" aria-label="Hold to eat or drink">EAT</button><button type="button" data-key="KeyQ" aria-label="Dash">DASH</button><button type="button" data-key="KeyE" aria-label="Enter or leave wheel">E</button></div></div>
+    </section>
+    <section id="disconnected" class="panel centered" hidden><p class="eyebrow">A LITTLE BREAK IN THE PICNIC</p><h2>Connection ended.</h2><p id="end-reason" class="muted"></p><button id="back-home" class="primary" type="button">BACK TO START</button></section>
+    <div id="toast" class="toast" hidden role="status"></div><div id="boot" class="boot">Opening your little world…</div><noscript><p class="boot">Enable JavaScript to play.</p></noscript>
+  </main>
+  <aside id="hamster-ad" class="ad-placement ad-placement-game" aria-label="Advertisement" hidden><p class="ad-placement-label">ADVERTISEMENT</p><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-3806610967714181" data-ad-slot="9380002810" data-ad-format="auto" data-full-width-responsive="true"></ins></aside>
+  <footer class="privacy-footer"><span>Made for good company.</span><a href="../../">All multiplayer</a><a href="../../../games/privacy.html">Privacy Policy</a></footer>
+  <script type="module">
+    try {
+      if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');
+      const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+      let config;
+      try {
+        const response = await fetch(`../../config.json?check=${Date.now().toString(36)}`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Configuration unavailable.');
+        config = await response.json();
+      } finally { clearTimeout(timeout); }
+      if (!/^[a-z0-9]{3,16}$/i.test(config.version) || !Array.isArray(config.modules) || !config.modules.includes('./games/hamster/app.mjs')) throw new Error('Invalid configuration.');
+      const imports = {}, root = new URL('../../', location.href);
+      for (const path of config.modules) {
+        if (!/^\.\/[a-z0-9/-]+\.mjs$/i.test(path)) throw new Error('Invalid module path.');
+        const url = new URL(path, root); imports[url.href] = `${url.href}?v=${encodeURIComponent(config.version)}`;
+      }
+      document.documentElement.dataset.appVersion = config.version;
+      document.querySelector('link[rel="icon"]').href = `./favicon.svg?v=${encodeURIComponent(config.version)}`;
+      const map = document.createElement('script'); map.type = 'importmap'; map.textContent = JSON.stringify({ imports }); document.head.append(map);
+      const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = `./style.css?v=${encodeURIComponent(config.version)}`;
+      const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = () => reject(new Error('Styles unavailable.')); }); document.head.append(style);
+      await styled; await import(imports[new URL('./app.mjs', location.href).href]);
+    } catch (error) {
+      const boot = document.querySelector('#boot'); boot.replaceChildren();
+      const text = document.createElement('p'); text.textContent = `Picnic unavailable. ${error.message} Please reload.`;
+      const button = document.createElement('button'); button.textContent = 'RELOAD'; button.onclick = () => location.reload(); boot.append(text, button);
+    }
+  </script>
+</body>
+</html>

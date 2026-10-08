@@ -1,6 +1,8 @@
-# TOW — trailer racing prototype
+# TOW — Keep your trailer close.
 
-Private 2–4 player entry point: **https://gbyrka.github.io/multiplayer/games/tow/** after publishing the repository. It is absent from the multiplayer catalog and marked `noindex`. This is a hidden test page, not access control.
+Public online multiplayer trailer racing for **2–4 drivers**: **https://mod-it.games/multiplayer/games/tow/** after publishing the repository. Both the multiplayer collection and the main games catalog link directly to it. The entry page is indexable and has its own canonical URL, Open Graph and Twitter metadata.
+
+**Keyboard controls only for now.** Public cards, the entry/lobby and the social artwork clearly communicate the current supported input. The existing experimental touch controls remain available; they are not advertised as supported mobile gameplay.
 
 Run from the `multiplayer/` directory with `python3 -m http.server 8766 --bind 127.0.0.1`, then open **http://localhost:8766/games/tow/**. For separate devices, use the published HTTPS address. The host creates a room, shares its invite link or eight-character code, and starts once all guests choose **READY**. The host can start with two, three or four players; a fifth driver and arrivals during a race are rejected.
 
@@ -19,11 +21,11 @@ The soundscape is synthesized locally with Web Audio: four-cylinder combustion a
 
 Room discovery uses the same on-demand PeerJS 1.5.5 loader, public signaling service and star topology as PLAN, in an independent `tow-v1-` namespace. Reliable messages handle joining, readiness, race start/pause/reset/results. Each guest has a separate native WebRTC DataChannel on their peer connection carrying transient input and snapshots, with `ordered: false, maxRetransmits: 0`. No new production service, dependency, backend or bundler is needed; network reachability has the same ICE/service limitations as PLAN.
 
-The host runs shared rigid-body physics at 120 Hz and sends snapshots at about 20 Hz. Cars and trailers have mass, angular velocity, tyre grip, impulse collisions and a constrained hitch. Guests send only bounded, numbered future input ticks, resending up to 64 pending ticks at about 30 Hz. The host owns physics, checkpoints, finish order and time penalties. Clients predict their own car, replay unacknowledged inputs against host state, soften visual corrections and interpolate all other cars. Every guest has an independent host-side input queue; the accepted connection determines the driver and clients cannot select another slot. The host has a latency advantage. Contact at high latency can still need visible corrections; the prototype is intended to evaluate this feel on actual devices.
+The host runs shared rigid-body physics at 120 Hz and sends snapshots at about 20 Hz. Cars and trailers have mass, angular velocity, tyre grip, impulse collisions and a constrained hitch. Guests send only bounded, numbered future input ticks, resending up to 64 pending ticks at about 30 Hz. The host owns physics, checkpoints, finish order and time penalties. Clients predict their own car, replay unacknowledged inputs against host state, soften visual corrections and interpolate all other cars. Every guest has an independent host-side input queue; the accepted connection determines the driver and clients cannot select another slot. The host has a latency advantage. Contact at high latency can still need visible corrections; contact quality depends on the connection between actual devices.
 
 A guest leaving during a race returns the remaining drivers to the lobby. Their slots are reassigned, guests choose **READY** again, and the host can start with the remaining drivers or invite replacements. If the host leaves, all guests disconnect.
 
-**Connection test settings** let any player add 50/100/200 ms to their outgoing transient packets and 5/15/30% loss. Ping includes the simulated delay on both paths. Reliable room messages remain unaffected. This simulates delay/loss, rather than bandwidth congestion or every characteristic of an actual mobile connection.
+Open `?debug=1` to expose **Connection test settings**, which let any player add 50/100/200 ms to their outgoing transient packets and 5/15/30% loss. Debug invites keep this flag; ordinary players do not see the diagnostic controls. Ping includes the simulated delay on both paths. Reliable room messages remain unaffected. This simulates delay/loss, rather than bandwidth congestion or every characteristic of an actual mobile connection.
 
 All assets are served within this repository, without relying on the sibling PARK repository. New modules are in the root version manifest; the page loads its own versioned stylesheet and module entry point. Bump `config.json` before deployment as for PLAN.
 
@@ -33,6 +35,15 @@ Checks from the repository root:
 node --test tests/*.test.mjs
 node tests/browser-tow.mjs
 node tests/browser-tow-audio.mjs
+node tests/browser-publication.mjs
 ```
 
 Browser checks need Playwright and Chromium, plus `peer` (local signaling server) and `peerjs` (the client fixture), in development only. `PLAYWRIGHT_MODULE`, `PEER_SERVER_MODULE` and `PEERJS_SCRIPT` can point to those files in an external development installation. The checks use two, three and four real WebRTC drivers with a local signaling server and test simulated latency/loss. `TOW_URL` overrides the local default; `SCREENSHOT_DIR` chooses where screenshots are saved.
+
+## Analytics, advertising and artwork
+
+Every screen shares the root `../../monetization.js` and `../../ads.css` helper. Google Analytics (`G-WTPHWDLQ7K`) loads only when the existing Google CMP grants analytics consent or reports it not applicable. Unknown/denied consent discards events. `game_start` and `game_end` contain the game name, driver count and local finish status, without names, room codes or invite links; each fires once per race, not per snapshot.
+
+One persistent responsive `game_footer` AdSense unit (`9380002810`, publisher `ca-pub-3806610967714181`) stays outside the app. It is available on the home, race, pause and results screens, with at least 150px separation after all controls. Connecting, lobby, disconnected and loader-error screens hide it. Blocked/unfilled ads hide their section. Moving through the game never recreates or refreshes the unit. The shared Privacy Policy is linked in the footer.
+
+Full-resolution artwork is in `../../marketing/tow-social.png` (ready to post) and `../../marketing/tow-cover.png` (illustration master). Optimized JPEG/WebP assets are in `../../assets/`. `../../marketing/TOW-PROMPTS.md` records the built-in imagegen prompts. The main catalog keeps its own cover copies so each project deploys independently.

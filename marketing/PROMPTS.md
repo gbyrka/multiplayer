@@ -21,7 +21,7 @@ large prominent title: "PLAN"
 directly underneath in an elegant readable serif italic: "Predict your tricks."
 smaller supporting line: "2–6 players. One table."
 small clean line: "Serverless. No sign-up."
-bottom readable URL: "gbyrka.github.io/multiplayer/"
+bottom readable URL: "mod-it.games/multiplayer/"
 Typography: PLAN in very large refined cream serif capitals with understated tracking, tagline in cream/gold serif; supporting lines in a crisp small sans serif but large enough to read in the post. The URL must be accurate and straight, no fabricated tiny glyphs. Keep a clear hierarchy with very little text.
 Constraints: no launch date; no text saying six hands (the game has six rounds, multiple deals per player); no casinos, betting, money, chips, dice, trophies, smartphones or fake screenshots; no extraneous logos, no watermarks, no people, no neon or loud gradients. This must look like an original finished professional game campaign, not stock AI collage.
 ```

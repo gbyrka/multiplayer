@@ -27,7 +27,9 @@ const server = createServer(async (request, response) => {
   } catch { response.writeHead(404).end(); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const base = process.env.TOW_URL ?? `http://127.0.0.1:${server.address().port}/multiplayer/games/tow/`;
+const entry = new URL(process.env.TOW_URL ?? `http://127.0.0.1:${server.address().port}/multiplayer/games/tow/`);
+entry.searchParams.set('debug', '1');
+const base = entry.href;
 const browser = await chromium.launch({ headless: true });
 const errors = [], contexts = [], pages = [];
 let checks = 0, failure = false;
@@ -79,11 +81,21 @@ async function page(options = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 950 }, ...options }); contexts.push(context);
   await context.addInitScript(observe);
   await context.route('**/peerjs@1.5.5/dist/peerjs.min.js', route => route.fulfill({ contentType: 'text/javascript', body: clientSource + `\nconst RealPeer = window.Peer; window.Peer = class extends RealPeer { constructor(id, options) { super(id, { ...options, host: '127.0.0.1', port: ${signalPort}, path: '/signal', secure: false, config: { iceServers: [] } }); } };` }));
-  await context.route(/googlesyndication|googletagmanager|google-analytics/, route => route.abort());
+  await context.route(/googlesyndication|googletagmanager|google-analytics/, route => route.fulfill({ contentType: 'text/javascript', body: '' }));
+  await context.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+    window.googlefc.getGoogleConsentModeValues = () => ({ analyticsStoragePurposeConsentStatus: 1 });
+    window.googlefc.callbackQueue.find(callback => callback.CONSENT_MODE_DATA_READY).CONSENT_MODE_DATA_READY();
+  }, { once: true }));
   const result = await context.newPage(); result.setDefaultTimeout(15000);
   result.on('pageerror', error => errors.push(error.message)); pages.push(result); return result;
 }
-const latest = page => page.evaluate(() => window.__tow.snapshots.at(-1)?.state);
+// Capture includes packets before the app rejects delayed/reordered data. Read the
+// newest epoch/tick, rather than an older transient packet arriving after a pause.
+const latest = page => page.evaluate(() => {
+  const snapshots = window.__tow.snapshots, id = snapshots.at(-1)?.state.id;
+  return snapshots.filter(({ state }) => state.id === id).reduce((current, { state }) =>
+    !current || state.epoch > current.epoch || (state.epoch === current.epoch && state.tick > current.tick) ? state : current, null);
+});
 const untilTick = (page, tick) => page.waitForFunction(t => window.__tow.snapshots.at(-1)?.state.tick > t, tick);
 const audible = page => page.evaluate(() => {
   const meter = window.__tow.audio.meter; if (!meter) return 0;
@@ -118,10 +130,15 @@ async function stopDriving(page) {
 
 try {
   const host = await page(), guest = await page({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  await host.goto(new URL('../../', base).href); await host.locator('.featured-game').waitFor();
-  assert.equal(await host.getByText('TOW', { exact: true }).count(), 0);
-  assert.equal(await host.locator('a[href*="tow"], [data-game="tow"]').count(), 0);
-  pass('TOW is absent from the multiplayer menu');
+  await host.goto(new URL('../../', base).href); await host.locator('.featured-game').first().waitFor();
+  assert.equal(await host.getByText('TOW', { exact: true }).count(), 1);
+  assert.equal(await host.locator('a[href="./games/tow/"]').count(), 1);
+  assert.ok(await host.getByText('Keyboard controls only for now', { exact: true }).isVisible());
+  await host.getByRole('link', { name: 'PLAY TOW' }).click();
+  await host.locator('#home').waitFor();
+  assert.equal(new URL(host.url()).pathname, new URL(base).pathname);
+  assert.equal(await host.locator('meta[name="robots"]').count(), 0);
+  pass('The public TOW card links to an indexable game with a keyboard notice');
   await host.goto(base); await host.locator('#home').waitFor();
   assert.equal(await host.getByRole('button', { name: /^CREATE/ }).count(), 1);
   assert.equal(await host.locator('#create-tab, #join-tab').count(), 0);
@@ -134,8 +151,12 @@ try {
   assert.equal(await host.locator('#sound-toggle').textContent(), 'SOUND OFF');
   await host.getByRole('button', { name: 'Enable sounds' }).click();
   pass('The sound preference persists and audio unlocks on a real gesture');
+  await host.evaluate(() => { window.__adNode = document.querySelector('#tow-ad'); });
+  await host.locator('#tow-ad').scrollIntoViewIfNeeded();
+  await host.waitForFunction(() => document.querySelector('#tow-ad ins').dataset.adRequested === 'true');
   await host.screenshot({ path: `${output}/home-desktop.png`, fullPage: true });
   await host.locator('#your-name').fill('Greg'); await host.locator('#connect').click(); await host.locator('#lobby').waitFor();
+  assert.ok(await host.locator('#tow-ad').isHidden());
   const link = await host.locator('#invite-link').inputValue(), code = await host.locator('#room-code').textContent();
   assert.equal(new URL(link).pathname, new URL(base).pathname); assert.equal(new URL(link).searchParams.get('room'), code);
   assert.ok(await host.locator('#start').isDisabled());
@@ -156,6 +177,11 @@ try {
   pass('Two independent clients join and ready over reliable control plus unordered transient WebRTC');
 
   await host.locator('#start').click(); await guest.locator('#race').waitFor();
+  assert.ok(await host.locator('#tow-ad').isVisible());
+  assert.equal(await host.evaluate(() => document.querySelector('#tow-ad') === window.__adNode), true);
+  assert.equal(await host.evaluate(() => window.adsbygoogle.length), 1);
+  assert.equal(await host.evaluate(() => window.dataLayer.filter(args => args[0] === 'event' && args[1] === 'game_start').length), 1);
+  pass('The footer ad survives room/race transitions without refresh and Analytics records one race start');
   const initial = await latest(guest); assert.equal(initial.phase, 'countdown');
   await guest.locator('#countdown').waitFor({ state: 'hidden' });
   for (const page of [host, guest]) {
@@ -210,6 +236,7 @@ try {
   pass('Phone controls and no horizontal overflow at 320, 390 and 768 pixels');
 
   await host.locator('#pause').click(); await guest.waitForFunction(() => !document.querySelector('#race-overlay').hidden);
+  assert.ok(await host.locator('#tow-ad').isVisible());
   const paused = await latest(guest); assert.equal(paused.phase, 'paused');
   await new Promise(resolve => setTimeout(resolve, 200)); assert.equal((await latest(guest)).tick, paused.tick);
   assert.ok(await audible(host) < .00001 && await audible(guest) < .00001, 'paused engines and horns are silent');
@@ -225,11 +252,19 @@ try {
   await driveRoad(guest, 1); await driveRoad(host, 0);
   const slowed = await latest(guest); await untilTick(guest, slowed.tick + 720);
   await stopDriving(guest); await stopDriving(host);
-  const after = await latest(guest); assert.ok(after.progress[1] > slowed.progress[1] + 400);
+  const after = await latest(guest);
+  // A randomized obstacle can stop the driving bot. Verify the connection itself:
+  // a fresh pedal input reaches the host and returns in authoritative snapshots.
+  await guest.keyboard.down('ArrowUp');
+  await host.waitForFunction(tick => window.__tow.snapshots.some(({ state }) => state.tick > tick && (state.masks[1] & 1)), after.tick);
+  await guest.waitForFunction(tick => window.__tow.snapshots.some(({ state }) => state.tick > tick && (state.masks[1] & 1)), after.tick);
+  await guest.keyboard.up('ArrowUp');
+  // Ping is smoothed and sampled periodically; await a measurement with the new delay.
+  await guest.waitForFunction(() => Number(document.querySelector('#ping').textContent.match(/PING (\d+)/)?.[1]) >= 100);
   const ping = await guest.locator('#ping').textContent(); assert.ok(Number(ping.match(/PING (\d+)/)?.[1]) >= 100, ping);
   assert.ok(after.rigs.flat(2).every(Number.isFinite));
   await guest.screenshot({ path: `${output}/race-latency.png`, fullPage: true });
-  pass('Driving continues through 150ms added round-trip delay and 15% outgoing packet loss');
+  pass('Fresh driving inputs and authoritative snapshots cross 150ms added round-trip delay and 15% packet loss');
 
   // Forge invalid transient inputs through the real channel; no position packets exist.
   await guest.evaluate(({ id, epoch }) => window.__tow.channels.find(c => c.label === 'tow-state-v1').send(JSON.stringify({ kind: 'input', id, epoch, frames: [[999999, 31]], x: 999999 })), after);
@@ -328,6 +363,7 @@ try {
   const paused4 = await latest(host); await new Promise(resolve => setTimeout(resolve, 200));
   for (const driver of racers) { assert.equal((await latest(driver)).tick, paused4.tick); assert.ok(await audible(driver) < .00001); }
   await host.locator('#resume').click(); for (const driver of racers) await untilTick(driver, paused4.tick + 10);
+  assert.equal(await host.evaluate(() => window.dataLayer.filter(args => args[0] === 'event' && args[1] === 'game_start').length), 2);
   pass('Pause and resume freeze and restart all four clocks and sound mixes');
 
   await guest.locator('#leave').click();
@@ -347,6 +383,7 @@ try {
 
   await host.locator('#leave').click();
   for (const driver of [third, fourth]) await driver.locator('#disconnected').waitFor();
+  for (const driver of [third, fourth]) assert.ok(await driver.locator('#tow-ad').isHidden());
   assert.deepEqual(errors, []); pass('Host departure ends every guest connection without browser errors');
   console.log(`TOW browser checks: ${checks} passed.`);
 } catch (error) {

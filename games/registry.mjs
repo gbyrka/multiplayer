@@ -11,3 +11,12 @@ export const GAMES = Object.freeze([{
   renderGame: renderPlan, renderScoreboard, renderRules, turnAnnouncement,
 }]);
 export const getGame = id => GAMES.find(game => game.id === id) ?? GAMES[0];
+
+// TOW has a realtime racing session and its own entry point, separate from PLAN's adapter.
+export const COLLECTION_GAMES = Object.freeze([...GAMES, Object.freeze({
+  id: 'tow', title: 'TOW', subtitle: 'Keep your trailer close.',
+  description: 'Race your friends along a new winding road. Dodge the barrels, mind the corners, and bring your trailer across the finish.',
+  players: '2–4 drivers', duration: '1–3 min', category: 'TRAILER RACING · ONLINE MULTIPLAYER',
+  href: './games/tow/', cover: './assets/tow-cover.jpg',
+  controls: 'Keyboard controls only for now',
+})]);

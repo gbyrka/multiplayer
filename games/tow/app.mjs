@@ -16,6 +16,7 @@ if (!$('mode-switch')) {
 }
 const sound = new RaceSound();
 const params = new URLSearchParams(location.search), keys = new Set(), pointers = new Map();
+document.querySelector('.network-test').hidden = params.get('debug') !== '1';
 document.documentElement.classList.toggle('has-touch', navigator.maxTouchPoints > 0);
 const keyBits = { ArrowUp: INPUT.UP, ArrowDown: INPUT.DOWN, ArrowLeft: INPUT.LEFT, ArrowRight: INPUT.RIGHT, Space: INPUT.BRAKE };
 let joining = params.has('room'), session = null, screen = 'home', lobby = null, state = null, prediction = null;
@@ -27,6 +28,7 @@ $('room-code-input').value = normalizeRoomCode(params.get('room')).slice(0, 8);
 function showScreen(next) {
   screen = next;
   for (const id of ['home', 'connecting', 'lobby', 'race', 'disconnected']) $(id).hidden = id !== next;
+  window.MoDITAds?.setVisible($('tow-ad'), ['home', 'race'].includes(next));
   $('leave').hidden = !session || ['home', 'connecting', 'disconnected'].includes(next);
   if (next === 'race') scene.resize();
   else sound.stop();
@@ -39,10 +41,16 @@ function setMode(join) {
 }
 function status(text) { $('connection-status').textContent = text; $('connecting-detail').textContent = text; }
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 5000); }
-function inviteLink() { const url = new URL(location.origin + location.pathname); url.searchParams.set('room', session.roomCode); return url.href; }
+function inviteLink() {
+  const url = new URL(location.origin + location.pathname);
+  url.searchParams.set('room', session.roomCode);
+  if (params.get('debug') === '1') url.searchParams.set('debug', '1');
+  return url.href;
+}
 function updateURL(inRoom) {
   const url = new URL(location.origin + location.pathname);
   if (inRoom) url.searchParams.set('room', session.roomCode);
+  if (params.get('debug') === '1') url.searchParams.set('debug', '1');
   history.replaceState(null, '', url);
 }
 function clearKeys() {
@@ -87,6 +95,7 @@ function receiveSnapshot(next, at) {
   if (!prediction.receive(next, at, session.rtt, inputMask())) return;
   state = next;
   sound.receive(next, session.slot);
+  if (fresh) window.gtag?.('event', 'game_start', { game_name: 'tow', player_count: next.rigs.length });
   if (fresh) { overlayPhase = ''; clearKeys(); showScreen('race'); scene.configure(prediction.track); $('game').focus({ preventScroll: true }); }
   updateOverlay(); updateHUD(at);
 }
@@ -122,6 +131,7 @@ function updateOverlay() {
     $('resume').hidden = !session.isHost; if (session.isHost && !document.hidden) $('resume').focus({ preventScroll: true });
   }
   if (state.phase === 'results') {
+    window.gtag?.('event', 'game_end', { game_name: 'tow', player_count: state.rigs.length, finished: state.finished[session.slot] !== null });
     clearKeys();
     const ranked = rankRace(state);
     const winner = ranked[0], tie = state.finished[winner] !== null && state.finished[ranked[1]] !== null && Math.abs(state.finished[winner] - state.finished[ranked[1]]) <= STEP;
@@ -164,7 +174,7 @@ async function connect(event) {
 
 function leave() {
   ++attempt; session?.sendControl('RETURN_TO_LOBBY'); session?.close(); session = null; state = null; prediction = null; lobby = null;
-  clearKeys(); overlayPhase = ''; updateURL(false); showScreen('home'); status('Private test track');
+  clearKeys(); overlayPhase = ''; updateURL(false); showScreen('home'); status('Ready to race');
 }
 
 $('connect-form').addEventListener('submit', connect);

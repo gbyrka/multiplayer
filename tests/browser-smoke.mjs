@@ -83,7 +83,7 @@ try {
   const host = await newPage();
   const guest = await newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   await host.goto(base);
-  await host.locator('.featured-game').waitFor();
+  await host.locator('.featured-game').first().waitFor();
   await host.screenshot({ path: `${output}/collection-desktop.png`, fullPage: true, animations: 'disabled' });
   await noOverflow(host, 'Desktop collection');
   await host.getByRole('button', { name: 'PLAY PLAN' }).click();

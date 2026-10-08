@@ -2,26 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <script data-site-https>
+    (() => {
+      const { hostname, protocol, pathname, search, hash } = location;
+      const publicHosts = ['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'];
+      if (publicHosts.includes(hostname) && (protocol !== 'https:' || hostname !== 'mod-it.games')) {
+        location.replace(`https://mod-it.games${pathname}${search}${hash}`);
+      }
+    })();
+  </script>
+  <meta name="google-adsense-account" content="ca-pub-3806610967714181">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17251e">
-  <meta name="robots" content="noindex, nofollow">
-  <meta name="description" content="TOW — trailer racing for 2–4 players. Share a room link and race a new road together.">
-  <title>TOW — Trailer racing prototype</title>
+  <meta name="description" content="TOW — free online multiplayer trailer racing for 2–4 drivers. Share an invite link and race a new road together. Keyboard controls only for now.">
+  <title>TOW — Keep your trailer close. · Online multiplayer</title>
+  <meta property="og:title" content="TOW — Keep your trailer close.">
+  <meta property="og:description" content="Free online multiplayer trailer racing. 2–4 drivers. One finish. Keyboard controls only for now. No sign-up — just share an invite link.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mod-it.games/multiplayer/games/tow/">
+  <meta property="og:site_name" content="MoD-IT Multiplayer">
+  <meta property="og:image" content="https://mod-it.games/multiplayer/assets/tow-social.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="686">
+  <meta property="og:image:alt" content="TOW — online multiplayer, 2–4 drivers. Four cars tow trailers along a winding road. Keyboard controls only for now.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TOW — Keep your trailer close.">
+  <meta name="twitter:description" content="Online multiplayer trailer racing for 2–4 drivers. Keyboard controls only for now. Free. No sign-up.">
+  <meta name="twitter:image" content="https://mod-it.games/multiplayer/assets/tow-social.jpg">
+  <link rel="canonical" href="https://mod-it.games/multiplayer/games/tow/">
   <link rel="icon" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../ads.css?v=towlaunch1">
+  <script src="../../monetization.js?v=towlaunch1"></script>
+  <script id="adsense-script" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3806610967714181"
+          crossorigin="anonymous" onerror="window.MoDITAds.unavailable()"></script>
   <style>body{margin:0;background:#17251e;color:#e5eadc;font-family:system-ui,sans-serif}[hidden]{display:none!important}.boot{padding:48px;text-align:center}</style>
 </head>
 <body>
   <main class="app">
+    <a class="collection-link" href="../../">← All multiplayer</a>
     <header class="masthead">
       <div class="identity"><span class="road-sign" aria-hidden="true">T<span>↗</span></span><div><h1>TO<span>W</span></h1><p class="eyebrow">FOUR DRIVERS. ONE FINISH.</p></div></div>
-      <span class="prototype">2–4 PLAYER PROTOTYPE</span>
-      <p id="connection-status" role="status">Private test track</p>
+      <span class="player-badge">ONLINE MULTIPLAYER · 2–4 DRIVERS</span>
+      <p id="connection-status" role="status">Ready to race</p>
       <button id="sound-toggle" class="quiet" type="button" aria-label="Mute sounds" aria-pressed="true">SOUND ON</button>
       <button id="leave" class="quiet" type="button" hidden>LEAVE ROOM</button>
     </header>
 
     <section id="home" class="panel" aria-labelledby="home-title" hidden>
-      <div class="home-intro"><p class="eyebrow">A LITTLE SPEED. A LITTLE SWING.</p><h2 id="home-title">Keep your trailer close.</h2><p>Race your friends along a new winding road. Watch the corners, avoid the barrels, and make room for your trailer.</p><div class="rig-preview" aria-hidden="true"><span class="preview-car"></span><i></i><span class="preview-trailer"></span><b>→</b></div><p class="muted">2–4 players · about 1–3 minutes · a new route every race</p></div>
+      <div class="home-intro"><p class="eyebrow">A LITTLE SPEED. A LITTLE SWING.</p><h2 id="home-title">Keep your trailer close.</h2><p>Race your friends along a new winding road. Watch the corners, avoid the barrels, and make room for your trailer.</p><div class="rig-preview" aria-hidden="true"><span class="preview-car"></span><i></i><span class="preview-trailer"></span><b>→</b></div><p class="muted">2–4 drivers · about 1–3 minutes · a new route every race</p><p class="keyboard-notice">Keyboard controls only for now. Bring a computer and a keyboard.</p><p class="muted small">Free to play. No sign-up. Just an invite link.</p></div>
       <form id="connect-form" class="connect-form">
         <label for="your-name">YOUR NAME</label><input id="your-name" maxlength="16" autocomplete="nickname" placeholder="Driver name" required>
         <div id="code-field" hidden><label for="room-code-input">ROOM CODE</label><input id="room-code-input" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="8-character code"></div>
@@ -34,7 +63,7 @@
     <section id="connecting" class="panel centered" hidden><p class="eyebrow">MEETING AT THE START LINE</p><h2>Connecting…</h2><p id="connecting-detail">Opening the room.</p><button id="cancel" type="button">CANCEL</button></section>
 
     <section id="lobby" class="panel" aria-labelledby="lobby-title" hidden>
-      <div><p class="eyebrow">YOUR STARTING GRID</p><h2 id="lobby-title">Bring your friends.</h2><p class="muted">ROOM CODE</p><strong id="room-code" class="room-code"></strong><label for="invite-link">INVITE LINK</label><input id="invite-link" readonly><button id="copy-link" type="button">COPY INVITE LINK</button><p class="muted small">All drivers use the same generated road. The host starts each race with 2–4 players.</p></div>
+      <div><p class="eyebrow">YOUR STARTING GRID</p><h2 id="lobby-title">Bring your friends.</h2><p class="muted">ROOM CODE</p><strong id="room-code" class="room-code"></strong><label for="invite-link">INVITE LINK</label><input id="invite-link" readonly><button id="copy-link" type="button">COPY INVITE LINK</button><p class="muted small">All drivers use the same generated road. The host starts each race with 2–4 players. Keyboard controls only for now.</p></div>
       <div class="grid-panel"><ol id="players" class="player-list"></ol><p id="lobby-hint" class="muted"></p><button id="ready" class="primary" type="button" hidden>READY</button><button id="start" class="primary" type="button" disabled>START RACE</button></div>
     </section>
 
@@ -55,13 +84,22 @@
       <div class="race-toolbar"><span id="ping">Connection ready</span><div><button id="reset" class="quiet" type="button">RESET TO CHECKPOINT (+3s)</button><button id="pause" class="quiet" type="button">PAUSE</button></div></div>
       <div id="touch-controls" class="touch-controls" aria-label="Touch driving controls"><div><button type="button" data-key="ArrowLeft" aria-label="Steer left">←</button><button type="button" data-key="ArrowRight" aria-label="Steer right">→</button><button type="button" data-key="KeyH" aria-label="Horn">H</button></div><div><button type="button" data-key="ArrowDown" aria-label="Brake and reverse">↓</button><button type="button" data-key="Space" aria-label="Brake">■</button><button type="button" data-key="ArrowUp" aria-label="Accelerate">↑</button></div></div>
       <p class="controls"><kbd>↑</kbd><kbd>↓</kbd> Accelerate / brake / reverse <span><kbd>←</kbd><kbd>→</kbd> Steer</span> <span><kbd>Space</kbd> Brake</span> <span><kbd>H</kbd> Horn</span> <span><kbd>R</kbd> Reset (+3s)</span></p>
-      <details class="network-test"><summary>Connection test settings</summary><div><label for="delay">Extra outgoing delay</label><select id="delay"><option value="0">None</option><option value="50">50 ms</option><option value="100">100 ms</option><option value="200">200 ms</option></select><label for="loss">Outgoing packet loss</label><select id="loss"><option value="0">None</option><option value="5">5%</option><option value="15">15%</option><option value="30">30%</option></select></div><p class="muted small">Use these controls on either device to test a slower connection. They apply to driving data and ping measurements.</p></details>
+      <details class="network-test" hidden><summary>Connection test settings</summary><div><label for="delay">Extra outgoing delay</label><select id="delay"><option value="0">None</option><option value="50">50 ms</option><option value="100">100 ms</option><option value="200">200 ms</option></select><label for="loss">Outgoing packet loss</label><select id="loss"><option value="0">None</option><option value="5">5%</option><option value="15">15%</option><option value="30">30%</option></select></div><p class="muted small">Use these controls on either device to test a slower connection. They apply to driving data and ping measurements.</p></details>
     </section>
     <section id="disconnected" class="panel centered" hidden><p class="eyebrow">BACK TO THE GARAGE</p><h2>Connection ended.</h2><p id="end-reason"></p><button id="back-home" type="button" class="primary">BACK TO START</button></section>
     <div id="toast" class="toast" hidden role="status"></div>
-    <div id="boot" class="boot">Opening the test track…</div>
+    <div id="boot" class="boot">Opening the track…</div>
     <noscript><p class="boot">Enable JavaScript to play.</p></noscript>
   </main>
+  <aside id="tow-ad" class="ad-placement ad-placement-game" aria-label="Advertisement" hidden>
+    <p class="ad-placement-label">ADVERTISEMENT</p>
+    <ins class="adsbygoogle" style="display:block"
+         data-ad-client="ca-pub-3806610967714181"
+         data-ad-slot="9380002810"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+  </aside>
+  <footer class="privacy-footer"><a href="../../">All multiplayer</a> · <a href="../../../games/privacy.html">Privacy Policy</a></footer>
   <script type="module">
     try {
       if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');

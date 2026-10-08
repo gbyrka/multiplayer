@@ -1,5 +1,5 @@
 {
-  "version": "towfour1",
+  "version": "domain2",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -28,6 +28,19 @@
     "./games/tow/session.mjs",
     "./games/tow/sound.mjs",
     "./games/tow/track.mjs",
-    "./games/tow/vehicles.mjs"
+    "./games/tow/vehicles.mjs",
+    "./games/hamster/app.mjs",
+    "./games/hamster/game-core.mjs",
+    "./games/hamster/paws.mjs",
+    "./games/hamster/physics.mjs",
+    "./games/hamster/prediction.mjs",
+    "./games/hamster/scene.mjs",
+    "./games/hamster/session.mjs",
+    "./games/hamster/sound.mjs",
+    "./games/hamster/static-batches.mjs",
+    "./games/hamster/tunnel.mjs",
+    "./games/hamster/vendor/three.mjs",
+    "./games/hamster/wheel-transition.mjs",
+    "./games/hamster/world.mjs"
   ]
 }

@@ -106,7 +106,7 @@ h1 span {
 .identity .eyebrow {
   margin:8px 0 0;
 }
-.prototype {
+.player-badge {
   font-size:9px;
   color:#bfd3ac;
   border:1px solid var(--line);
@@ -605,7 +605,7 @@ kbd {
   .identity .eyebrow {
     font-size:8px;
   }
-  .prototype {
+  .player-badge {
     display:none;
   }
   #connection-status {
@@ -721,3 +721,9 @@ kbd {
     padding:20px;
   }
 }
+
+/* Public entry and a clear statement of the currently supported controls. */
+.collection-link{display:inline-flex;align-items:center;min-height:44px;margin:0 0 12px;color:#c4d2bd;font-size:11px;text-decoration:none}
+.collection-link:hover{color:var(--lime)}
+.collection-link:focus-visible,a:focus-visible{outline:2px solid var(--lime);outline-offset:4px}
+.home-intro .keyboard-notice{padding:12px 15px;margin:20px 0;border:1px solid #ead6a755;border-left:3px solid #ead6a7;border-radius:7px;background:#ead6a70b;color:#ead6a7;font-size:12px;font-weight:650;line-height:1.7}

@@ -1,10 +1,10 @@
 # Multiplayer — good games, good company
 
-A small collection of browser games to play with friends. **PLAN — Predict your tricks.** is the first game; the collection menu is ready for more games.
+A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.** or **TOW — Keep your trailer close.** from the collection.
 
-A private trailer racing prototype for 2–4 players is available at `./games/tow/`, without a catalog entry. See [TOW's test instructions](games/tow/README.md).
+**TOW** is online multiplayer trailer racing for **2–4 drivers**, available at `./games/tow/`. **Keyboard controls only for now.** The collection links to TOW's independent realtime racing entry point; its physics and networking modules are loaded only when opening that game. See [TOW's controls, advertising and test instructions](games/tow/README.md).
 
-PLAN is a complete, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. Cards are drawn with HTML/CSS; there are no external images, fonts, frameworks or sound assets.
+PLAN is a complete, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. PLAN cards are drawn with HTML/CSS; TOW uses local cover/social images and Canvas vehicle art. There are no external fonts, frameworks or sound assets.
 
 **Preview:** a dark emerald card table, cream and gold details, white playing cards, a lobby with an invite link, mobile player tiles, bidding controls and a scoreboard grouped by round and deal. A gold/mint victory animation follows the visual style of Sokoban. Running the optional browser tests saves screenshots in `test-results/`.
 
@@ -53,9 +53,11 @@ This **`multiplayer/` directory is the root of the `gbyrka/multiplayer` reposito
 2. Open **Settings → Pages**.
 3. Select **Deploy from a branch**.
 4. Select **main** and **/(root)**, then save.
-5. Open the URL GitHub provides, normally `https://gbyrka.github.io/multiplayer/`.
+5. Open the URL GitHub provides, normally `https://mod-it.games/multiplayer/`.
 
 There are no GitHub Actions or build dependencies. `.nojekyll` is included. Asset URLs are relative (`./style.css`, `./app.mjs`); invite URLs use `window.location.origin` and `window.location.pathname`, so subdirectory deployment and custom domains work. Invites look like `?room=K7PX4M9Q&game=plan`.
+
+The user-site repository `gbyrka.github.io` owns `CNAME` for `mod-it.games`; this project inherits the domain at `/multiplayer/`. Entry pages for the collection, TOW and HAMSTER redirect HTTP and the old GitHub hostname to `https://mod-it.games` before loading scripts, preserving the pathname, room parameters and fragment. Local HTTP previews remain usable. Social preview URLs and canonical links use the new HTTPS origin.
 
 This implementation does not automatically commit, push or change your GitHub Pages settings.
 
@@ -139,6 +141,8 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 
 ## Shared code and adding another game
 
+An unlisted **HAMSTER multiplayer** prototype lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is intentionally omitted from the public collection and game catalog; open its direct URL to create or join a room. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
+
 ```text
 index.html                 Inline version loader, shell, dialog and announcements
 config.json                Central version and complete production module list
@@ -184,7 +188,7 @@ Register another game in `games/registry.mjs` with a unique ID and PeerJS namesp
 
 ## Advertising and consent
 
-One responsive AdSense `game_footer` unit (`9380002810`) lives outside `#main`, below the complete game/chat layout with at least 150px of separation. It is available in the collection, game entry and active PLAN game/result screens. It is hidden while connecting, in the lobby and on error/disconnection screens. Private chat is never the advertising surface; the active page's primary content is the game.
+One responsive AdSense `game_footer` unit (`9380002810`) lives outside `#main`, below the complete game/chat layout with at least 150px of separation. It is available in the collection, game entry and active PLAN game/result screens. TOW has its own persistent footer unit on the home, race, pause and results screens; all TOW screens share the same consent-aware Analytics helper. It is hidden while connecting, in the lobby and on error/disconnection screens. Private chat is never the advertising surface; the active page's primary content is the game.
 
 The ad node stays attached across every move, bid and score update. The renderer only toggles visibility; it never recreates or refreshes the ad. Ads are requested once when near the viewport, and blocked/unfilled units hide their section. There are no sticky ads, overlays or ads inside the card table or chat panel.
 
@@ -226,6 +230,12 @@ The optional `tests/browser-assets-effects.mjs` starts its own temporary static 
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-assets-effects.mjs
+```
+
+`tests/browser-domain.mjs` checks HTTPS migration across all sibling repositories, so run it with the complete local workspace. It serves local files through Playwright request interception under the production hostnames; it makes no public requests and needs no web server. It covers old-domain/HTTP redirects, room codes, DOCK challenge tokens, HTTPS navigation and metadata, local previews, and the unlisted HAMSTER entry:
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-domain.mjs
 ```
 
 Verification on **2026-09-30** passed **56/56 Node tests** and **30/30 browser checks**: 15 real PeerJS Cloud/WebRTC checks, 8 responsive/chat/failure checks and 7 asset/effect checks. Two independent Chromium processes exchanged chat messages through Enter and Send, preserved Shift+Enter newlines and drafts/focus, rejected a forged HTML message, and completed all 12 hands. They checked every bidding opener, inspected normal/blind payload privacy, rejected an illegal follow-suit move, verified each card sounded exactly once and only winners received the celebration, finished a rematch and exercised both guest and host departures. Six-player fixtures with chat covered seven phases at eight widths (320–1920px), including inert DOM handling of XSS payloads and non-clickable URLs; scoreboard checks covered all player counts at 320px. There were no unexpected browser console errors or unhandled exceptions during the network game. This does not claim coverage of every browser or geographically separate networks.

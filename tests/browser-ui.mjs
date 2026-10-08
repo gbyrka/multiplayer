@@ -17,7 +17,7 @@ try {
   const exceptions = [];
   page.on('pageerror', error => exceptions.push(error.message));
   await page.goto(base);
-  await page.locator('.featured-game').waitFor();
+  await page.locator('.featured-game').first().waitFor();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: `${output}/collection-320.png`, fullPage: true, animations: 'disabled' });
   await page.getByRole('button', { name: 'PLAY PLAN' }).click();

@@ -2,27 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <script data-site-https>
+    (() => {
+      const { hostname, protocol, pathname, search, hash } = location;
+      const publicHosts = ['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'];
+      if (publicHosts.includes(hostname) && (protocol !== 'https:' || hostname !== 'mod-it.games')) {
+        location.replace(`https://mod-it.games${pathname}${search}${hash}`);
+      }
+    })();
+  </script>
   <meta name="google-adsense-account" content="ca-pub-3806610967714181">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="format-detection" content="telephone=no, email=no, address=no">
   <meta name="theme-color" content="#101b1a">
-  <meta name="description" content="Free, serverless multiplayer games with no accounts or registration required. Play PLAN with friends in your browser — just share an invite link.">
+  <meta name="description" content="Free, serverless multiplayer games with no accounts or registration required. Play PLAN or race in TOW with friends in your browser — just share an invite link.">
   <title>Multiplayer — Good games. Good company.</title>
-  <meta property="og:title" content="PLAN — Predict your tricks.">
-  <meta property="og:description" content="A free multiplayer card game for 2–6 players. Play with friends on desktop, phone or tablet. Serverless. No registration required.">
+  <meta property="og:title" content="Multiplayer — Good games. Good company.">
+  <meta property="og:description" content="Play PLAN with 2–6 friends or race trailers in TOW with 2–4 drivers. TOW requires a keyboard for now. Free browser games. No sign-up.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://gbyrka.github.io/multiplayer/">
+  <meta property="og:url" content="https://mod-it.games/multiplayer/">
   <meta property="og:site_name" content="MoD-IT Multiplayer">
-  <meta property="og:image" content="https://gbyrka.github.io/multiplayer/assets/plan-social.jpg">
+  <meta property="og:image" content="https://mod-it.games/multiplayer/assets/collection-cover.jpg">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="675">
-  <meta property="og:image:alt" content="PLAN — Predict your tricks. An elegant emerald card table with ivory playing cards, for 2–6 players. Serverless. No sign-up.">
+  <meta property="og:image:height" content="800">
+  <meta property="og:image:alt" content="Ivory playing cards and a strategy board on an emerald table, introducing the MoD-IT multiplayer collection.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="PLAN — Predict your tricks.">
-  <meta name="twitter:description" content="A free browser card game for 2–6 friends. Serverless. No registration.">
-  <meta name="twitter:image" content="https://gbyrka.github.io/multiplayer/assets/plan-social.jpg">
-  <link rel="canonical" href="https://gbyrka.github.io/multiplayer/">
+  <meta name="twitter:title" content="Multiplayer — Good games. Good company.">
+  <meta name="twitter:description" content="PLAN: cards for 2–6 friends. TOW: online trailer racing for 2–4 drivers, keyboard controls only for now. Free. No sign-up.">
+  <meta name="twitter:image" content="https://mod-it.games/multiplayer/assets/collection-cover.jpg">
+  <link rel="canonical" href="https://mod-it.games/multiplayer/">
   <link id="app-icon" rel="icon" type="image/svg+xml">
   <style>
     body { margin: 0; background: #101b1a; color: #f4f1e7; font-family: system-ui, sans-serif; }

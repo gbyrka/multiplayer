@@ -626,3 +626,12 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* TOW uses its own entry point while sharing the collection's visual language. */
+.game-collection{display:grid;gap:24px}
+.tow-art{background:#153d33}
+.tow-art picture,.tow-art img{display:block;width:100%;height:100%}
+.tow-art picture{position:absolute;inset:0}
+.tow-art img{object-fit:cover}
+.keyboard-notice{position:absolute;top:20px;left:20px;max-width:calc(100% - 40px);padding:10px 13px;border:1px solid #fff1be80;border-radius:5px;background:#ead6a7;color:#17251e;font:750 11px/1.5 Arial,sans-serif;letter-spacing:.02em;box-shadow:0 3px 15px #0003}
+@media(max-width:560px){.keyboard-notice{top:16px;left:16px;max-width:calc(100% - 32px);font-size:10px}.tow-art{min-height:0;aspect-ratio:3/2}}

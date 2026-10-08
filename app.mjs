@@ -1,4 +1,4 @@
-import { GAMES, getGame } from './games/registry.mjs';
+import { COLLECTION_GAMES, getGame } from './games/registry.mjs';
 import { GameRoom } from './shared/room.mjs';
 import { loadPeerJS } from './shared/peer-loader.mjs';
 import { normalizeRoomCode, validateName, isValidRoomCode } from './shared/random.mjs';
@@ -64,7 +64,7 @@ function render() {
   header.replaceChildren(renderHeader({ game: screen === 'collection' ? null : game, room, view, status, soundEnabled: sound.enabled }));
   let content;
   switch (screen) {
-    case 'collection': content = renderCollection(GAMES); break;
+    case 'collection': content = renderCollection(COLLECTION_GAMES); break;
     case 'game-home': content = renderGameHome(game, { name, code, join: joining }); break;
     case 'connecting': content = renderConnecting(status, Boolean(lastAttempt?.retrying)); break;
     case 'error': content = renderConnectionError(errorMessage, libraryError); break;
@@ -73,7 +73,7 @@ function render() {
       content = view.phase === 'lobby' ? renderLobby(view, room.roomCode, inviteLink(), pending) :
         view.phase === 'disconnected' ? renderDisconnected({ view }) : game.renderGame(view, { pending });
       break;
-    default: content = renderCollection(GAMES);
+    default: content = renderCollection(COLLECTION_GAMES);
   }
   main.classList.toggle('with-chat', screen === 'room');
   if (screen === 'room') {
