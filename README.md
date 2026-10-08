@@ -69,7 +69,9 @@ The standalone advertising stylesheet and helper initialise before the app loade
 
 The small inline loader reads the configuration with `cache: 'no-store'` and a fresh request URL on every visit/reload. It then loads **CSS, favicon and every JS module** with `?v=VERSION`. An [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap) also versions relative imports inside the module graph; versioning only `app.mjs` would leave its dependencies cached. A cached copy of the HTML still runs the same loader and reads the new configuration. Returning through the browser's back/forward cache reloads the app too. A game already open is not interrupted by an automatic refresh.
 
-When adding a production module, add its relative path to `config.json` → `modules`. The browser asset test verifies that this list includes every production module, checks version changes with a real year-long HTTP cache and runs under a `/multiplayer/` subpath. No build, service worker or server configuration is required. A failed configuration/assets request produces an **APP UNAVAILABLE** screen with **RELOAD**.
+When adding a production module, add its relative path to `config.json` → `modules`. The browser asset test verifies that this list includes every production module, checks version changes with a real year-long HTTP cache and runs under a `/multiplayer/` subpath. No build, service worker or server configuration is required.
+
+If startup fails, the collection, TOW and HAMSTER retry once in a fresh document. The `_refresh` URL parameter gives every module and the game stylesheet a shared fresh cache key, preserving room invitations and other URL parameters. A persistent failure displays an error with **RELOAD**; that button generates another fresh key instead of repeating the failed cached requests. Unsupported import-map browsers display the update instruction without an automatic retry. Startup exceptions are also logged to the browser console. Recovery does not clear stored names or sound preferences. Continue changing the release version: older cached HTML loaders rely on that version to fetch new modules.
 
 Guests send the loaded app version during the room handshake. The host rejects another version with a readable reload instruction, preventing games from mixing incompatible deployed rules.
 
@@ -178,6 +180,7 @@ tests/
   browser-smoke.mjs        Optional real PeerJS Cloud / WebRTC browser test
   browser-ui.mjs           Responsive fixtures and connection failure screens
   browser-assets-effects.mjs Real HTTP cache, Web Audio and victory checks
+  browser-release-recovery.mjs Cached startup failure and recovery checks
 .nojekyll
 .gitignore
 README.md
@@ -230,6 +233,12 @@ The optional `tests/browser-assets-effects.mjs` starts its own temporary static 
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-assets-effects.mjs
+```
+
+The optional release recovery checks cache an incompatible dependency, verify automatic recovery and preserved invitations, then test a persistent failure and manual recovery for the collection and the standalone games:
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-release-recovery.mjs
 ```
 
 `tests/browser-domain.mjs` checks HTTPS migration across all sibling repositories, so run it with the complete local workspace. It serves local files through Playwright request interception under the production hostnames; it makes no public requests and needs no web server. It covers old-domain/HTTP redirects, room codes, DOCK challenge tokens, HTTPS navigation and metadata, local previews, and the unlisted HAMSTER entry:

@@ -101,6 +101,12 @@
   </aside>
   <footer class="privacy-footer"><a href="../../">All multiplayer</a> · <a href="../../../games/privacy.html">Privacy Policy</a></footer>
   <script type="module">
+    const refresh = new URL(location.href).searchParams.get('_refresh');
+    const refreshApp = () => {
+      const url = new URL(location.href);
+      url.searchParams.set('_refresh', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+      location.replace(url.href);
+    };
     try {
       if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');
       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
@@ -111,20 +117,27 @@
         config = await response.json();
       } finally { clearTimeout(timeout); }
       if (!/^[a-z0-9]{3,16}$/i.test(config.version) || !Array.isArray(config.modules) || !config.modules.includes('./games/tow/app.mjs')) throw new Error('Invalid configuration.');
+      const assetQuery = `?v=${encodeURIComponent(config.version)}${refresh ? `&refresh=${encodeURIComponent(refresh)}` : ''}`;
       const imports = {}, root = new URL('../../', location.href);
       for (const path of config.modules) {
         if (!/^\.\/[a-z0-9/-]+\.mjs$/i.test(path)) throw new Error('Invalid module path.');
-        const url = new URL(path, root); imports[url.href] = `${url.href}?v=${encodeURIComponent(config.version)}`;
+        const url = new URL(path, root); imports[url.href] = url.href + assetQuery;
       }
       document.documentElement.dataset.appVersion = config.version;
       const map = document.createElement('script'); map.type = 'importmap'; map.textContent = JSON.stringify({ imports }); document.head.append(map);
-      const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = `./style.css?v=${encodeURIComponent(config.version)}`;
+      const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = './style.css' + assetQuery;
       const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = () => reject(new Error('Styles unavailable.')); }); document.head.append(style);
       await styled; await import(imports[new URL('./app.mjs', location.href).href]);
     } catch (error) {
-      const boot = document.querySelector('#boot'); boot.replaceChildren();
-      const text = document.createElement('p'); text.textContent = `Track unavailable. ${error.message} Please reload.`;
-      const button = document.createElement('button'); button.textContent = 'RELOAD'; button.onclick = () => location.reload(); boot.append(text, button);
+      console.error('TOW app startup failed:', error);
+      if (!refresh && error.message !== 'Please update your browser to play.') {
+        document.querySelector('#boot').textContent = 'Refreshing app files…';
+        refreshApp();
+      } else {
+        const boot = document.querySelector('#boot'); boot.replaceChildren();
+        const text = document.createElement('p'); text.textContent = `Track unavailable. ${error.message} Please reload.`;
+        const button = document.createElement('button'); button.textContent = 'RELOAD'; button.onclick = refreshApp; boot.append(text, button);
+      }
     }
   </script>
 </body>

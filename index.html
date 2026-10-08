@@ -70,6 +70,12 @@
   <noscript><div class="boot-message"><h1>JavaScript is needed to play.</h1><p>Enable JavaScript in your browser and reload this page.</p></div></noscript>
   <!-- Keep this tiny loader inline: a cached document still reads the current version. -->
   <script type="module">
+    const refresh = new URL(location.href).searchParams.get('_refresh');
+    const refreshApp = () => {
+      const url = new URL(location.href);
+      url.searchParams.set('_refresh', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+      location.replace(url.href);
+    };
     try {
       if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');
       const controller = new AbortController();
@@ -81,11 +87,12 @@
         config = await response.json();
       } finally { clearTimeout(timeout); }
       if (!/^[a-z0-9]{3,16}$/i.test(config.version) || !Array.isArray(config.modules) || !config.modules.includes('./app.mjs')) throw new Error('Invalid configuration.');
+      const assetQuery = `?v=${encodeURIComponent(config.version)}${refresh ? `&refresh=${encodeURIComponent(refresh)}` : ''}`;
       const imports = {};
       for (const path of config.modules) {
         if (!/^\.\/[a-z0-9/-]+\.mjs$/i.test(path)) throw new Error('Invalid module path.');
         const url = new URL(path, location.href);
-        imports[url.href] = `${url.href}?v=${encodeURIComponent(config.version)}`;
+        imports[url.href] = url.href + assetQuery;
       }
       const map = document.createElement('script');
       document.documentElement.dataset.appVersion = config.version;
@@ -94,25 +101,34 @@
       document.head.append(map);
       const style = document.createElement('link');
       style.rel = 'stylesheet';
-      style.href = `./style.css?v=${encodeURIComponent(config.version)}`;
+      style.href = './style.css' + assetQuery;
       const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = () => reject(new Error('Styles unavailable.')); });
       document.head.append(style);
-      document.querySelector('#app-icon').href = `./favicon.svg?v=${encodeURIComponent(config.version)}`;
+      document.querySelector('#app-icon').href = './favicon.svg' + assetQuery;
       await styled;
       await import(imports[new URL('./app.mjs', location.href).href]);
     } catch (error) {
-      const panel = document.createElement('div');
-      panel.className = 'boot-message';
-      const heading = document.createElement('h1');
-      heading.textContent = 'APP UNAVAILABLE';
-      const message = document.createElement('p');
-      message.textContent = error.message === 'Please update your browser to play.' ? error.message : "We couldn't load the latest app files. Please check your internet connection and reload the page.";
-      const reload = document.createElement('button');
-      reload.className = 'button primary';
-      reload.textContent = 'RELOAD';
-      reload.onclick = () => location.reload();
-      panel.append(heading, message, reload);
-      document.querySelector('#main').replaceChildren(panel);
+      console.error('Multiplayer app startup failed:', error);
+      const unsupported = error.message === 'Please update your browser to play.';
+      // Import maps cannot safely replace already resolved modules in this document.
+      // Retry once in a fresh document, bypassing cached URLs for the entire graph.
+      if (!refresh && !unsupported) {
+        document.querySelector('#main').textContent = 'Refreshing app files…';
+        refreshApp();
+      } else {
+        const panel = document.createElement('div');
+        panel.className = 'boot-message';
+        const heading = document.createElement('h1');
+        heading.textContent = 'APP UNAVAILABLE';
+        const message = document.createElement('p');
+        message.textContent = error.message === 'Please update your browser to play.' ? error.message : "We couldn't load the latest app files. Please check your internet connection and reload the page.";
+        const reload = document.createElement('button');
+        reload.className = 'button primary';
+        reload.textContent = 'RELOAD';
+        reload.onclick = refreshApp;
+        panel.append(heading, message, reload);
+        document.querySelector('#main').replaceChildren(panel);
+      }
     }
   </script>
 </body>
