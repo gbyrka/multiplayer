@@ -39,7 +39,7 @@ Google Analytics loads asynchronously from Google Tag Manager using the shared m
 3. Choose **COPY INVITE LINK** and open it in the second browser. The code is prefilled. If clipboard access is denied, select and copy the visible invite-link field instead.
 4. Enter a second name, choose **JOIN GAME**, then **READY**.
 5. The host chooses **START GAME**. The randomly selected dealer bids last; the player after the dealer bids first. The player with the highest bid leads the first trick; tied highest bids favor the player who bid earlier.
-6. Bid in turn, then click/tap the enabled cards. The table keeps completed tricks visible briefly. Review the results; only the host can choose **NEXT HAND**.
+6. Bid in turn, then click/tap the enabled cards. The table keeps completed tricks visible briefly. Review the results; only the host can choose **NEXT HAND**, after a three-second button countdown.
 7. Play two deals each with 5, 4, 3, 2, 1 cards, then two blind deals: **12 hands** for two players. Each player opens the bidding once per round. In every blind deal, your card is a back and your opponent’s card is face up. Choose **PLAY MY CARD** on your turn.
 8. Check the final scores and choose **PLAY AGAIN** as host. The same room and connections are reused.
 
@@ -79,7 +79,7 @@ Web Audio generates original, short sounds locally: a soft paper/wood tap for an
 
 Use **SOUND ON / SOUND OFF** in the header to mute or enable audio. The preference is saved on the device. Audio starts only after a user gesture, and hidden tabs do not play delayed sounds. Audio failure does not interrupt gameplay. The 2.4-second celebration has a soft halo, gold/mint particles and a medal reveal; it stops on leaving, rematch, resize or a hidden tab and respects `prefers-reduced-motion`.
 
-The current bidder or card player has a bright **YOUR TURN / THEIR TURN** label, a dot, and a gently pulsing gold border. The indicator is visible to everyone. Pulsing stops between tricks and is disabled with reduced motion, while the static label and border remain.
+The current bidder or card player has a bright **YOUR TURN / THEIR TURN** label, a dot, and a gently pulsing gold border. The indicator is visible to everyone. Pulsing stops between tricks and is disabled with reduced motion, while the static label and border remain. State updates reuse the table, player tiles and existing card nodes, preserving focus and preventing the table's reveal animation or earlier cards' play animations from restarting on each move.
 
 ## Room chat
 
@@ -137,7 +137,7 @@ lobby → bidding → playing → trick_result ──→ playing (next trick)
 active phase → disconnected → lobby
 ```
 
-Dealing is an atomic host operation immediately before bidding. A host-only timer holds completed tricks for 2.2 seconds. Hand results wait indefinitely for the host. Timers are cancelled on disconnection or room closure and are guarded against stale state.
+Dealing is an atomic host operation immediately before bidding. A host-only timer holds completed tricks for 2.2 seconds. Hand and final results wait for the host, with **NEXT HAND / PLAY AGAIN** disabled for the first three seconds and a visible countdown. The host validates that delay independently of the UI; recipients receive a remaining duration rather than depending on synchronized device clocks. Timers are cancelled on disconnection or room closure and are guarded against stale state.
 
 ## Shared code and adding another game
 
@@ -242,6 +242,9 @@ Verification on **2026-09-30** passed **56/56 Node tests** and **30/30 browser c
 
 ## Connection behavior and limitations
 
+Verification on **2026-10-08** passed **100/100 Node tests** and **51/51 browser checks**: 17 public PeerJS Cloud / Chromium PLAN checks, 17 locally signaled HAMSTER WebRTC checks, 10 responsive/browser-support checks and 7 asset/effect checks. PLAN completed all twelve hands with stable table/card nodes and the results countdown. HAMSTER verified opposing pipe traffic and retreat plus two/four-player label visibility. These checks do not diagnose every user's browser profile, extension or network configuration.
+
+- PLAN, TOW and HAMSTER test WebRTC when the entry page loads, before loading PeerJS or creating/joining a room. The test exchanges a packet between two local, reliable data channels without camera/microphone access or an external signaling server. Missing APIs or blocked WebRTC operations produce an entry message and disable connection attempts. An inconclusive local test shows advice but still allows connection attempts, since a browser limited to TURN relays may fail the local test. Passing does not guarantee access to the CDN, public signaling service, a remote player or their network. Connection errors distinguish signaling failures from guest-to-host timeouts and explain possible extension/VPN/firewall blocks.
 - A guest leaving the lobby is removed. A guest leaving during play stops the game for everyone; the host can return connected players to a clean lobby. The player count never changes inside an active hand.
 - **If the host closes the tab, the game ends.** No host migration, resume-after-refresh or midgame rejoining is implemented. A rematch keeps the existing room and connections.
 - Initial peer/channel connections time out after 20 seconds; the join handshake has a 15-second limit. Room code collisions retry up to five times. Pings run every eight seconds, with a 60-second dead-connection limit and a wake-up grace period.

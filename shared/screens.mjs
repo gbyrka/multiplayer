@@ -2,7 +2,7 @@ import { el, button, eyebrow, playingCard, friendsInstructions } from './dom.mjs
 
 export function renderHeader({ game, room, view, status, soundEnabled = true }) {
   return el('div', { class: 'header-inner' },
-    button([el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, 'm'), el('span', { class: 'brand-name' }, 'multiplayer', el('small', {}, 'GOOD GAMES. GOOD COMPANY.'))], 'collection', { class: 'brand', 'aria-label': 'Multiplayer game collection' }),
+    button([el('img', { class: 'brand-logo', src: new URL(`../assets/mod-it.jpg?v=${document.documentElement.dataset.appVersion ?? 'dev'}`, import.meta.url).href, alt: 'MoD-IT', width: 600, height: 323 }), el('span', { class: 'brand-name' }, 'MULTIPLAYER')], 'collection', { class: 'brand', 'aria-label': 'MoD-IT multiplayer game collection' }),
     el('nav', { class: 'header-nav', 'aria-label': 'Main navigation' },
       !game && !room ? el('a', { class: 'button text-button collection-link', href: '../games/' }, '← Browse all games') : null,
       room ? el('span', { class: 'connection-status', id: 'connection-status' }, el('i', { 'aria-hidden': 'true' }), el('span', {}, status)) : null,
@@ -59,7 +59,7 @@ export function renderCollection(games) {
   );
 }
 
-export function renderGameHome(game, { name = '', code = '', join = false } = {}) {
+export function renderGameHome(game, { name = '', code = '', join = false, multiplayerError = '', multiplayerWarning = '' } = {}) {
   return el('div', { class: 'game-home' },
     button('← ALL GAMES', 'collection', { class: 'button text-button back-link' }),
     el('div', { class: 'home-columns' },
@@ -79,7 +79,8 @@ export function renderGameHome(game, { name = '', code = '', join = false } = {}
           join ? [el('label', { for: 'room-code-input' }, 'ROOM CODE'),
             el('input', { id: 'room-code-input', class: 'room-code-input', name: 'room', maxlength: '8', type: 'text', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false', placeholder: 'K7PX4M9Q', value: code, required: true })] : null,
           el('p', { class: 'form-error', id: 'form-error', role: 'alert' }),
-          el('button', { type: 'submit', class: 'button primary wide' }, join ? 'JOIN GAME' : 'CREATE GAME'),
+          el('p', { class: multiplayerError ? 'form-error' : 'muted', id: 'browser-support', role: 'status' }, multiplayerError || multiplayerWarning),
+          el('button', { type: 'submit', class: 'button primary wide', disabled: Boolean(multiplayerError) }, join ? 'JOIN GAME' : 'CREATE GAME'),
           button(join ? 'CREATE A NEW GAME' : 'JOIN GAME', join ? 'show-create' : 'show-join', { class: 'button secondary wide' }),
         ), el('p', { class: 'entry-note' }, 'No sign-up. No downloads. Just good company.'),
       ),

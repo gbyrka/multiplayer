@@ -1,5 +1,6 @@
 // Shared, arc-length sampled paths: the renderer and movement use the same tube.
 export const tunnelRadius = 0.72;
+export const tunnelBodyGap = 1.4;
 const junction = [15, 0, 0];
 const controls = [
   [
@@ -144,7 +145,7 @@ function advanceTunnel(tube, distance) {
   }
 }
 // One press starts one turn. Shortening follows the angle throughout the pivot.
-export function stepTunnel(tube, dt, forward, steer, walk = false) {
+export function stepTunnel(tube, dt, forward, steer, walk = false, blockers = []) {
   if (steer) tube.choice = steer;
   if (forward < 0 && !tube.reverseHeld && !tube.turn)
     tube.turn = {
@@ -167,7 +168,29 @@ export function stepTunnel(tube, dt, forward, steer, walk = false) {
     }
   } else if (forward > 0) {
     speed = walk ? 1.35 : 2.5;
-    advanceTunnel(tube, speed * dt);
+    const distance = speed * dt;
+    const from = tunnelTravelPose(tube);
+    const candidate = { ...tube, fork: tube.fork ? { ...tube.fork } : null };
+    advanceTunnel(candidate, distance);
+    const to = tunnelTravelPose(candidate);
+    const delta = [to.x - from.x, to.y - from.y, to.z - from.z];
+    const travelSquared = delta.reduce((sum, value) => sum + value * value, 0);
+    let fraction = 1;
+    for (const other of blockers) {
+      const offset = [from.x - other.x, from.y - other.y, from.z - other.z];
+      const dot = offset.reduce((sum, value, i) => sum + value * delta[i], 0);
+      // Moving away is always allowed, including after an in-place U-turn.
+      if (dot >= 0 || travelSquared === 0) continue;
+      const clearance = offset.reduce((sum, value) => sum + value * value, 0) - tunnelBodyGap ** 2;
+      if (clearance <= 0) { fraction = 0; break; }
+      const discriminant = dot * dot - travelSquared * clearance;
+      if (discriminant < 0) continue;
+      const contact = (-dot - Math.sqrt(discriminant)) / travelSquared;
+      if (contact >= 0) fraction = Math.min(fraction, Math.max(0, contact - .001));
+    }
+    // Keep both hamsters on their paths; contact never pushes the blocker aside.
+    advanceTunnel(tube, distance * fraction);
+    speed *= fraction;
   }
   const pose = tunnelTravelPose(tube);
   if (turnAngle !== undefined) pose.angle = turnAngle;

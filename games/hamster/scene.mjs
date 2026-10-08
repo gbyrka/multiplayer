@@ -1008,8 +1008,10 @@ labelTexture.colorSpace = THREE.SRGBColorSpace;
 const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture, depthTest: false, transparent: true, toneMapped: false }));
 label.position.set(0, 1.55, 0); label.scale.set(2.25, .42, 1); hamster.add(label);
 let savedName = '';
-function setName(name, own) {
-  const text = `${own ? 'YOU · ' : ''}${name}`;
+function setName(name, visible) {
+  label.visible = visible;
+  if (!visible) return;
+  const text = name;
   if (savedName === text) return; savedName = text;
   const ctx = labelCanvas.getContext('2d'); ctx.font = 'bold 35px system-ui, sans-serif';
   const width = Math.min(512, Math.max(156, Math.ceil(ctx.measureText(text).width + 50)));
@@ -1336,7 +1338,7 @@ return {
     models.forEach((model, i) => {
       model.root.visible = i < players.length;
       if (!model.root.visible) return;
-      model.setName(names[i], i === slot);
+      model.setName(names[i], players.length > 2 && i !== slot);
       model.animate(dt, { ...players[i], mode: state.phase === 'paused' ? 'paused' : state.phase === 'playing' ? 'playing' : 'ended' });
       model.halo.material.opacity = players[i].shield ? .9 : i === slot ? .7 : .35;
       model.halo.scale.setScalar(players[i].shield && !reduced ? 1 + Math.sin(clock * 12) * .08 : 1);

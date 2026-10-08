@@ -1,5 +1,5 @@
 import { moveTo, waterFixture } from './world.mjs';
-import { tunnelEntry, stepTunnel } from './tunnel.mjs';
+import { tunnelEntry, tunnelPose, tunnelBodyGap, stepTunnel } from './tunnel.mjs';
 import { createWheelTransition, advanceWheelTransition } from './wheel-transition.mjs';
 
 export const STEP = 1 / 60;
@@ -25,12 +25,13 @@ export function nearWater(p) {
 }
 
 /** Original HAMSTER movement, ramps, falling, tube turns and wheel approach. */
-export function stepHamster(p, mask, dt = STEP, { wheelAvailable = true, event = () => {}, slot = 0, score = true } = {}) {
+export function stepHamster(p, mask, dt = STEP, { wheelAvailable = true, tunnelBlockers = [], event = () => {}, slot = 0, score = true } = {}) {
   const previousMask = p.lastMask;
   const pressed = bit => !!(mask & bit), tapped = bit => pressed(bit) && !(previousMask & bit);
   const forward = Number(pressed(INPUT.UP)) - Number(pressed(INPUT.DOWN));
   const steer = Number(pressed(INPUT.RIGHT)) - Number(pressed(INPUT.LEFT));
   const walking = pressed(INPUT.WALK), previousAngle = p.angle;
+  let forwardBlocked = false;
   for (const field of ['drinkCooldown', 'dashCooldown', 'dash', 'shield', 'squeakCooldown']) p[field] = Math.max(0, p[field] - dt);
   if (tapped(INPUT.SQUEAK) && !p.squeakCooldown) { p.squeakCooldown = 1.5; event({ type: 'squeak', slot }); }
   if (tapped(INPUT.WHEEL) && !p.tube && !p.wheelTransition && (p.wheel || (onGround(p) && p.y < .5 && Math.hypot(p.x - 6, p.z - 3.65) < 1.8))) {
@@ -61,10 +62,15 @@ export function stepHamster(p, mask, dt = STEP, { wheelAvailable = true, event =
   }
   if (!p.tube && !p.wheel && forward > 0 && !p.dash) {
     const branch = tunnelEntry(p.x, p.y, p.z, p.angle);
-    if (branch >= 0) p.tube = { branch, s: 0, direction: 1, choice: 0, reverseHeld: false };
+    if (branch >= 0) {
+      const entry = tunnelPose(branch, 0);
+      if (tunnelBlockers.every(other => Math.hypot(entry.x - other.x, entry.y - other.y, entry.z - other.z) >= tunnelBodyGap)) {
+        p.tube = { branch, s: 0, direction: 1, choice: 0, reverseHeld: false };
+      } else forwardBlocked = true;
+    }
   }
   if (p.tube) {
-    const next = stepTunnel(p.tube, dt, eating ? 0 : forward, eating ? 0 : steer, walking);
+    const next = stepTunnel(p.tube, dt, eating ? 0 : forward, eating ? 0 : steer, walking, tunnelBlockers);
     for (const key of ['x', 'y', 'z', 'angle', 'pitch', 'curl', 'speed']) p[key] = next[key];
     p.fallSpeed = 0; p.dash = 0; p.energy = Math.min(100, p.energy + dt * 5);
     if (next.exited) {
@@ -85,11 +91,11 @@ export function stepHamster(p, mask, dt = STEP, { wheelAvailable = true, event =
       }
     }
   } else {
-    const running = !walking && p.energy > 3 && forward > 0 && !eating && !drinking;
+    const running = !walking && p.energy > 3 && forward > 0 && !eating && !drinking && !forwardBlocked;
     if (!drinking) p.angle -= steer * dt * (p.dash ? 1.2 : 2.2);
-    const target = p.dash ? 8.5 : eating || drinking ? 0 : forward * (running ? 4.5 : 2.4);
+    const target = p.dash ? 8.5 : eating || drinking || forwardBlocked ? 0 : forward * (running ? 4.5 : 2.4);
     p.speed = damp(p.speed, target, p.dash ? 24 : 10, dt);
-    if (eating || drinking) p.speed = 0;
+    if (eating || drinking || forwardBlocked) p.speed = 0;
     const next = moveTo(p.x - Math.sin(p.angle) * p.speed * dt + p.bumpX * dt,
       p.z - Math.cos(p.angle) * p.speed * dt + p.bumpZ * dt, p.y, p.angle);
     p.x = next.x; p.z = next.z;

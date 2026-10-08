@@ -65,6 +65,18 @@ const latest = page => page.evaluate(() => {
   const states = window.__hamster.states, id = states.at(-1)?.id;
   return states.filter(s => s.id === id).reduce((a, b) => !a || b.epoch > a.epoch || (b.epoch === a.epoch && b.tick > a.tick) ? b : a, null);
 });
+async function observeLabels(page) {
+  await page.evaluate(async () => {
+    const { Scene } = await import('./vendor/three.mjs'), update = Scene.prototype.updateMatrixWorld;
+    Scene.prototype.updateMatrixWorld = function(...args) {
+      const result = update.apply(this, args);
+      const labels = [];
+      this.traverse(node => { if (node.isSprite) labels.push(node.visible && node.parent.visible); });
+      if (labels.length) window.__labels = labels;
+      return result;
+    };
+  });
+}
 async function noOverflow(page, width) {
   await page.setViewportSize({ width, height: 1000 }); await page.waitForTimeout(150);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}px has no horizontal overflow`);
@@ -96,6 +108,7 @@ try {
   await collection.context().close(); pass('The public collection has no HAMSTER link and loads none of its files');
 
   const host = await page(); await host.goto(base); await host.locator('#home:not([hidden])').waitFor();
+  await observeLabels(host);
   assert.equal(await host.locator('meta[name="robots"]').getAttribute('content'), 'noindex, nofollow');
   for (const width of [320, 390, 768, 1440]) await noOverflow(host, width);
   await capture(host, 'home-desktop');
@@ -124,6 +137,34 @@ try {
   await guest.waitForFunction(z => window.__hamster.states.at(-1)?.hamsters[1].z < z - 1, initial.hamsters[1].z); await guest.keyboard.up('KeyW');
   await capture(host, 'picnic-two-players');
   pass('Two browsers exchange real WebRTC inputs, authoritative movement and visible 3D hamster scores');
+  assert.deepEqual(await host.evaluate(() => window.__labels), [false, false, false, false]);
+  pass('Two-player games draw no name labels over either hamster');
+
+  await fixture(host, async () => {
+    const { tunnelPose } = await import('./tunnel.mjs');
+    const [a, b] = window.__hostSession.arena.hamsters;
+    for (const [p, s, direction] of [[a, 2, 1], [b, 5, -1]]) {
+      p.tube = { branch: 1, s, direction, choice: 0, reverseHeld: false };
+      Object.assign(p, tunnelPose(1, s, direction));
+    }
+  });
+  await host.locator('#game').focus(); await host.keyboard.down('KeyW');
+  await guest.locator('#game').focus(); await guest.keyboard.down('KeyW');
+  await guest.waitForFunction(() => { const [a, b] = window.__hamster.states.at(-1).hamsters; return a.tube && b.tube && a.speed < .01 && b.speed < .01 && Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 1.405; });
+  const contact = await latest(guest);
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const stillBlocked = await latest(guest);
+  assert.ok(Math.abs(contact.hamsters[0].tube.s - stillBlocked.hamsters[0].tube.s) < .03);
+  assert.ok(stillBlocked.hamsters[0].tube.s < stillBlocked.hamsters[1].tube.s);
+  await host.keyboard.up('KeyW'); await guest.keyboard.up('KeyW');
+  await host.keyboard.down('KeyS');
+  await guest.waitForFunction(() => window.__hamster.states.at(-1).hamsters[0].tube?.direction === -1);
+  await host.keyboard.up('KeyS');
+  await host.keyboard.down('KeyW'); await guest.waitForFunction(() => window.__hamster.states.at(-1).hamsters[0].tube === null); await host.keyboard.up('KeyW');
+  pass('Opposing hamsters block over real WebRTC; the host turns around and retreats out of the pipe');
+  await fixture(host, () => {
+    window.__hostSession.arena.hamsters.forEach((p, slot) => Object.assign(p, { tube: null, x: (slot - 1.5) * 1.65, y: 0, z: 5.5, angle: 0, pitch: 0, curl: 0, speed: 0 }));
+  });
 
   await fixture(host, () => { const arena = window.__hostSession.arena; arena.hamsters[1].pouch = [0, 1, 2]; arena.hamsters[1].energy = 25; });
   await guest.locator('#game').focus(); await guest.keyboard.down('Space');
@@ -165,6 +206,7 @@ try {
   const third = await page(), fourth = await page();
   await joinRoom(guest, invite, 'Anna'); await guest.locator('#ready:enabled').waitFor();
   await joinRoom(third, invite, '<b>Ola</b>'); await third.locator('#ready:enabled').waitFor();
+  await observeLabels(third);
   await joinRoom(fourth, invite, 'Marek'); await fourth.locator('#ready:enabled').waitFor();
   await host.locator('#players li:not(.waiting)').filter({ hasText: 'Marek' }).waitFor();
   assert.equal(await host.locator('#players strong b').count(), 0); assert.ok((await host.locator('#players').textContent()).includes('<b>Ola</b>'));
@@ -175,6 +217,9 @@ try {
   assert.equal((await latest(fourth)).hamsters.length, 4); assert.equal(await host.locator('#standings li').count(), 4);
   await capture(host, 'picnic-four-players');
   pass('Four real peers share the same habitat; a fifth is rejected and names stay inert text');
+  assert.deepEqual(await host.evaluate(() => window.__labels), [false, true, true, true]);
+  assert.deepEqual(await third.evaluate(() => window.__labels), [true, true, false, true]);
+  pass('Four-player games show only other players’ labels, for the host and a guest');
 
   for (const width of [320, 390, 768, 1440]) await noOverflow(fourth, width);
   await fourth.setViewportSize({ width: 390, height: 1000 }); await capture(fourth, 'picnic-mobile');

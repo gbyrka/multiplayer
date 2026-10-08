@@ -25,9 +25,19 @@ Strong supporting line: "ONLINE MULTIPLAYER"
 Supporting line: "2–4 drivers. One finish."
 Highly legible prominent contrasting cream or gold badge: "KEYBOARD CONTROLS ONLY FOR NOW"
 Small bottom line: "Free to play. No sign-up."
-Readable URL: "mod-it.games/multiplayer/games/tow/"
+Readable URL: "MoD-IT.games/multiplayer/"
 Typography: confident cream serif title, elegant cream-gold italic tagline, crisp sans-serif secondary lines, keyboard notice prominently readable even at social-feed size. URL exact, never garbled.
 Constraints: physically coherent car/hitch/trailer connections. No people, no logos, no watermark, no casino imagery, no fabricated screenshot, no phones, no touch controls, no excessive speed blur, no neon. No extra copy. Professionally composed, friendly and playful.
+```
+
+## URL replacement — 2026-10-08
+
+Edited `tow-social.png` with the built-in `image_gen` tool. The previous poster was the edit target; the replacement preserves its actual 1659 × 948 PNG dimensions and the existing layout.
+
+Final edit prompt:
+
+```text
+Use case: text-localization. Edit target: the supplied TOW social advertisement. Replace ONLY the lime-green URL at the bottom left, currently "gbyrka.github.io/multiplayer/games/tow/", with the exact text "MoD-IT.games/multiplayer/". Preserve the exact uppercase and lowercase spelling, hyphen, dot and trailing slash: MoD-IT.games/multiplayer/. Render it clearly and legibly, left-aligned in the same location with the same lime-green bold sans-serif style and comparable letter size. Remove the entire old URL. Preserve the image dimensions/aspect ratio and everything else: composition, four gold/blue/coral/sage cars each towing one ivory trailer, forest, winding road, lighting, colors, title "TOW", tagline "Keep your trailer close.", "ONLINE MULTIPLAYER", "2–4 drivers. One finish.", keyboard badge "KEYBOARD CONTROLS ONLY FOR NOW", and "Free to play. No sign-up.". No additional text or design changes.
 ```
 
 ## Final prompt — cover illustration

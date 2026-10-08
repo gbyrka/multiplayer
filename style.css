@@ -51,10 +51,9 @@ a { color: var(--gold); }
 .panel { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(135deg, #20332b66, #192722cc); box-shadow: 0 15px 40px #00000012; }
 .site-header { border-bottom: 1px solid var(--line); }
 .header-inner { max-width: 1256px; margin: auto; padding: 21px 32px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-.brand { display: inline-flex; flex-shrink: 0; align-items: center; gap: 11px; background: transparent; color: var(--text); border: 0; padding: 0; min-height: 46px; text-align: left; }
-.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #d9c89e70; border-radius: 12px; color: var(--gold); font-family: Georgia, serif; font-size: 30px; font-style: italic; line-height: 1; padding-bottom: 7px; }
-.brand-name { font-weight: 600; font-size: 18px; letter-spacing: -.04em; }
-.brand-name small { display: block; font-size: 7px; font-weight: 500; letter-spacing: .14em; margin-top: 0; color: var(--muted); }
+.brand { display: inline-flex; flex-shrink: 0; align-items: center; gap: 20px; background: transparent; color: var(--text); border: 0; padding: 0; min-height: 46px; text-align: left; }
+.brand-logo { display: block; width: 100px; height: auto; filter: invert(1); mix-blend-mode: screen; }
+.brand-name { font-weight: 400; font-size: 11px; letter-spacing: .2em; border-left: 1px solid #ffffff40; padding: 12px 0 12px 20px; }
 .header-nav { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
 .header-nav .button.collection-link { font-size: 11px; letter-spacing: .015em; }
 .connection-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; margin-right: 14px; max-width: 220px; }
@@ -387,7 +386,6 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 @media (hover: hover) {
   .button.primary:not(:disabled):hover { background: #f6e6c2; border-color: #f6e6c2; transform: translateY(-1px); }
   .button.secondary:not(:disabled):hover, .text-button:hover, .icon-button:hover { background: #dcebc30a; border-color: #d7e1c747; }
-  .brand:hover .brand-mark { background: #d4c2970d; }
   .bid-button:not(:disabled):hover { background: var(--gold); color: #223925; border-color: var(--gold); transform: translateY(-3px); }
   .my-cards .playing-card:not(:disabled):hover { transform: translateY(-12px) rotate(0deg); z-index: 4; }
 }
@@ -405,9 +403,9 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
   .header-inner { padding: 14px 20px; gap: 10px; }
   .header-nav .text-button { font-size: 9px; padding: 10px; letter-spacing: .025em; }
   .connection-status { display: none; }
-  .brand-name { font-size: 16px; }
-  .brand-name small { font-size: 6px; }
-  .brand-mark { width: 33px; height: 35px; font-size: 25px; border-radius: 10px; }
+  .brand { gap: 14px; }
+  .brand-logo { width: 75px; }
+  .brand-name { font-size: 9px; padding: 7px 0 7px 14px; }
   .collection-hero { padding: 23px 0 35px; }
   .collection-hero h1 { font-size: clamp(44px, 9vw, 69px); }
   .featured-game { grid-template-columns: 1fr 1fr; }
@@ -456,7 +454,6 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 @media (max-width: 560px) {
   #main { width: calc(100% - 32px); padding-top: 23px; padding-bottom: 30px; }
   .header-inner { padding: 11px 16px; flex-wrap: wrap; gap: 4px 12px; }
-  .brand-name small { display: none; }
   .header-nav { margin-left: auto; }
   .header-nav:has(.leave-button) { flex-basis: 100%; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 5px; }
   .header-nav:has(.leave-button) .connection-status { display: inline-flex; margin-right: 0; font-size: 8px; flex: 1 1 100%; max-width: none; padding: 6px 8px 0; }
@@ -599,7 +596,6 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
   .confirm-actions .button { width: 100%; }
 }
 @media (max-width: 360px) {
-  .brand-name { font-size: 14px; }
   .section-heading h2 { font-size: 18px; }
   .section-heading > span { font-size: 6px; }
   .entry-panel, .invite-panel, .lobby-players { padding: 21px; }

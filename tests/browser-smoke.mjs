@@ -172,6 +172,7 @@ try {
   let rejectedFollowSuit = false;
   let finalBidChecked = false;
   let blindChecked = false;
+  let countdownChecked = false;
   const seenHands = new Set();
   const openingBidders = new Map();
   for (let iteration = 0; iteration < 500; iteration++) {
@@ -216,6 +217,9 @@ try {
       await active.locator('.bid-options button:not(:disabled)').first().click();
       await advance(guest, view.revision);
     } else if (view.phase === 'playing') {
+      for (const page of [host, guest]) await page.evaluate(() => {
+        window.__stableTable = [...document.querySelectorAll('.game-layout, .players-row, .player-tile, .trump-panel, .hand-section, .played-card')];
+      });
       if (view.blind) await active.getByRole('button', { name: 'PLAY MY CARD', exact: true }).click();
       else {
         const forbidden = active.locator('.my-cards [data-card-id]:disabled');
@@ -237,9 +241,23 @@ try {
         await playable.click();
       }
       await advance(guest, view.revision);
+      for (const page of [host, guest]) assert.ok(await page.evaluate(() =>
+        window.__stableTable.every(node => node.isConnected)), 'Card moves preserve the table, tiles, trump, hand and earlier played cards');
     } else if (view.phase === 'trick_result') await advance(guest, view.revision);
     else if (view.phase === 'hand_result') {
       assert.equal(view.players.reduce((sum, p) => sum + p.tricksWon, 0), view.handSize);
+      if (!countdownChecked) {
+        const next = host.locator('[data-action="next-hand"]');
+        assert.ok(await next.isDisabled());
+        assert.match(await next.textContent(), /NEXT HAND \([123]s\)/);
+        await host.evaluate(() => { window.__resultsPanel = document.querySelector('.results-panel'); });
+        await next.filter({ hasText: 'NEXT HAND (2s)' }).waitFor();
+        assert.ok(await next.isDisabled());
+        assert.equal((await latest(guest)).revision, view.revision);
+        assert.ok(await host.evaluate(() => window.__resultsPanel === document.querySelector('.results-panel')));
+        countdownChecked = true;
+        checked('Hand results remain open with a disabled 3–2–1 button; countdown keeps the same results DOM');
+      }
       await host.getByRole('button', { name: 'NEXT HAND', exact: true }).click();
       await advance(guest, view.revision);
     } else if (view.phase === 'game_result') break;
@@ -268,6 +286,7 @@ try {
   checked('Each accepted card sounds once; own cards are louder and only winners receive the celebration and triumph');
   await guest.screenshot({ path: `${output}/results-mobile.png`, fullPage: true, animations: 'disabled' });
   checked('Complete six-round / twelve-hand game, every bidding opener, trump, scores and final standings');
+  checked('Every accepted card preserves the existing table and earlier played cards without replaying reveal animations');
   if (!rejectedFollowSuit) console.log('NOTE This random deal did not offer a guest off-suit attempt; core tests cover it deterministically.');
 
   await guest.getByRole('button', { name: 'SCOREBOARD' }).click();

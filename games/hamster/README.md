@@ -24,7 +24,7 @@ Keep the host's tab open. The host can pause for everyone; a hidden host tab or 
 
 ## Rules
 
-One **180-second shared clock**, after a three-second countdown. Highest banked score wins; ties share the victory. The live scoreboard, name labels, collar colors and minimap distinguish every player.
+One **180-second shared clock**, after a three-second countdown. Highest banked score wins; ties share the victory. The live scoreboard, collar colors and minimap distinguish every player. With three or four players, names appear only above other hamsters; your own hamster has no name label. Two-player games hide all overhead labels.
 
 Collect up to five shared treats. Seeds are worth **10**, carrots **20**, broccoli **30** points. Each ordinary treat respawns after collection on its original floor. There are 8, 10 or 12 ordinary treats for 2, 3 or 4 players. Only one hamster can collect a treat; simultaneous claims rotate priority between players.
 
@@ -35,7 +35,7 @@ Hold **Space for 0.85 seconds** to eat the whole pouch and bank its points. Eati
 - **Golden snacks:** every 30 seconds, six golden treats appear for ten seconds. Events rotate between the bedding, wooden loft and lookout deck. Gather them in time, then eat them for **50 points each**. There are five events in a round. A picked-up golden treat stays in the pouch until eaten or spilled.
 - **Wheel:** approach its open front and tap E to enter or leave with the original walking transition. Only one hamster can occupy or approach the wheel at a time. W or S runs in either direction, restoring energy. Every five seconds of movement gives **10 points**, up to three bonuses per player per round. Leaving resets partial progress. Unlike solo HAMSTER's time bonuses, this keeps every player's round equally long.
 - **Water:** face the nozzle and hold Space for 1.2 seconds to earn 2 points and restore 8 energy. A five-second cooldown follows. Drinking takes priority over eating near the nozzle and never consumes the pouch.
-- **Bubble trail:** walk into a tube mouth. W moves, S curls and turns, A / D chooses the fork. You can stop and nibble inside a tube. Wheel and tube occupants are sheltered from nudges.
+- **Bubble trail:** walk into a tube mouth. W moves, S curls and turns, A / D chooses the fork. You can stop and nibble inside a tube. Hamsters cannot pass or push each other inside tubes, including at the fork; when blocked, press S to turn around, then W to retreat and leave. An occupied mouth also blocks entry. Wheel and tube occupants are sheltered from nudges.
 
 Running uses energy; hold Shift to walk and recover. At low energy forward movement slows to a walk. Resting and eating also restore energy. Each hamster uses the original ramp support, falling, static fixture collision, turning paws and tunnel movement.
 
@@ -70,7 +70,7 @@ node --test --test-isolation=none --test-reporter=spec tests/*.test.mjs
 node --test --test-isolation=none --test-reporter=spec tests/hamster.test.mjs
 ```
 
-The HAMSTER suite checks supported player counts, seeded food, original ramps and all six tube routes, atomic collection, full-pouch eating and interrupted bites, drinking/cooldown, height-aware contacts, protected spills, dash costs/cooldowns, shared snack events, exclusive wheel entry and bonuses, timed results/ties, snapshot validation, input ownership/replay, prediction, host-only room lifecycle, direct-only entry and module versioning.
+The HAMSTER suite checks supported player counts, seeded food, original ramps and all six tube routes, opposing tube traffic and retreat, queues, occupied mouths and fork contacts, atomic collection, full-pouch eating and interrupted bites, drinking/cooldown, height-aware contacts, protected spills, dash costs/cooldowns, shared snack events, exclusive wheel entry and bonuses, timed results/ties, snapshot validation, input ownership/replay, prediction, host-only room lifecycle, direct-only entry and module versioning.
 
 Optional Playwright checks use a local PeerServer to exercise actual WebRTC channels in separate Chromium processes, including separate GPU contexts to approximate separate devices. Playwright, Chromium, PeerServer and PeerJS are development dependencies installed outside this repository:
 
@@ -81,8 +81,8 @@ PEERJS_SCRIPT=/path/to/peerjs/dist/peerjs.min.js \
 node tests/browser-hamster.mjs
 ```
 
-The test captures actual channel packets, tests 2–4 players and the fifth-player rejection, and uses controlled host fixtures for scoring, nudges, snack events and the end of a round. It also checks pause/resume, ties, rematches, departures, inert names, responsive layout, mute and entry errors. Screenshots are saved to the gitignored `test-results/hamster/`. No test hooks are shipped in the app.
+The test captures actual channel packets, tests 2–4 players and the fifth-player rejection, and uses controlled host fixtures for tube blocking/retreat, scoring, nudges, snack events and the end of a round. It also checks actual two/four-player label visibility, pause/resume, ties, rematches, departures, inert names, responsive layout, mute and entry errors. Screenshots are saved to the gitignored `test-results/hamster/`. No test hooks are shipped in the app.
 
-Verified on 2026-10-08: all 97 repository unit tests, all 14 HAMSTER browser scenarios and all 7 shared browser asset/effect checks passed. Browser layout checks cover 320–1440px widths, including the canvas and minimap bounds. The original solo HAMSTER repository remains unchanged.
+Verified on 2026-10-08: all 100 repository unit tests, all 17 HAMSTER browser scenarios and all 7 shared browser asset/effect checks passed. Browser layout checks cover 320–1440px widths, including the canvas and minimap bounds. The original solo HAMSTER repository remains unchanged.
 
 Artwork and geometry originate in the sibling HAMSTER project. The existing MIT license and included Three.js license apply.

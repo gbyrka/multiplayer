@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createArena, advanceArena, resolveHamsters, snapshot, validSnapshot, acceptInput, COUNTDOWN_TICKS, ROUND_TICKS, winners, rankArena } from '../games/hamster/game-core.mjs';
 import { STEP, INPUT, makeHamster, stepHamster, nearWater } from '../games/hamster/physics.mjs';
 import { foodSpot, ramps, rampHeight, floorAt, inside, decks, house, obstacles } from '../games/hamster/world.mjs';
-import { tunnelPose, tunnelPaths } from '../games/hamster/tunnel.mjs';
+import { tunnelPose, tunnelPaths, tunnelBodyGap, tunnelTravelPose, stepTunnel } from '../games/hamster/tunnel.mjs';
 import { Prediction } from '../games/hamster/prediction.mjs';
 import { HamsterSession } from '../games/hamster/session.mjs';
 import { RequestCache, message } from '../shared/protocol.mjs';
@@ -142,6 +142,59 @@ test('all six original tube routes work, sheltered from bumps, with optional nib
       if (entered && !p.tube) { exited = true; break; }
     }
     assert.ok(exited, `branch ${branch} exits with ${steer}`); assert.notEqual(p.y, NaN); assert.ok(p.energy > 20);
+  }
+});
+
+test('opposing hamsters block in every tube and must turn around to leave', () => {
+  for (let branch = 0; branch < 3; branch++) {
+    const arena = active(), [a, b] = arena.hamsters;
+    for (const [p, s, direction] of [[a, 2, 1], [b, 5, -1]]) {
+      p.tube = { branch, s, direction, choice: 0, reverseHeld: false };
+      Object.assign(p, tunnelPose(branch, s, direction));
+    }
+    steps(arena, 100, [INPUT.UP, INPUT.UP]);
+    assert.ok(a.tube.s < b.tube.s, 'hamsters never pass each other');
+    assert.ok(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) >= tunnelBodyGap - .001);
+    const stopped = [a.tube.s, b.tube.s];
+    steps(arena, 100, [INPUT.UP, INPUT.UP]);
+    assert.ok(Math.abs(a.tube.s - stopped[0]) < .001);
+    assert.ok(Math.abs(b.tube.s - stopped[1]) < .001);
+    steps(arena, 70, [INPUT.DOWN, INPUT.UP]);
+    assert.equal(a.tube.direction, -1, 'contact does not prevent an in-place U-turn');
+    for (let tick = 0; tick < 500 && a.tube; tick++) advanceArena(arena, [INPUT.UP, 0]);
+    assert.equal(a.tube, null, 'turned hamster can retreat through its original entrance');
+    assert.ok(b.tube, 'stationary blocker stays in the tube');
+    assert.ok(validSnapshot(snapshot(arena)));
+  }
+});
+
+test('tube queues cannot push a stationary hamster, enter an occupied mouth or pass at a fork', () => {
+  const arena = active(4), [a, b, c, d] = arena.hamsters;
+  for (const [p, s] of [[a, 1], [b, 3], [c, 5], [d, 7]]) {
+    p.tube = { branch: 0, s, direction: 1, choice: 0, reverseHeld: false };
+    Object.assign(p, tunnelPose(0, s));
+  }
+  steps(arena, 200, [INPUT.UP, INPUT.UP, INPUT.UP, 0]);
+  assert.equal(d.tube.s, 7);
+  for (let i = 1; i < 4; i++) assert.ok(arena.hamsters[i - 1].tube.s < arena.hamsters[i].tube.s);
+  const mouth = active();
+  Object.assign(mouth.hamsters[0], tunnelPose(1, 0));
+  mouth.hamsters[1].tube = { branch: 1, s: .5, direction: -1, choice: 0 };
+  Object.assign(mouth.hamsters[1], tunnelPose(1, .5, -1));
+  steps(mouth, 30, [INPUT.UP, 0]);
+  assert.equal(mouth.hamsters[0].tube, null);
+  assert.equal(mouth.hamsters[1].tube.s, .5);
+  for (const target of [1, 2]) {
+    const tube = { branch: 0, s: tunnelPaths[0].length - 2, direction: 1, choice: target === 1 ? 1 : -1 };
+    const blocker = tunnelPose(target, tunnelPaths[target].length - .8, -1);
+    let minimum = Infinity;
+    for (let i = 0; i < 200; i++) {
+      stepTunnel(tube, STEP, 1, 0, false, [blocker]);
+      const pose = tunnelTravelPose(tube);
+      minimum = Math.min(minimum, Math.hypot(pose.x - blocker.x, pose.y - blocker.y, pose.z - blocker.z));
+    }
+    assert.ok(minimum >= tunnelBodyGap - .001, 'fork contact stays separated in 3D');
+    assert.equal(tube.branch, 0, 'occupied fork cannot be crossed');
   }
 });
 test('three-minute finish stops simulation, excludes uneaten food, and allows shared winners', () => {

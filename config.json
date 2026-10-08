@@ -1,5 +1,5 @@
 {
-  "version": "domain2",
+  "version": "maple2",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

@@ -8,10 +8,14 @@ const DEAD_CONNECTION = 60000;
 export function connectionError(error) {
   const messages = {
     'peer-unavailable': 'Room not found. Check the code and try again.',
-    'browser-incompatible': 'This browser does not support WebRTC. Please try a current browser.',
+    'browser-incompatible': 'Multiplayer is not supported in this browser. WebRTC may be disabled by an extension or browser policy. Please try a current browser.',
     'unavailable-id': 'This room code is already in use.',
-    'network': 'Connection failed. Check your internet connection and try again.',
-    'timeout': 'Connection failed. The room or network did not respond. Try again, or try another network.',
+    'network': 'The multiplayer connection service could not be reached. Check your internet connection, browser extensions or VPN and try again.',
+    'socket-error': 'The multiplayer connection service could not be reached. A browser extension, VPN or firewall may be blocking it. Try another browser or network.',
+    'socket-closed': 'The multiplayer connection service closed the connection. Try again, or try another browser or network.',
+    'webrtc': 'The browser could not establish a WebRTC connection. Check browser extensions, VPN or firewall settings, or try another browser or network.',
+    'signaling-timeout': 'The multiplayer connection service did not respond. Browser extensions, VPN or firewall settings may be blocking it. Try another browser or network.',
+    'timeout': 'The connection to the host did not respond. Keep the host’s tab open and check the room code. Browser extensions, VPN or firewall settings may also block WebRTC.',
   };
   const result = new Error(messages[error?.type] ?? 'Connection failed. Please try again.');
   result.code = error?.type ?? 'connection-failed';
@@ -41,7 +45,7 @@ export class StarNetwork {
         if (error) reject(error); else resolve();
       };
       this.cancelOpen = () => finish(new Error('Connection cancelled.'));
-      this.openTimeout = setTimeout(() => finish(connectionError({ type: 'timeout' })), CONNECT_TIMEOUT);
+      this.openTimeout = setTimeout(() => finish(connectionError({ type: 'signaling-timeout' })), CONNECT_TIMEOUT);
       const id = host ? `${this.namespace}${roomCode}` : `guest-${randomToken(24)}`;
       // PeerJS defaults to the public PeerServer Cloud and its built-in ICE settings.
       this.peer = new this.Peer(id, { debug: 0 });
@@ -65,7 +69,7 @@ export class StarNetwork {
       this.peer.on('error', error => {
         if (this.disposed) return;
         if (!opened) { finish(connectionError(error)); return; }
-        if (error.type === 'peer-unavailable' && this.joinReject) {
+        if (['peer-unavailable', 'webrtc'].includes(error.type) && this.joinReject) {
           this.joinReject(connectionError(error));
         } else if (['network', 'socket-error', 'socket-closed', 'disconnected'].includes(error.type) && !this.peer.destroyed) {
           this.#retrySignaling();
@@ -136,8 +140,8 @@ export class StarNetwork {
       onOpen?.(new Error('Connection lost.'));
       this.#lost(connection);
     });
-    connection.on('error', () => {
-      onOpen?.(new Error('Connection failed. Please try again.'));
+    connection.on('error', error => {
+      onOpen?.(connectionError(error));
       this.drop(connection);
     });
   }

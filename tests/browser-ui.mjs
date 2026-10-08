@@ -57,7 +57,7 @@ try {
         state = core.resolveTrick(state);
       } else if (state.phase === 'hand_result') {
         fixtures.hand_result ??= structuredClone(state);
-        state = core.applyAction(state, 'p0', 'NEXT_HAND');
+        state = core.applyAction(state, 'p0', 'NEXT_HAND', {}, undefined, state.resultsReadyAt);
       } else if (state.phase === 'game_result') { fixtures.game_result = state; break; }
     }
     const chat = new ChatPanel(() => {});
@@ -158,6 +158,34 @@ try {
   assert.deepEqual(exceptions, []);
   pass('No renderer exceptions with six players, long names or reduced motion');
   await context.close();
+
+  for (const blocked of [false, true]) {
+    const unsupported = await browser.newContext();
+    await unsupported.addInitScript(blocked => {
+      window.RTCPeerConnection = blocked ? class { constructor() { throw new DOMException('Blocked', 'SecurityError'); } } : undefined;
+    }, blocked);
+    for (const path of ['?game=plan', 'games/tow/', 'games/hamster/']) {
+      const entry = await unsupported.newPage();
+      await entry.goto(new URL(path, base).href);
+      await entry.locator('#browser-support').filter({ hasText: blocked ? 'blocked in this browser configuration' : 'not supported in this browser' }).waitFor();
+      assert.ok(await entry.locator('form button[type="submit"]').isDisabled());
+      assert.ok(!(await entry.evaluate(() => performance.getEntriesByType('resource').map(r => r.name))).some(url => url.includes('peerjs@')));
+      await entry.close();
+    }
+    await unsupported.close();
+  }
+  pass('PLAN, TOW and HAMSTER detect missing or blocked WebRTC at entry before loading PeerJS');
+
+  const relayOnly = await browser.newContext();
+  await relayOnly.addInitScript(() => {
+    const Native = window.RTCPeerConnection;
+    window.RTCPeerConnection = class extends Native { createOffer() { return new Promise(() => {}); } };
+  });
+  const relayPage = await relayOnly.newPage(); await relayPage.goto(`${base}?game=plan`);
+  await relayPage.locator('#browser-support').filter({ hasText: 'You can still try connecting' }).waitFor();
+  assert.ok(await relayPage.locator('form button[type="submit"]').isEnabled());
+  await relayOnly.close();
+  pass('An inconclusive local WebRTC test stays advisory, allowing networks that require a TURN relay');
 
   const unavailable = await browser.newContext();
   const offlinePage = await unavailable.newPage();

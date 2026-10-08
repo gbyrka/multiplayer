@@ -1,4 +1,4 @@
-import { loadPeerJS } from '../../shared/peer-loader.mjs';
+import { loadPeerJS, checkMultiplayerSupport, MULTIPLAYER_TEST_WARNING } from '../../shared/peer-loader.mjs';
 import { normalizeRoomCode, validateName, isValidRoomCode } from '../../shared/random.mjs';
 import { el } from '../../shared/dom.mjs';
 import { HamsterSession } from './session.mjs';
@@ -276,3 +276,9 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 setMode(joining); updateSoundButton(); $('boot').hidden = true; showScreen('home'); requestAnimationFrame(frame);
+checkMultiplayerSupport().then(connected => {
+  if (!connected) $('connect').before(el('p', { class: 'muted', id: 'browser-support', role: 'status' }, MULTIPLAYER_TEST_WARNING));
+}).catch(error => {
+  $('connect').before(el('p', { class: 'form-error', id: 'browser-support', role: 'status' }, error.message));
+  $('connect').disabled = true;
+});

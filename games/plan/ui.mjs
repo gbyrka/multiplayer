@@ -45,7 +45,7 @@ function playerTile(view, player) {
   const winner = view.phase === 'trick_result' && view.trickWinnerId === player.id;
   const isMe = player.id === view.me.id;
   const blindCard = view.opponents.find(opponent => opponent.playerId === player.id)?.visibleBlindCard;
-  return el('article', { class: `player-tile${current ? ' current-player' : ''}${winner ? ' trick-winner' : ''}${isMe ? ' self-player' : ''}`, 'aria-label': `${player.name}${current ? ', current turn' : ''}`, 'aria-current': current ? 'true' : null, 'data-player-id': player.id },
+  return el('article', { class: `player-tile${current ? ' current-player' : ''}${winner ? ' trick-winner' : ''}${isMe ? ' self-player' : ''}`, 'aria-label': `${player.name}${current ? ', current turn' : ''}`, 'aria-current': current ? 'true' : null, 'data-player-id': player.id, 'data-render-key': `player-${player.id}` },
     el('div', { class: 'player-top' },
       el('span', { class: 'avatar', 'aria-hidden': 'true' }, [...player.name][0].toUpperCase()),
       el('div', { class: 'player-name-wrap' }, el('strong', { class: 'player-name', title: player.name }, player.name),
@@ -72,7 +72,7 @@ function trumpPanel(view) {
 
 function biddingPanel(view, pending) {
   const myTurn = view.currentPlayerId === view.me.id;
-  return el('div', { class: 'bidding-panel' }, eyebrow('BIDDING'),
+  return el('div', { class: 'bidding-panel', 'data-render-key': 'bidding' }, eyebrow('BIDDING'),
     el('h2', {}, myTurn ? 'How many tricks will you win?' : `${playerName(view, view.currentPlayerId)} is choosing a bid…`),
     myTurn ? el('div', { class: 'bid-options', 'aria-label': 'Choose your bid' }, Array.from({ length: view.handSize + 1 }, (_, bid) =>
       button(bid, 'bid', {
@@ -88,11 +88,11 @@ function biddingPanel(view, pending) {
 function trickPanel(view) {
   const result = view.phase === 'trick_result';
   const myTurn = view.currentPlayerId === view.me.id;
-  return el('div', { class: `trick-panel${result ? ' collecting-trick' : ''}` },
+  return el('div', { class: `trick-panel${result ? ' collecting-trick' : ''}`, 'data-render-key': 'trick' },
     eyebrow(result ? 'TRICK COMPLETE' : `PLAYING · TRICK ${view.trickNumber} OF ${view.handSize}`),
     el('h2', {}, result ? `${playerName(view, view.trickWinnerId)} wins the trick` : myTurn ? 'Your turn. Play a card.' : `${playerName(view, view.currentPlayerId)}’s turn`),
     el('div', { class: 'played-cards' }, view.trick.length ? view.trick.map((entry, i) =>
-      el('div', { class: `played-card${result && entry.playerId === view.trickWinnerId ? ' winning-card' : ''}`, style: `--card-index:${i}` },
+      el('div', { class: `played-card${result && entry.playerId === view.trickWinnerId ? ' winning-card' : ''}`, style: `--card-index:${i}`, 'data-render-key': `played-${entry.card.id}` },
         playingCard(entry.card, { small: true }), el('span', { title: playerName(view, entry.playerId) }, playerName(view, entry.playerId)),
       ),
     ) : el('div', { class: 'empty-trick' }, el('span', { 'aria-hidden': 'true' }, '♧'), el('p', {}, myTurn ? 'You lead this trick.' : 'Waiting for the first card…'))),
@@ -108,7 +108,7 @@ function myHand(view, pending) {
   if (view.phase === 'playing') help = myTurn ? view.leadSuit ? `Follow ${SUITS[view.leadSuit].name} if you can. Available cards are highlighted.` : 'You lead. Choose any card.' : 'Your cards are ready. Wait for your turn.';
   if (view.phase === 'trick_result') help = 'The winner leads the next trick.';
   if (view.blind) help = 'You cannot see your own card. Everyone else can.';
-  return el('section', { class: `hand-section${view.blind ? ' blind-hand-section' : ''}`, 'aria-label': 'Your hand' },
+  return el('section', { class: `hand-section${view.blind ? ' blind-hand-section' : ''}`, 'aria-label': 'Your hand', 'data-render-key': 'hand' },
     el('div', { class: 'hand-heading' }, el('h2', {}, view.blind ? 'Your mystery card' : 'Your hand'),
       el('span', { class: 'my-bid' }, player.bid === null ? 'NOT BID YET' : `YOUR BID: ${player.bid} · WON: ${player.tricksWon}`)),
     el('p', { class: 'hand-help' }, help),
@@ -124,11 +124,12 @@ function myHand(view, pending) {
   );
 }
 
-function handResults(view, pending) {
+function handResults(view, pending, resultsWaitSeconds) {
   const over = view.phase === 'game_result';
   const standings = getStandings(view.players);
   const winners = standings.filter(player => player.totalScore === standings[0].totalScore);
-  return el('section', { class: 'results-panel panel' },
+  const nextLabel = over ? 'PLAY AGAIN' : 'NEXT HAND';
+  return el('section', { class: 'results-panel panel', 'data-render-key': `results-${view.handNumber}` },
     eyebrow(over ? `${view.totalHands} HANDS. WELL PLAYED.` : `ROUND ${view.roundNumber} / 6 · DEAL ${view.dealInRound} / ${view.players.length}`),
     el('h1', {}, over ? 'Game over' : 'Hand results'),
     over ? el('div', { class: 'winner-banner', 'data-winner-banner': '' }, el('span', { class: 'winner-star', 'aria-hidden': 'true' }, '✦'),
@@ -146,19 +147,19 @@ function handResults(view, pending) {
         el('div', { class: 'result-total' }, 'TOTAL SCORE ', el('b', {}, result.totalScore)),
       );
     })), renderScoreboard(view),
-    el('div', { class: 'results-actions' }, view.me.host ? button(over ? 'PLAY AGAIN' : 'NEXT HAND', over ? 'play-again' : 'next-hand', { class: 'button primary', disabled: pending }) : el('p', { class: 'waiting-note' }, 'Waiting for host…')),
+    el('div', { class: 'results-actions' }, view.me.host ? button(resultsWaitSeconds ? `${nextLabel} (${resultsWaitSeconds}s)` : nextLabel, over ? 'play-again' : 'next-hand', { class: 'button primary', disabled: pending || resultsWaitSeconds > 0 }) : el('p', { class: 'waiting-note' }, 'Waiting for host…')),
   );
 }
 
-export function renderPlan(view, { pending = false } = {}) {
-  if (['hand_result', 'game_result'].includes(view.phase)) return handResults(view, pending);
-  return el('div', { class: 'game-layout', 'data-phase': view.phase },
-    el('div', { class: 'game-heading' }, el('div', {}, eyebrow(`PLAN · ROUND ${view.roundNumber} / 6 · DEAL ${view.dealInRound} / ${view.players.length}`),
+export function renderPlan(view, { pending = false, resultsWaitSeconds = Math.ceil((view.resultsWaitMs ?? 0) / 1000) } = {}) {
+  if (['hand_result', 'game_result'].includes(view.phase)) return handResults(view, pending, resultsWaitSeconds);
+  return el('div', { class: 'game-layout', 'data-phase': view.phase, 'data-render-key': `table-${view.handNumber}` },
+    el('div', { class: 'game-heading', 'data-render-key': 'heading' }, el('div', {}, eyebrow(`PLAN · ROUND ${view.roundNumber} / 6 · DEAL ${view.dealInRound} / ${view.players.length}`),
       el('h1', {}, view.blind ? 'The blind finale.' : `${view.handSize} ${view.handSize === 1 ? 'card' : 'cards'}. Make them count.`)),
       handProgress(view)),
-    el('section', { class: 'players-row', style: `--players:${view.players.length}`, 'aria-label': 'Players in clockwise order' }, view.players.map(player => playerTile(view, player))),
+    el('section', { class: 'players-row', style: `--players:${view.players.length}`, 'aria-label': 'Players in clockwise order', 'data-render-key': 'players' }, view.players.map(player => playerTile(view, player))),
     view.blind ? el('p', { class: 'blind-notice' }, el('strong', {}, 'BLIND HAND'), ' You see their cards. They see yours.') : null,
-    el('section', { class: 'felt-table', 'aria-label': 'Card table' }, trumpPanel(view), view.phase === 'bidding' ? biddingPanel(view, pending) : trickPanel(view)),
+    el('section', { class: 'felt-table', 'aria-label': 'Card table', 'data-render-key': 'table' }, trumpPanel(view), view.phase === 'bidding' ? biddingPanel(view, pending) : trickPanel(view)),
     myHand(view, pending),
   );
 }

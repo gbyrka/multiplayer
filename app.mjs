@@ -1,8 +1,8 @@
 import { COLLECTION_GAMES, getGame } from './games/registry.mjs';
 import { GameRoom } from './shared/room.mjs';
-import { loadPeerJS } from './shared/peer-loader.mjs';
+import { loadPeerJS, checkMultiplayerSupport, MULTIPLAYER_TEST_WARNING } from './shared/peer-loader.mjs';
 import { normalizeRoomCode, validateName, isValidRoomCode } from './shared/random.mjs';
-import { el, button } from './shared/dom.mjs';
+import { el, button, patchChildren } from './shared/dom.mjs';
 import { renderHeader, renderCollection, renderGameHome, renderConnecting, renderConnectionError, renderLobby, renderDisconnected } from './shared/screens.mjs';
 import { GameSound } from './shared/sound.mjs';
 import { getViewEffects } from './shared/effects.mjs';
@@ -33,9 +33,13 @@ let attempt = 0;
 let lastAttempt;
 let errorMessage = '';
 let libraryError = false;
+let multiplayerError = '';
+let multiplayerWarning = '';
 let endedHost = false;
 let dialogKind = '';
 let renderedHand = '';
+let resultsDeadline = 0;
+let resultsTimer;
 const chat = new ChatPanel((text, requestId) => room?.sendChat(text, requestId));
 const roomContent = el('div', { class: 'room-content' });
 const roomLayout = el('div', { class: 'room-layout' }, roomContent, chat.element);
@@ -61,24 +65,24 @@ function render() {
   const focusCard = active?.dataset?.cardId;
   const focusBid = active?.dataset?.bid;
   const focusInMain = main.contains(active) || header.contains(active);
-  header.replaceChildren(renderHeader({ game: screen === 'collection' ? null : game, room, view, status, soundEnabled: sound.enabled }));
+  patchChildren(header, renderHeader({ game: screen === 'collection' ? null : game, room, view, status, soundEnabled: sound.enabled }));
   let content;
   switch (screen) {
     case 'collection': content = renderCollection(COLLECTION_GAMES); break;
-    case 'game-home': content = renderGameHome(game, { name, code, join: joining }); break;
+    case 'game-home': content = renderGameHome(game, { name, code, join: joining, multiplayerError, multiplayerWarning }); break;
     case 'connecting': content = renderConnecting(status, Boolean(lastAttempt?.retrying)); break;
     case 'error': content = renderConnectionError(errorMessage, libraryError); break;
     case 'ended': content = renderDisconnected({ reason: errorMessage, host: endedHost }); break;
     case 'room':
       content = view.phase === 'lobby' ? renderLobby(view, room.roomCode, inviteLink(), pending) :
-        view.phase === 'disconnected' ? renderDisconnected({ view }) : game.renderGame(view, { pending });
+        view.phase === 'disconnected' ? renderDisconnected({ view }) : game.renderGame(view, { pending, resultsWaitSeconds: Math.ceil(Math.max(0, resultsDeadline - performance.now()) / 1000) });
       break;
     default: content = renderCollection(COLLECTION_GAMES);
   }
   main.classList.toggle('with-chat', screen === 'room');
   if (screen === 'room') {
     if (!main.contains(roomLayout)) main.replaceChildren(roomLayout);
-    roomContent.replaceChildren(content);
+    patchChildren(roomContent, content);
     chat.setConnected(!room.closed, view.me.id);
   } else main.replaceChildren(content);
   // Keep one ad node outside the changing game/chat DOM. Never refresh on moves.
@@ -97,6 +101,20 @@ function render() {
   const announcer = document.querySelector('#announcement');
   if (announcement && announcer.textContent !== announcement) announcer.textContent = announcement;
   document.title = screen === 'collection' ? 'Multiplayer — Good games. Good company.' : `${game.title} — ${view && view.handNumber ? `Hand ${view.handNumber} · ` : ''}Multiplayer`;
+  updateResultsButton();
+}
+
+function updateResultsButton() {
+  clearTimeout(resultsTimer);
+  if (screen !== 'room' || !view?.me.host || !['hand_result', 'game_result'].includes(view.phase)) return;
+  const target = roomContent.querySelector('[data-action="next-hand"], [data-action="play-again"]');
+  if (!target) return;
+  const seconds = Math.ceil(Math.max(0, resultsDeadline - performance.now()) / 1000);
+  const label = view.phase === 'game_result' ? 'PLAY AGAIN' : 'NEXT HAND';
+  const text = seconds ? `${label} (${seconds}s)` : label;
+  if (target.textContent !== text) target.textContent = text;
+  target.disabled = pending || seconds > 0;
+  if (seconds) resultsTimer = setTimeout(updateResultsButton, 100);
 }
 
 function showToast(text, error = false) {
@@ -160,6 +178,9 @@ async function connect(mode, retrying = false) {
         if (token !== attempt) return;
         const effects = getViewEffects(view, next);
         const oldPhase = view?.phase;
+        if (oldPhase !== next.phase || view?.handNumber !== next.handNumber) {
+          resultsDeadline = performance.now() + (next.resultsWaitMs ?? 0);
+        }
         view = next;
         screen = 'room';
         clearPending();
@@ -322,3 +343,15 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) sound
 window.addEventListener('pageshow', event => { if (event.persisted) { goHome(screen === 'collection'); location.reload(); } });
 
 render();
+checkMultiplayerSupport().then(connected => {
+  if (connected) return;
+  multiplayerWarning = MULTIPLAYER_TEST_WARNING;
+  const note = document.querySelector('#browser-support');
+  if (note) note.textContent = multiplayerWarning;
+}).catch(error => {
+  multiplayerError = error.message;
+  const note = document.querySelector('#browser-support');
+  if (note) { note.textContent = multiplayerError; note.className = 'form-error'; }
+  const submit = document.querySelector('#entry-form [type="submit"]');
+  if (submit) submit.disabled = true;
+});

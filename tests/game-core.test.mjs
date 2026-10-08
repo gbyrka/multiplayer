@@ -28,10 +28,10 @@ function finishBidding(state, chooseBid = legalBids => legalBids[0]) {
   }
   return state;
 }
-function finishHand(state) {
+function finishHand(state, now) {
   state = finishBidding(state);
   while (['playing', 'trick_result'].includes(state.phase)) {
-    if (state.phase === 'trick_result') { state = resolveTrick(state); continue; }
+    if (state.phase === 'trick_result') { state = resolveTrick(state, now); continue; }
     const player = state.players.find(p => p.id === state.currentPlayerId);
     const cardId = getLegalCards(player.hand, state.trick[0]?.card.suit)[0].id;
     state = applyAction(state, player.id, state.blind ? 'PLAY_BLIND_CARD' : 'PLAY_CARD', state.blind ? {} : { cardId });
@@ -42,10 +42,30 @@ function finishHand(state) {
 function firstBlindHand(count) {
   let state = start(count);
   for (let hand = 1; hand <= count * 5; hand++) {
-    state = applyAction(finishHand(state), 'p0', 'NEXT_HAND', {}, deterministic);
+    state = finishHand(state);
+    state = applyAction(state, 'p0', 'NEXT_HAND', {}, deterministic, state.resultsReadyAt);
   }
   return state;
 }
+
+test('host must keep hand and final results open for three seconds, measured by the host clock', () => {
+  for (const phase of ['hand_result', 'game_result']) {
+    const result = finishHand(start(2), 10000);
+    assert.equal(result.resultsReadyAt, 13000);
+    result.phase = phase;
+    const action = phase === 'hand_result' ? 'NEXT_HAND' : 'PLAY_AGAIN';
+    for (const now of [10000, 12000, 12999]) {
+      assert.throws(() => applyAction(result, 'p0', action, {}, deterministic, now), /three seconds/);
+    }
+    assert.equal(buildViewForPlayer(result, 'p0', 10000).resultsWaitMs, 3000);
+    assert.equal(buildViewForPlayer(result, 'p1', 12500).resultsWaitMs, 500);
+    assert.equal(buildViewForPlayer(result, 'p0', 15000).resultsWaitMs, 0);
+    const next = applyAction(result, 'p0', action, {}, deterministic, 13000);
+    assert.equal(next.phase, 'bidding');
+    assert.equal(next.resultsReadyAt, 0);
+    assert.throws(() => applyAction(result, 'p1', action, {}, deterministic, 15000), /host/);
+  }
+});
 
 test('deck has 52 unique cards, four suits and ranks 2 through Ace', () => {
   const deck = createDeck();
@@ -324,10 +344,10 @@ test('full six-round games give every player one opening per round, preserve pri
         assert.ok(state.players.every(p => p.history.length === hand && p.totalScore === p.history.reduce((sum, h) => sum + h.score, 0)));
         assert.ok(state.players.every(p => p.history.at(-1).handNumber === hand && p.history.at(-1).roundNumber === state.roundNumber));
         assert.equal(state.phase, hand === total ? 'game_result' : 'hand_result');
-        if (hand < total) state = applyAction(state, 'p0', 'NEXT_HAND');
+        if (hand < total) state = applyAction(state, 'p0', 'NEXT_HAND', {}, undefined, state.resultsReadyAt);
       }
       const ids = state.players.map(p => p.id);
-      state = applyAction(state, 'p0', 'PLAY_AGAIN', {}, () => 0);
+      state = applyAction(state, 'p0', 'PLAY_AGAIN', {}, () => 0, state.resultsReadyAt);
       assert.equal(state.handNumber, 1);
       assert.equal(state.roundNumber, 1);
       assert.equal(state.dealInRound, 1);

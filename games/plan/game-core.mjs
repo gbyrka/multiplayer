@@ -3,6 +3,7 @@ import { randomInt, validateName } from '../../shared/random.mjs';
 export { createDeck, shuffleDeck, dealHand } from './cards.mjs';
 
 export const HAND_SIZES = Object.freeze([5, 4, 3, 2, 1, 1]);
+export const RESULTS_MIN_DURATION = 3000;
 export const PHASES = Object.freeze(['lobby', 'bidding', 'playing', 'trick_result', 'hand_result', 'game_result', 'disconnected']);
 
 export class RuleError extends Error {
@@ -66,7 +67,7 @@ export function createLobby(hostId, name) {
     handNumber: 0, roundNumber: 0, dealInRound: 0, totalHands: 0,
     handSize: 0, blind: false, dealerIndex: 0, currentPlayerId: null,
     trumpCard: null, trumpSuit: null, trick: [], trickNumber: 0, trickWinnerId: null,
-    handResults: [], disconnectedNames: [],
+    handResults: [], resultsReadyAt: 0, disconnectedNames: [],
   };
 }
 
@@ -110,6 +111,7 @@ function setupHand(state, pick) {
   state.trickNumber = 1;
   state.trickWinnerId = null;
   state.handResults = [];
+  state.resultsReadyAt = 0;
   state.currentPlayerId = state.players[advanceDealer(state.dealerIndex, state.players.length)].id;
   state.phase = 'bidding';
 }
@@ -123,7 +125,7 @@ function startGame(state, pick) {
 }
 
 /** The only entry point for player intents. Never takes player identity from a payload. */
-export function applyAction(state, actorId, type, payload = {}, pick = randomInt) {
+export function applyAction(state, actorId, type, payload = {}, pick = randomInt, now = Date.now()) {
   const actor = state.players.find(p => p.id === actorId);
   requireRule(actor?.connected, 'Player is not connected.');
   requireRule(payload !== null && typeof payload === 'object' && !Array.isArray(payload), 'Invalid action.');
@@ -178,6 +180,7 @@ export function applyAction(state, actorId, type, payload = {}, pick = randomInt
     case 'NEXT_HAND':
       hostOnly();
       requireRule(state.phase === 'hand_result' && state.handNumber < state.totalHands, 'The next hand is not available yet.');
+      requireRule(now >= state.resultsReadyAt, 'Give everyone three seconds to read the results.');
       next.handNumber++;
       next.dealerIndex = advanceDealer(next.dealerIndex, next.players.length);
       setupHand(next, pick);
@@ -185,6 +188,7 @@ export function applyAction(state, actorId, type, payload = {}, pick = randomInt
     case 'PLAY_AGAIN':
       hostOnly();
       requireRule(state.phase === 'game_result' && state.players.every(p => p.connected), 'Finish this game before playing again.');
+      requireRule(now >= state.resultsReadyAt, 'Give everyone three seconds to read the results.');
       startGame(next, pick);
       break;
     case 'RETURN_TO_LOBBY': {
@@ -202,7 +206,7 @@ export function applyAction(state, actorId, type, payload = {}, pick = randomInt
 }
 
 /** Called by the host timer, never by a client message. */
-export function resolveTrick(state) {
+export function resolveTrick(state, now = Date.now()) {
   requireRule(state.phase === 'trick_result', 'There is no trick to collect.');
   const next = structuredClone(state);
   if (next.players.every(p => p.hand.length === 0)) {
@@ -216,6 +220,7 @@ export function resolveTrick(state) {
       return { playerId: player.id, bid: player.bid, won: player.tricksWon, score, totalScore: player.totalScore };
     });
     next.phase = next.handNumber === next.totalHands ? 'game_result' : 'hand_result';
+    next.resultsReadyAt = now + RESULTS_MIN_DURATION;
   } else {
     next.phase = 'playing';
     next.currentPlayerId = next.trickWinnerId;
@@ -232,7 +237,7 @@ export function getStandings(players) {
 }
 
 /** Explicit allowlist: no authoritative object is spread into a network view. */
-export function buildViewForPlayer(state, playerId) {
+export function buildViewForPlayer(state, playerId, now = Date.now()) {
   const me = state.players.find(p => p.id === playerId);
   requireRule(Boolean(me), 'Unknown player.');
   const myTurn = state.currentPlayerId === playerId;
@@ -262,6 +267,7 @@ export function buildViewForPlayer(state, playerId) {
       playerId: player.id, visibleBlindCard: player.hand[0] ? { ...player.hand[0] } : null,
     })) : [],
     handResults: state.handResults.map(result => ({ ...result })),
+    resultsWaitMs: Math.max(0, state.resultsReadyAt - now),
     disconnectedNames: [...state.disconnectedNames],
   };
 }

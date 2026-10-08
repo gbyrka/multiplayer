@@ -20,6 +20,41 @@ export const button = (label, action, options = {}) => el('button', {
 export const eyebrow = text => el('p', { class: 'eyebrow' }, text);
 export const signed = score => score > 0 ? `+${score}` : String(score);
 
+const renderKey = node => node.nodeType === 1 ?
+  node.getAttribute('data-render-key') ?? node.id ?? '' : '';
+
+/** Reuse rendered nodes so state updates preserve focus, scroll and animations. */
+export function patchChildren(parent, ...children) {
+  const old = [...parent.childNodes];
+  const keyed = new Map(old.filter(node => renderKey(node)).map(node => [renderKey(node), node]));
+  const used = new Set();
+  let cursor = parent.firstChild;
+  for (const next of children.flat()) {
+    const key = renderKey(next);
+    const current = key ? keyed.get(key) : old.find(node => !used.has(node) && !renderKey(node) &&
+      node.nodeType === next.nodeType && node.nodeName === next.nodeName);
+    let node = next;
+    if (current && current.nodeType === next.nodeType && current.nodeName === next.nodeName) {
+      used.add(current);
+      node = current;
+      if (node.nodeType === 3) {
+        if (node.data !== next.data) node.data = next.data;
+      } else {
+        for (const attribute of [...node.attributes]) {
+          if (!next.hasAttribute(attribute.name)) node.removeAttribute(attribute.name);
+        }
+        for (const attribute of next.attributes) {
+          if (node.getAttribute(attribute.name) !== attribute.value) node.setAttribute(attribute.name, attribute.value);
+        }
+        patchChildren(node, ...next.childNodes);
+      }
+    }
+    if (node !== cursor) parent.insertBefore(node, cursor);
+    cursor = node.nextSibling;
+  }
+  for (const node of old) if (!used.has(node)) node.remove();
+}
+
 export function playingCard(card, { back = false, interactive = false, disabled = false, small = false, action, index = 0, count = 1 } = {}) {
   const suit = card?.suit;
   const symbols = { C: '♣', D: '♦', H: '♥', S: '♠' };
@@ -33,6 +68,7 @@ export function playingCard(card, { back = false, interactive = false, disabled 
     'aria-label': label,
     'data-action': interactive ? action ?? 'play-card' : null,
     'data-card-id': interactive && !back ? card.id : null,
+    'data-render-key': back ? 'card-back' : `card-${card.id ?? card.rank + suit}`,
     disabled: interactive && disabled,
     style: `--card-index:${index};--angle:${(index - (count - 1) / 2) * 3}deg`,
   });

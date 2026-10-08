@@ -93,6 +93,7 @@ export function advanceArena(arena, masks) {
   const event = value => addEvent(arena, value);
   for (let i = 0; i < arena.hamsters.length; i++) {
     stepHamster(arena.hamsters[i], arena.masks[i], STEP, { slot: i, event,
+      tunnelBlockers: arena.hamsters.filter((p, slot) => slot !== i && p.tube),
       wheelAvailable: !arena.hamsters.some((p, slot) => slot !== i && (p.wheel || p.wheelTransition)) });
   }
   resolveHamsters(arena);
