@@ -1,5 +1,5 @@
 {
-  "version": "maple3",
+  "version": "catana1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -41,6 +41,12 @@
     "./games/hamster/tunnel.mjs",
     "./games/hamster/vendor/three.mjs",
     "./games/hamster/wheel-transition.mjs",
-    "./games/hamster/world.mjs"
+    "./games/hamster/world.mjs",
+    "./games/catana/action-schema.mjs",
+    "./games/catana/app.mjs",
+    "./games/catana/board.mjs",
+    "./games/catana/constants.mjs",
+    "./games/catana/game-core.mjs",
+    "./games/catana/ui.mjs"
   ]
 }

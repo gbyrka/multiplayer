@@ -91,7 +91,7 @@ try {
   pass('Persistent failure stops after one retry; RELOAD escapes even a cached failed retry');
   await context.close();
 
-  for (const game of ['tow', 'hamster']) {
+  for (const game of ['tow', 'hamster', 'catana']) {
     failure = 'normal'; target = `games/${game}/app.mjs`;
     context = await browser.newContext();
     page = await context.newPage();

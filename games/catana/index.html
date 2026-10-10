@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script data-site-https>
+    (() => {
+      const { hostname, protocol, pathname, search, hash } = location;
+      if (['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'].includes(hostname) && (protocol !== 'https:' || hostname !== 'mod-it.games')) location.replace(`https://mod-it.games${pathname}${search}${hash}`);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#173d34">
+  <meta name="description" content="Catana Codex. Settle a new island, trade with friends, and build your way to victory. A private multiplayer board game for 2–4 people.">
+  <title>Catana Codex — A world worth building.</title>
+  <link rel="icon" href="./favicon.svg">
+  <link rel="stylesheet" href="../../ads.css?v=towlaunch1">
+  <script src="../../monetization.js?v=towlaunch1"></script>
+  <meta name="google-adsense-account" content="ca-pub-3806610967714181">
+  <script id="adsense-script" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3806610967714181" crossorigin="anonymous" onerror="window.MoDITAds.unavailable()"></script>
+  <style>body{margin:0;background:#102d2e;color:#f2ebd7;font-family:system-ui,sans-serif}[hidden]{display:none!important}.boot{padding:48px;text-align:center}</style>
+</head>
+<body>
+  <header class="site-header">
+    <a href="../../" class="brand" aria-label="All multiplayer games"><span class="brand-icon" aria-hidden="true">⌂</span><span>Catana Codex<small>THE MULTIPLAYER COLLECTION</small></span></a>
+    <nav class="header-actions" aria-label="Game navigation"><span id="connection-status" role="status">An island for good company.</span><button class="button quiet" data-action="rules" type="button">HOW TO PLAY</button><button id="sound-toggle" class="button quiet" data-action="toggle-sound" aria-pressed="true" type="button">SOUND ON</button><button id="leave" class="button quiet" data-action="leave" type="button" hidden>LEAVE ROOM</button></nav>
+  </header>
+  <main id="main"></main>
+  <details id="chat-container" class="chat-container" hidden><summary>Room chat · Talk, trade, make a plan.</summary><div id="chat-root"></div></details>
+  <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <div id="boot" class="boot">Opening your next chapter…</div>
+  <dialog id="dialog"><button class="button quiet dialog-close" data-action="close-dialog" type="button" aria-label="Close dialog">CLOSE ×</button><div id="dialog-content"></div></dialog>
+  <noscript><p class="boot">Enable JavaScript to play.</p></noscript>
+  <aside id="catana-ad" class="ad-placement ad-placement-game" aria-label="Advertisement" hidden><p class="ad-placement-label">ADVERTISEMENT</p><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-3806610967714181" data-ad-slot="9380002810" data-ad-format="auto" data-full-width-responsive="true"></ins></aside>
+  <footer class="privacy-footer"><span>Good company. New horizons.</span><a href="../../">All multiplayer games</a><a href="../../../games/privacy.html">Privacy Policy</a></footer>
+  <script type="module">
+    const refresh = new URL(location.href).searchParams.get('_refresh');
+    const refreshApp = () => {
+      const url = new URL(location.href);
+      url.searchParams.set('_refresh', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+      location.replace(url.href);
+    };
+    try {
+      if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');
+      const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+      let config;
+      try {
+        const response = await fetch(`../../config.json?check=${Date.now().toString(36)}`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Configuration unavailable.');
+        config = await response.json();
+      } finally { clearTimeout(timeout); }
+      if (!/^[a-z0-9]{3,16}$/i.test(config.version) || !Array.isArray(config.modules) || !config.modules.includes('./games/catana/app.mjs')) throw new Error('Invalid configuration.');
+      const assetQuery = `?v=${encodeURIComponent(config.version)}${refresh ? `&refresh=${encodeURIComponent(refresh)}` : ''}`;
+      const imports = {}, root = new URL('../../', location.href);
+      for (const path of config.modules) {
+        if (!/^\.\/[a-z0-9/-]+\.mjs$/i.test(path)) throw new Error('Invalid module path.');
+        const url = new URL(path, root); imports[url.href] = url.href + assetQuery;
+      }
+      document.documentElement.dataset.appVersion = config.version;
+      document.querySelector('link[rel="icon"]').href = './favicon.svg' + assetQuery;
+      const map = document.createElement('script'); map.type = 'importmap'; map.textContent = JSON.stringify({ imports }); document.head.append(map);
+      const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = './style.css' + assetQuery;
+      const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = () => reject(new Error('Styles unavailable.')); }); document.head.append(style);
+      await styled; await import(imports[new URL('./app.mjs', location.href).href]);
+    } catch (error) {
+      console.error('Catana Codex startup failed:', error);
+      if (!refresh && error.message !== 'Please update your browser to play.') {
+        document.querySelector('#boot').textContent = 'Refreshing app files…'; refreshApp();
+      } else {
+        const boot = document.querySelector('#boot'); boot.replaceChildren();
+        const text = document.createElement('p'); text.textContent = `Island unavailable. ${error.message} Please reload.`;
+        const button = document.createElement('button'); button.textContent = 'RELOAD'; button.onclick = refreshApp; boot.append(text, button);
+      }
+    }
+    addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+  </script>
+</body>
+</html>

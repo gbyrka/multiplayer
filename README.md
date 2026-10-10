@@ -143,6 +143,8 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 
 ## Shared code and adding another game
 
+An unlisted **Catana Codex** board game for **2–4 friends** is available directly at `./games/catana/`. It uses PLAN's existing authoritative `GameRoom`, transport and private views, with an original terrain atlas and a complete resource-trading rules engine. Three or four players play to 10 VP; two players play to 12 VP with dice-directed robber destinations. It is intentionally absent from the public collection. See [Catana's rules, architecture and tests](games/catana/README.md).
+
 An unlisted **HAMSTER multiplayer** prototype lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is intentionally omitted from the public collection and game catalog; open its direct URL to create or join a room. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
 
 ```text

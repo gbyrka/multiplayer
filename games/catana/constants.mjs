@@ -1,0 +1,13 @@
+export const RESOURCES = Object.freeze(['brick', 'lumber', 'wool', 'grain', 'ore']);
+export const RESOURCE_NAMES = Object.freeze({ brick: 'Brick', lumber: 'Lumber', wool: 'Wool', grain: 'Grain', ore: 'Ore' });
+export const TERRAIN_RESOURCE = Object.freeze({ hills: 'brick', forest: 'lumber', pasture: 'wool', fields: 'grain', mountains: 'ore', desert: null });
+export const TERRAIN_COUNTS = Object.freeze({ hills: 3, forest: 4, pasture: 4, fields: 4, mountains: 3, desert: 1 });
+export const NUMBER_TOKENS = Object.freeze([2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]);
+export const DEVELOPMENT_COUNTS = Object.freeze({ knight: 14, victory_point: 5, road_building: 2, year_of_plenty: 2, monopoly: 2 });
+export const DEVELOPMENT_NAMES = Object.freeze({ knight: 'Knight', victory_point: 'Victory Point', road_building: 'Road Building', year_of_plenty: 'Year of Plenty', monopoly: 'Monopoly' });
+export const COSTS = Object.freeze({ road: { brick: 1, lumber: 1 }, settlement: { brick: 1, lumber: 1, wool: 1, grain: 1 }, city: { grain: 2, ore: 3 }, development: { wool: 1, grain: 1, ore: 1 } });
+export const COLORS = Object.freeze(['#ec8668', '#68c6de', '#e7bd65', '#b29bea']);
+export const PIECE_LIMITS = Object.freeze({ road: 15, settlement: 5, city: 4 });
+export const PHASES = Object.freeze(['lobby', 'setup_settlement', 'setup_road', 'roll', 'main', 'discard', 'robber', 'steal', 'road_building', 'year_of_plenty', 'monopoly', 'game_result', 'disconnected']);
+export const resourceBag = (count = 0) => Object.fromEntries(RESOURCES.map(resource => [resource, count]));
+export const resourceCount = bag => RESOURCES.reduce((sum, resource) => sum + bag[resource], 0);
