@@ -12,6 +12,7 @@ function svg(tag, attrs = {}, ...children) {
 const atlas = new URL(`./assets/terrain-atlas.webp?v=${document.documentElement.dataset.appVersion ?? 'dev'}`, import.meta.url).href;
 document.documentElement.style.setProperty('--terrain-art', `url("${atlas}")`);
 const terrainCells = { forest: [0, 0], hills: [1, 0], pasture: [2, 0], fields: [0, 1], mountains: [1, 1], desert: [2, 1] };
+const resourceTerrains = Object.fromEntries(Object.entries(TERRAIN_RESOURCE).filter(([, resource]) => resource).map(([terrain, resource]) => [resource, terrain]));
 const terrainNames = { forest: 'Forest', hills: 'Hills', pasture: 'Pasture', fields: 'Fields', mountains: 'Mountains', desert: 'Desert' };
 const ownerName = (view, id) => view.players.find(player => player.id === id)?.name ?? 'Player';
 const ownTurn = view => view.currentPlayerId === view.me.id;
@@ -50,6 +51,12 @@ export function renderBoard(view, ui = {}) {
       svg('linearGradient', { id: 'timber', x1: 0, y1: 0, x2: 1, y2: 1 }, svg('stop', { offset: 0, 'stop-color': '#ae8555' }), svg('stop', { offset: '.5', 'stop-color': '#6d4e33' }), svg('stop', { offset: 1, 'stop-color': '#b18b5b' })),
       svg('radialGradient', { id: 'token' }, svg('stop', { offset: 0, 'stop-color': '#fff7df' }), svg('stop', { offset: 1, 'stop-color': '#dfcaa4' })),
       svg('filter', { id: 'piece-shadow', x: '-80%', y: '-80%', width: '260%', height: '260%' }, svg('feDropShadow', { dx: 2, dy: 4, stdDeviation: 2, 'flood-color': '#061512', 'flood-opacity': '.5' })),
+      RESOURCES.map(resource => {
+        const [column, row] = terrainCells[resourceTerrains[resource]];
+        return svg('pattern', { id: `harbor-${resource}`, x: -31, y: -23, width: 62, height: 46,
+          patternUnits: 'userSpaceOnUse', viewBox: `${column * 512} ${row * 512} 512 512`, preserveAspectRatio: 'xMidYMid slice' },
+          svg('image', { href: atlas, width: 1536, height: 1024 }));
+      }),
       TOPOLOGY.hexes.map(hex => {
         const [column, row] = terrainCells[view.board.hexes[hex.id].terrain];
         return svg('pattern', { id: `terrain-${hex.id}`, x: hex.x - HEX_RADIUS, y: hex.y - HEX_RADIUS, width: 144, height: 144,
@@ -81,10 +88,12 @@ export function renderBoard(view, ui = {}) {
   for (const harbor of view.board.harbors) {
     const ends = TOPOLOGY.edges[harbor.edge].vertices.map(id => TOPOLOGY.vertices[id]), x = (ends[0].x + ends[1].x) / 2, y = (ends[0].y + ends[1].y) / 2;
     const dx = x - BOARD_CENTER.x, dy = y - BOARD_CENTER.y, length = Math.hypot(dx, dy), px = x + dx / length * 65, py = y + dy / length * 65;
-    board.append(svg('g', { class: 'harbor', 'data-render-key': `harbor-${harbor.edge}` },
+    board.append(svg('g', { class: 'harbor', 'data-resource': harbor.resource ?? 'any', 'data-render-key': `harbor-${harbor.edge}` },
       svg('title', {}, harbor.resource ? `${RESOURCE_NAMES[harbor.resource]} harbor: trade 2 for 1. Build at either endpoint.` : 'General harbor: trade any 3 of one resource for 1. Build at either endpoint.'),
       ends.map(vertex => svg('line', { x1: vertex.x, y1: vertex.y, x2: px, y2: py, stroke: '#e0c798', 'stroke-width': 2, 'stroke-dasharray': '4 5', opacity: '.6' })),
-      svg('g', { transform: `translate(${px} ${py})` }, svg('rect', { x: -31, y: -23, width: 62, height: 46, rx: 11, fill: '#153d3b', stroke: '#b6a277', 'stroke-width': 1.5 }),
+      svg('g', { class: 'harbor-label', transform: `translate(${px} ${py})` },
+        svg('rect', { x: -31, y: -23, width: 62, height: 46, rx: 11, fill: harbor.resource ? `url(#harbor-${harbor.resource})` : '#153d3b', stroke: '#b6a277', 'stroke-width': 1.5 }),
+        harbor.resource ? svg('rect', { x: -30, y: -22, width: 60, height: 44, rx: 10, fill: '#102b26', opacity: '.24', 'pointer-events': 'none' }) : null,
         svg('path', { d: 'M-23 10h11l-3 5h-5ZM-18 9V-5l-9 11h9', fill: '#e8d6a9', stroke: '#e8d6a9', 'stroke-width': 1 }),
         svg('text', { x: 7, y: -5, 'text-anchor': 'middle', fill: '#f7e8c5', 'font-size': 15, 'font-weight': 700 }, harbor.resource ? '2:1' : '3:1'),
         svg('text', { x: 7, y: 11, 'text-anchor': 'middle', fill: '#d2c7a8', 'font-size': 10 }, harbor.resource ? RESOURCE_NAMES[harbor.resource] : 'Any'),
@@ -196,7 +205,7 @@ function renderPlayers(view) {
 }
 function renderHand(view) {
   return el('section', { class: 'hand-panel', 'data-render-key': 'hand', 'aria-label': 'Your private resources' },
-    el('div', { class: 'hand-heading' }, el('div', {}, eyebrow('YOUR HAND · ONLY YOU CAN SEE'), el('h2', {}, 'The makings of an empire.')), el('span', { class: 'private-score' }, el('b', {}, view.me.score), ` / ${view.targetScore} VP`)),
+    el('div', { class: 'hand-heading' }, el('div', {}, eyebrow('YOUR HAND · ONLY YOU CAN SEE'), el('h2', {}, 'Your resources.')), el('span', { class: 'private-score' }, el('b', {}, view.me.score), ` / ${view.targetScore} VP`)),
     el('div', { class: 'resource-hand' }, RESOURCES.map(resource => el('div', { class: `resource-card ${resource}${view.me.resources[resource] ? '' : ' empty-card'}`, 'data-render-key': `resource-${resource}`, 'aria-label': `${view.me.resources[resource]} ${RESOURCE_NAMES[resource]}` },
       el('div', { class: `card-landscape landscape-${resource}` }, resourceIcon(resource)), el('div', { class: 'resource-card-label' }, el('span', {}, RESOURCE_NAMES[resource]), el('b', {}, view.me.resources[resource]))))),
     el('div', { class: 'piece-supply' }, el('span', {}, `${view.me.pieces.road} roads left`), el('span', {}, `${view.me.pieces.settlement} settlements left`), el('span', {}, `${view.me.pieces.city} cities left`), el('span', {}, `${view.me.development.length} development cards`)),
@@ -296,16 +305,17 @@ function renderActions(view, ui, pending) {
 export function renderGame(view, ui, pending) {
   const inspect = ui.inspectedHex !== undefined ? view.board.hexes[ui.inspectedHex] : null;
   return el('div', { class: 'game', 'data-render-key': 'game' },
-    view.phase === 'game_result' && ui.reviewResult ? button('SHOW RESULTS · PLAY AGAIN', 'show-result', { class: 'button primary', 'data-render-key': 'show-result' }) : null,
     renderPlayers(view),
     el('div', { class: 'play-layout' },
       el('div', { class: 'table-column', 'data-render-key': 'table-column' },
         el('div', { class: 'turn-banner', 'data-render-key': 'turn-banner' }, el('div', {}, eyebrow(`${view.targetScore} VICTORY POINTS TO WIN${view.players.length === 2 ? ' · DICE-DIRECTED ROBBER' : ''}`), el('strong', { class: ownTurn(view) ? 'your-turn' : '' }, turnAnnouncement(view))), renderDice(view.dice)),
         el('section', { class: 'board-panel', 'data-render-key': 'board-panel' }, renderBoard(view, ui), el('div', { class: 'board-caption' },
           el('span', {}, inspect ? `${terrainNames[inspect.terrain]} · ${TERRAIN_RESOURCE[inspect.terrain] ? `${RESOURCE_NAMES[TERRAIN_RESOURCE[inspect.terrain]]} · Roll ${inspect.number}` : 'No resource production'}` : 'Tap a terrain to inspect · Glowing locations are legal'), el('span', {}, 'CATANA CODEX'))),
-        renderHand(view),
       ),
-      el('div', { class: 'sidebar', 'data-render-key': 'sidebar' }, renderActions(view, ui, pending),
+      renderHand(view),
+      el('div', { class: 'sidebar', 'data-render-key': 'sidebar' },
+        view.phase === 'game_result' && ui.reviewResult ? button('SHOW RESULTS · PLAY AGAIN', 'show-result', { class: 'button primary', 'data-render-key': 'show-result' }) : null,
+        renderActions(view, ui, pending),
         el('details', { class: 'journal panel', open: true, 'data-render-key': 'journal' }, el('summary', {}, 'Island journal'), el('ol', {}, view.log.toReversed().map(entry => el('li', { 'data-render-key': `event-${entry.id}-${entry.text}` }, entry.text))))),
     ),
     view.phase === 'game_result' ? renderResult(view, pending) : null,

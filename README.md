@@ -1,6 +1,6 @@
 # Multiplayer — good games, good company
 
-A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.** or **TOW — Keep your trailer close.** from the collection.
+A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.**, **TOW — Keep your trailer close.** or **Catana Codex — A world worth building.** from the collection.
 
 **TOW** is online multiplayer trailer racing for **2–4 drivers**, available at `./games/tow/`. **Keyboard controls only for now.** The collection links to TOW's independent realtime racing entry point; its physics and networking modules are loaded only when opening that game. See [TOW's controls, advertising and test instructions](games/tow/README.md).
 
@@ -143,7 +143,7 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 
 ## Shared code and adding another game
 
-An unlisted **Catana Codex** board game for **2–4 friends** is available directly at `./games/catana/`. It uses PLAN's existing authoritative `GameRoom`, transport and private views, with an original terrain atlas and a complete resource-trading rules engine. Three or four players play to 10 VP; two players play to 12 VP with dice-directed robber destinations. It is intentionally absent from the public collection. See [Catana's rules, architecture and tests](games/catana/README.md).
+**Catana Codex**, a board game for **2–4 friends**, is listed in both the multiplayer collection and the sibling games catalog, linking to `./games/catana/`. It uses PLAN's existing authoritative `GameRoom`, transport and private views, with an original terrain atlas and a complete resource-trading rules engine. Three or four players play to 10 VP; two players play to 12 VP with dice-directed robber destinations. Its game modules load only when opening its standalone entry. The generated cover master and prompt are in [marketing/CATANA-PROMPT.md](marketing/CATANA-PROMPT.md). See [Catana's rules, architecture and tests](games/catana/README.md).
 
 An unlisted **HAMSTER multiplayer** prototype lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is intentionally omitted from the public collection and game catalog; open its direct URL to create or join a room. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
 

@@ -1,6 +1,8 @@
 # Catana Codex
 
-A complete turn-based resource-trading board game for **2–4 human players**, with original terrain artwork, mouse/touch controls and an English interface. It is deliberately **unlisted** in both public game collections. Open **`/multiplayer/games/catana/`** directly; invitations use that same pathname with `?room=XXXXXXXX`.
+A complete turn-based resource-trading board game for **2–4 human players**, with original terrain artwork, mouse/touch controls and an English interface. Both public game collections list it with its own generated cover. Open **`/multiplayer/games/catana/`**; invitations use that same pathname with `?room=XXXXXXXX`.
+
+On desktop screens wider than 900px, the island and all five private resource cards fit together in the viewport. The action sidebar scrolls independently when needed. Smaller screens retain the stacked touch layout. Each 2:1 harbor uses the same terrain artwork as its resource; general 3:1 harbors retain their teal background.
 
 ## Run
 
@@ -24,7 +26,7 @@ Rules were checked against the [classic base rulebook and almanac](https://www.c
 
 ## Integration and privacy
 
-`catanaGame` supplies a game adapter to the unchanged shared `GameRoom`. The shared `StarNetwork`, room-code generator, names, player bindings, handshake, readiness, request cache, stale-revision protection, reliable WebRTC channels, connection health, private snapshot delivery, chat and sound are reused. Only one centrally validated intention envelope, `CATANA_ACTION`, was added to the existing protocol. The catalog registry is unchanged.
+`catanaGame` supplies a game adapter to the unchanged shared `GameRoom`. The shared `StarNetwork`, room-code generator, names, player bindings, handshake, readiness, request cache, stale-revision protection, reliable WebRTC channels, connection health, private snapshot delivery, chat and sound are reused. Only one centrally validated intention envelope, `CATANA_ACTION`, was added to the existing protocol. The collection registry links to the standalone Catana entry without importing its engine or UI.
 
 As in PLAN, the **host browser is authoritative and trusted**. There is no dedicated game server in this repository. Guests send intentions; the room assigns their identity from the connection and the reducer validates every rule before committing an independent cloned state. The host generates dice, shuffles cards, resolves steals, and publishes separate allowlisted views. Guests never receive opponent resource types, unplayed development IDs/types, purchase turns or development-deck order. Public scores exclude hidden Victory Points until game over. The host UI uses the same filtered view; a host can necessarily inspect its full authoritative state in developer tools.
 
@@ -46,7 +48,7 @@ Connection handling intentionally follows the existing turn-based room policy. P
 node --test tests/*.test.mjs
 ```
 
-The Catana tests check 1,000 randomized layouts, setup and legal construction, exact costs and component limits, production and shortages, both robber modes, discard/steal, bank/harbor/player trades, every development effect, path branches/loops/cuts, award ties/transfers, hidden points and victory, message schemas and unlisted deployment. Nine complete seeded matches cover all supported player counts and conserve every resource and development card after every action. Three additional complete matches run through the real `GameRoom` with an in-memory transport, including recipient-specific snapshots, forged/stale/replayed requests, rematches, chat and disconnect/rejoin handling.
+The Catana tests check 1,000 randomized layouts, setup and legal construction, exact costs and component limits, production and shortages, both robber modes, discard/steal, bank/harbor/player trades, every development effect, path branches/loops/cuts, award ties/transfers, hidden points and victory, message schemas and the public catalog entry. Browser checks cover matching harbor artwork and simultaneous board/hand visibility at laptop and desktop resolutions across all action tabs. Nine complete seeded matches cover all supported player counts and conserve every resource and development card after every action. Three additional complete matches run through the real `GameRoom` with an in-memory transport, including recipient-specific snapshots, forged/stale/replayed requests, rematches, chat and disconnect/rejoin handling.
 
 Optional browser checks require development-only Playwright, Chromium, `peer` and `peerjs` installed outside production:
 

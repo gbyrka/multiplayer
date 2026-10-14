@@ -42,7 +42,7 @@ try {
   await page.goto(`${base}/games/`);
   await page.waitForFunction(() => document.documentElement.dataset.appVersion);
   const section = page.locator('#multiplayer');
-  assert.equal(await section.locator('a').count(), 3);
+  assert.equal(await section.locator('a').count(), 4);
   await section.getByRole('link', { name: /Play PLAN/ }).click();
   await page.locator('#entry-form').waitFor();
   assert.equal(new URL(page.url()).searchParams.get('game'), 'plan');
@@ -52,12 +52,21 @@ try {
   assert.equal(new URL(page.url()).pathname, '/multiplayer/games/tow/');
   await page.getByRole('link', { name: '← All multiplayer' }).click();
   await page.locator('.featured-game').first().waitFor();
-  assert.equal(await page.locator('.featured-game').count(), 2);
+  assert.equal(await page.locator('.featured-game').count(), 3);
+  await page.goto(`${base}/games/`);
+  await section.getByRole('link', { name: /Play Catana Codex/ }).click();
+  await page.locator('#entry-form').waitFor();
+  assert.equal(new URL(page.url()).pathname, '/multiplayer/games/catana/');
+  await page.getByRole('link', { name: 'All multiplayer games', exact: true }).first().click();
+  await page.locator('.featured-game').first().waitFor();
+  await page.getByRole('link', { name: /PLAY Catana Codex/ }).click();
+  await page.locator('#entry-form').waitFor();
+  assert.equal(new URL(page.url()).pathname, '/multiplayer/games/catana/');
   await page.goto(`${base}/games/`);
   await section.getByRole('link', { name: /All multiplayer/ }).click();
   await page.locator('.featured-game').first().waitFor();
   assert.equal(new URL(page.url()).pathname, '/multiplayer/');
-  pass('All three catalog links work; PLAN opens its entry, TOW its track, and All multiplayer its collection');
+  pass('All four catalog links work; Catana opens its standalone entry from both collections');
 
   for (const path of ['/games/', '/multiplayer/', '/multiplayer/games/tow/']) {
     await page.goto(base + path);

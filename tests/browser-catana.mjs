@@ -88,8 +88,45 @@ async function performUI(page, intent, phase) {
 
 try {
   const collection = await page(); await collection.goto(new URL('../../', base).href); await collection.locator('.featured-game').first().waitFor();
-  assert.equal(await collection.locator('a[href*="catana"],[data-game="catana"]').count(), 0);
-  assert.ok(!(await collection.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name))).some(url => /catana\/(app|ui|board|game-core)\.mjs/.test(url))); pass('Game remains unlisted and its board/UI/engine are not loaded by the collection');
+  assert.equal(await collection.locator('a[href="./games/catana/"]').count(), 1);
+  assert.equal(await collection.locator('.featured-game').count(), 3);
+  const catanaCard = collection.locator('.featured-game').filter({ hasText: 'Catana Codex' });
+  await catanaCard.scrollIntoViewIfNeeded(); await catanaCard.locator('img').evaluate(image => image.decode());
+  assert.match(await catanaCard.locator('img').getAttribute('src'), /catana-cover/);
+  assert.equal(await catanaCard.locator('.keyboard-notice').count(), 0);
+  assert.ok(!(await collection.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name))).some(url => /catana\/(app|ui|board|game-core)\.mjs/.test(url))); pass('Catana is listed with its own artwork; its board/UI/engine load only on opening the game');
+  await catanaCard.getByRole('link', { name: /PLAY Catana Codex/ }).click(); await collection.locator('#entry-form').waitFor();
+  const fixture = await page(); await fixture.goto(base); await fixture.locator('#entry-form').waitFor();
+  const fixtures = {}; simulateMatch(4, 22, state => { if (!fixtures[state.phase]) fixtures[state.phase] = structuredClone(state); });
+  for (const phase of ['discard', 'year_of_plenty', 'monopoly', 'steal', 'road_building']) {
+    const state = fixtures[phase]; assert.ok(state); const actor = phase === 'discard' ? Object.keys(state.discards)[0] : state.currentPlayerId;
+    await fixture.evaluate(async view => { const { renderGame } = await import('./ui.mjs'); document.querySelector('#main').replaceChildren(renderGame(view, { panel: 'cards', buildMode: 'road' }, false)); }, buildViewForPlayer(state, actor));
+    for (const width of [1440, 1024, 768, 430, 320]) await noOverflow(fixture, width);
+  }
+  pass('Discard, development, robber and player panels remain readable without overflow from desktop to 320px');
+  const mainState = fixtures.main;
+  const mainView = buildViewForPlayer(mainState, mainState.currentPlayerId);
+  for (const panel of ['build', 'trade', 'cards']) {
+    await fixture.evaluate(async ({ view, panel }) => { const { renderGame } = await import('./ui.mjs'); document.querySelector('#main').replaceChildren(renderGame(view, { panel }, false)); }, { view: mainView, panel });
+    for (const [width, height] of [[1024, 768], [1280, 720], [1366, 768], [1440, 900], [1920, 1080]]) {
+      await fixture.setViewportSize({ width, height }); await fixture.evaluate(() => scrollTo(0, 0));
+      const board = await fixture.locator('#island').boundingBox(), hand = await fixture.locator('.hand-panel').boundingBox();
+      assert.ok(board.y >= 0 && board.y + board.height <= height, `${panel} board fits ${width}×${height}`);
+      assert.ok(board.height >= 280, `${panel} board stays usable at ${width}×${height}`);
+      assert.ok(hand.y >= 0 && hand.y + hand.height <= height, `${panel} private resources fit ${width}×${height}`);
+      for (const card of await fixture.locator('.resource-card').all()) { const box = await card.boundingBox(); assert.ok(box.y + box.height <= height); }
+      assert.ok(await fixture.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    }
+  }
+  for (const resource of ['brick', 'lumber', 'wool', 'grain', 'ore']) {
+    assert.equal(await fixture.locator(`.harbor[data-resource="${resource}"] .harbor-label rect`).first().getAttribute('fill'), `url(#harbor-${resource})`);
+    assert.equal(await fixture.locator(`#harbor-${resource} image`).count(), 1);
+  }
+  assert.equal(await fixture.locator('.harbor[data-resource="any"]').count(), 4);
+  await fixture.setViewportSize({ width: 1366, height: 768 });
+  await fixture.screenshot({ path: `${output}/game-laptop.png` });
+  pass('Board and all five private resources fit laptop/desktop viewports across action panels; 2:1 harbors use matching terrain art');
+
   const host = await page(); await host.goto(base); await host.locator('#entry-form').waitFor(); await instrument(host, true);
   await host.screenshot({ path: `${output}/home-desktop.png`, fullPage: true });
   for (const width of [1920, 1440, 1024, 834, 768, 430, 360, 320]) await noOverflow(host, width);
@@ -162,14 +199,6 @@ try {
   for (const page of four) { const view = await page.evaluate(() => window.__room.view); assert.equal(view.targetScore, 10); assert.equal(view.phase, 'game_result'); assert.equal(JSON.stringify(view.board), initialBoard); }
   pass(`Complete four-player WebRTC match stays synchronized and wins at 10 VP (${steps - 1} actions)`);
 
-  const fixture = await page(); await fixture.goto(base); await fixture.locator('#entry-form').waitFor();
-  const fixtures = {}; simulateMatch(4, 22, state => { if (!fixtures[state.phase]) fixtures[state.phase] = structuredClone(state); });
-  for (const phase of ['discard', 'year_of_plenty', 'monopoly', 'steal', 'road_building']) {
-    const state = fixtures[phase]; assert.ok(state); const actor = phase === 'discard' ? Object.keys(state.discards)[0] : state.currentPlayerId;
-    await fixture.evaluate(async view => { const { renderGame } = await import('./ui.mjs'); document.querySelector('#main').replaceChildren(renderGame(view, { panel: 'cards', buildMode: 'road' }, false)); }, buildViewForPlayer(state, actor));
-    for (const width of [1440, 1024, 768, 430, 320]) await noOverflow(fixture, width);
-  }
-  pass('Discard, development, robber and player panels remain readable without overflow from desktop to 320px');
   const unavailable = await page({ noPeer: true }); await unavailable.goto(base); await unavailable.locator('#your-name').fill('No CDN'); await unavailable.getByRole('button', { name: 'CREATE GAME ↗' }).click(); await unavailable.getByText('Couldn’t find your seat.').waitFor();
   const unsupported = await page({ unsupported: true }); await unsupported.goto(base); await unsupported.locator('#form-error').filter({ hasText: 'Multiplayer is not supported' }).waitFor(); pass('CDN failure and unsupported WebRTC display readable recovery screens');
   assert.deepEqual(errors, []); console.log(`PASS ${checks} browser checks; screenshots in ${output}`);

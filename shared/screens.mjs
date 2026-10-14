@@ -28,10 +28,10 @@ export function renderCollection(games) {
     el('div', { class: 'section-heading' }, el('h2', {}, 'Find your next favorite'), el('span', {}, `THE COLLECTION · ${String(games.length).padStart(2, '0')}`)),
     el('section', { class: 'game-collection', 'aria-label': 'Choose a game' }, games.map(game =>
       el('article', { class: 'featured-game' },
-        game.cover ? el('div', { class: 'game-art tow-art' },
-          el('picture', {}, el('source', { type: 'image/webp', srcset: './assets/tow-cover-600.webp 600w, ./assets/tow-cover-1200.webp 1200w', sizes: '(max-width: 560px) calc(100vw - 40px), 50vw' }),
-            el('img', { src: game.cover, alt: 'Four colorful cars towing ivory trailers around a winding forest road', width: '1200', height: '800', decoding: 'async', loading: 'lazy' })),
-          el('span', { class: 'keyboard-notice' }, game.controls)) :
+        game.cover ? el('div', { class: 'game-art cover-art' },
+          el('picture', {}, game.coverSrcset ? el('source', { type: 'image/webp', srcset: game.coverSrcset, sizes: '(max-width: 560px) calc(100vw - 40px), 50vw' }) : null,
+            el('img', { src: game.cover, alt: game.coverAlt, width: '1200', height: '800', decoding: 'async', loading: 'lazy' })),
+          game.controls ? el('span', { class: 'keyboard-notice' }, game.controls) : null) :
         el('div', { class: 'game-art', 'aria-hidden': 'true' }, el('span', { class: 'art-orbit orbit-one' }), el('span', { class: 'art-orbit orbit-two' }),
           el('span', { class: 'art-caption' }, 'A GOOD HAND STARTS WITH A PLAN'),
           el('div', { class: 'showcase-cards' },

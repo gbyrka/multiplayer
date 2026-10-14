@@ -18,5 +18,14 @@ export const COLLECTION_GAMES = Object.freeze([...GAMES, Object.freeze({
   description: 'Race your friends along a new winding road. Dodge the barrels, mind the corners, and bring your trailer across the finish.',
   players: '2–4 drivers', duration: '1–3 min', category: 'TRAILER RACING · ONLINE MULTIPLAYER',
   href: './games/tow/', cover: './assets/tow-cover.jpg',
+  coverSrcset: './assets/tow-cover-600.webp 600w, ./assets/tow-cover-1200.webp 1200w',
+  coverAlt: 'Four colorful cars towing ivory trailers around a winding forest road',
   controls: 'Keyboard controls only for now',
+}), Object.freeze({
+  id: 'catana', title: 'Catana Codex', subtitle: 'A world worth building.',
+  description: 'Settle a new island, trade with friends, and turn a handful of resources into roads, towns, and a winning strategy.',
+  players: '2–4 players', duration: '45–90 min', category: 'BUILDING & TRADING · ONLINE MULTIPLAYER',
+  href: './games/catana/', cover: './assets/catana-cover.jpg',
+  coverSrcset: './assets/catana-cover-600.webp 600w, ./assets/catana-cover-1200.webp 1200w',
+  coverAlt: 'A hexagonal island with forests, fields, mountains and colorful wooden settlements surrounded by a teal sea',
 })]);

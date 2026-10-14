@@ -274,9 +274,11 @@ test('wire schema rejects all malformed ranges, bags, extra fields and identity 
   for (const payload of invalid) { assert.equal(isCatanaAction(payload), false); assert.equal(isClientMessage(message('CATANA_ACTION', payload)), false); }
   assert.ok(isClientMessage(message('CATANA_ACTION', { action: 'BUILD_ROAD', edge: 71 })));
 });
-test('Catana is accessible through its direct entry and is absent from all public game descriptors', async () => {
-  assert.ok(!GAMES.some(game => game.id === 'catana')); assert.ok(!COLLECTION_GAMES.some(game => game.id === 'catana'));
-  const html = await readFile(new URL('../games/catana/index.html', import.meta.url), 'utf8'); assert.match(html, /noindex, nofollow/); assert.match(html, /\.\/games\/catana\/app\.mjs/); assert.match(html, /data-site-https/);
+test('Catana is listed with its standalone entry and remains separate from the PLAN module graph', async () => {
+  assert.ok(!GAMES.some(game => game.id === 'catana'));
+  const descriptor = COLLECTION_GAMES.find(game => game.id === 'catana');
+  assert.equal(descriptor.href, './games/catana/'); assert.equal(descriptor.cover, './assets/catana-cover.jpg');
+  const html = await readFile(new URL('../games/catana/index.html', import.meta.url), 'utf8'); assert.doesNotMatch(html, /noindex, nofollow/); assert.match(html, /\.\/games\/catana\/app\.mjs/); assert.match(html, /data-site-https/);
   const config = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8')); for (const module of ['constants', 'action-schema', 'board', 'game-core', 'ui', 'app']) assert.ok(config.modules.includes(`./games/catana/${module}.mjs`));
 });
 
