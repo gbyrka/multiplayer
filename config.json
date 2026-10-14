@@ -1,5 +1,5 @@
 {
-  "version": "catana2",
+  "version": "catana3",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

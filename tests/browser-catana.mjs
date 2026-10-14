@@ -102,19 +102,31 @@ try {
     const state = fixtures[phase]; assert.ok(state); const actor = phase === 'discard' ? Object.keys(state.discards)[0] : state.currentPlayerId;
     await fixture.evaluate(async view => { const { renderGame } = await import('./ui.mjs'); document.querySelector('#main').replaceChildren(renderGame(view, { panel: 'cards', buildMode: 'road' }, false)); }, buildViewForPlayer(state, actor));
     for (const width of [1440, 1024, 768, 430, 320]) await noOverflow(fixture, width);
+    for (const [width, height] of [[834, 1112], [1024, 768], [1280, 720]]) {
+      await fixture.setViewportSize({ width, height }); await fixture.evaluate(() => scrollTo(0, 0));
+      const actions = await fixture.locator('.actions-panel').boundingBox();
+      assert.ok(actions.y + actions.height <= height + 1, `${phase} action panel fits ${width}×${height}`);
+    }
   }
   pass('Discard, development, robber and player panels remain readable without overflow from desktop to 320px');
   const mainState = fixtures.main;
   const mainView = buildViewForPlayer(mainState, mainState.currentPlayerId);
-  for (const panel of ['build', 'trade', 'cards']) {
-    await fixture.evaluate(async ({ view, panel }) => { const { renderGame } = await import('./ui.mjs'); document.querySelector('#main').replaceChildren(renderGame(view, { panel }, false)); }, { view: mainView, panel });
-    for (const [width, height] of [[1024, 768], [1280, 720], [1366, 768], [1440, 900], [1920, 1080]]) {
+  const richView = structuredClone(mainView);
+  richView.me.development = ['knight', 'road_building', 'year_of_plenty', 'monopoly', 'victory_point'].flatMap((type, index) => Array.from({ length: 3 }, (_, copy) => ({ id: `fixture-${index}-${copy}`, type, playable: type !== 'victory_point', boughtThisTurn: false })));
+  for (const ui of [{ panel: 'build' }, { panel: 'build', selection: { kind: 'road', id: mainView.legal.roads[0] } }, { panel: 'trade' }, { panel: 'trade', tradeMode: 'offer' }, { panel: 'cards' }]) {
+    const panel = `${ui.panel}/${ui.tradeMode ?? 'default'}${ui.selection ? '/placement' : ''}`;
+    await fixture.evaluate(async ({ view, ui }) => { const { renderGame } = await import('./ui.mjs'); document.querySelector('#main').replaceChildren(renderGame(view, ui, false)); }, { view: ui.panel === 'cards' ? richView : mainView, ui });
+    for (const [width, height] of [[768, 1024], [834, 1112], [1024, 768], [1280, 720], [1366, 768], [1440, 900], [1920, 1080]]) {
       await fixture.setViewportSize({ width, height }); await fixture.evaluate(() => scrollTo(0, 0));
       const board = await fixture.locator('#island').boundingBox(), hand = await fixture.locator('.hand-panel').boundingBox();
       assert.ok(board.y >= 0 && board.y + board.height <= height, `${panel} board fits ${width}×${height}`);
       assert.ok(board.height >= 280, `${panel} board stays usable at ${width}×${height}`);
       assert.ok(hand.y >= 0 && hand.y + hand.height <= height, `${panel} private resources fit ${width}×${height}`);
       for (const card of await fixture.locator('.resource-card').all()) { const box = await card.boundingBox(); assert.ok(box.y + box.height <= height); }
+      const actions = await fixture.locator('.actions-panel').boundingBox();
+      assert.ok(actions.y + actions.height <= height + 1, `${panel} entire action panel fits ${width}×${height}: bottom ${actions.y + actions.height}`);
+      assert.ok(await fixture.locator('.sidebar').evaluate(node => !['auto', 'scroll'].includes(getComputedStyle(node).overflowY)), `${panel}: no inner scrolling`);
+      for (const button of await fixture.locator('.actions-panel button').all()) { const box = await button.boundingBox(); if (box) { assert.ok(box.y + box.height <= height + 1, `${panel} control visible`); assert.ok(box.height >= 44, `${panel} keeps touch targets`); } }
       assert.ok(await fixture.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     }
   }
@@ -125,7 +137,7 @@ try {
   assert.equal(await fixture.locator('.harbor[data-resource="any"]').count(), 4);
   await fixture.setViewportSize({ width: 1366, height: 768 });
   await fixture.screenshot({ path: `${output}/game-laptop.png` });
-  pass('Board and all five private resources fit laptop/desktop viewports across action panels; 2:1 harbors use matching terrain art');
+  pass('Board, resources and entire action panels fit tablet/laptop/desktop viewports with no inner scrolling and 44px touch targets');
 
   const host = await page(); await host.goto(base); await host.locator('#entry-form').waitFor(); await instrument(host, true);
   await host.screenshot({ path: `${output}/home-desktop.png`, fullPage: true });
@@ -135,6 +147,11 @@ try {
   const invite = await host.locator('#invite-link').inputValue(); assert.ok(invite.startsWith(base));
   const guest = await page({ touch: true }); await joinRoom(guest, invite, 'Grace'); await guest.getByRole('button', { name: 'READY', exact: true }).click(); await host.getByRole('button', { name: 'START GAME', exact: true }).click();
   await host.locator('.game').waitFor(); await guest.locator('.game').waitFor(); pass('Mouse host and touch tablet join the existing GameRoom via a subdirectory invite');
+  assert.ok(await host.locator('#journal-root .journal').isVisible());
+  assert.equal(await host.locator('#journal-root details').evaluate(node => node.open), false);
+  assert.ok(await host.evaluate(() => Boolean(document.querySelector('#chat-container').compareDocumentPosition(document.querySelector('#journal-root')) & Node.DOCUMENT_POSITION_FOLLOWING)));
+  assert.equal(await host.locator('.sidebar .journal').count(), 0);
+  await host.locator('#journal-root summary').click();
   const pages = [host, guest], actors = new Map(); for (const page of pages) actors.set(await page.evaluate(() => window.__room.playerId), page);
   const observed = new Set(); let actions = 0, desktopSaved = false, tabletSaved = false, negotiated = false;
   while (actions < 1000) {
@@ -173,6 +190,9 @@ try {
   const guestWire = await guest.evaluate(() => window.__wire.filter(entry => entry.data.type === 'STATE_UPDATE').map(entry => entry.data.payload.view)); assert.ok(guestWire.length > 20);
   for (const view of guestWire) { for (const player of view.players) { assert.equal(Object.hasOwn(player, 'resources'), false); assert.equal(Object.hasOwn(player, 'development'), false); } assert.equal(Object.hasOwn(view, 'developmentDeck'), false); }
   assert.ok((await guest.evaluate(() => window.__wire)).some(entry => entry.label === 'multiplayer-v1')); pass('Actual WebRTC snapshots contain only recipient cards, public pieces and card counts');
+  assert.equal(await host.locator('#journal-root details').evaluate(node => node.open), true);
+  assert.ok(await host.locator('#journal-root li').count() > 0);
+  pass('Journal is below Room chat, starts collapsed and preserves its open state and events across game updates');
   await host.getByRole('button', { name: 'Review the island' }).click(); await host.getByRole('button', { name: 'SHOW RESULTS · PLAY AGAIN' }).click(); await host.getByRole('button', { name: 'PLAY AGAIN · A NEW ISLAND' }).click(); await host.locator('.result-overlay').waitFor({ state: 'hidden' });
   assert.equal((await host.evaluate(() => window.__state)).phase, 'setup_settlement'); pass('Game-over review and rematch preserve the room and start a fresh island');
   await guest.locator('#chat-container>summary').click(); await guest.locator('#chat-input').fill('Good game! Shall we trade?'); await guest.locator('#chat-form button[type="submit"]').click(); await host.waitForFunction(() => window.__room.chatView.messages.some(entry => entry.text === 'Good game! Shall we trade?'));

@@ -7,7 +7,7 @@ import { ChatPanel } from '../../shared/chat-ui.mjs';
 import { GameSound } from '../../shared/sound.mjs';
 import { catanaGame } from './game-core.mjs';
 import { RESOURCES, resourceBag, resourceCount } from './constants.mjs';
-import { renderHome, renderLobby, renderGame, renderRules, turnAnnouncement } from './ui.mjs';
+import { renderHome, renderLobby, renderGame, renderJournal, renderRules, turnAnnouncement } from './ui.mjs';
 
 const $ = id => document.getElementById(id), params = new URLSearchParams(location.search), sound = new GameSound();
 let room = null, view = null, pending = false, pendingTimer, attempt = 0, screen = 'home', connectionStatus = 'An island for good company.', endedReason = '', toastTimer;
@@ -36,6 +36,10 @@ function render() {
   $('leave').hidden = !room || screen === 'connecting';
   $('sound-toggle').textContent = sound.enabled ? 'SOUND ON' : 'SOUND OFF'; $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
   $('chat-container').hidden = !room || !view || ['home', 'error', 'connecting'].includes(screen);
+  const journalVisible = Boolean(view?.log && ['game', 'disconnected'].includes(screen));
+  const journalOpen = $('journal-root').querySelector('details')?.open ?? false;
+  $('journal-root').hidden = !journalVisible;
+  patchChildren($('journal-root'), ...(journalVisible ? [renderJournal(view, journalOpen)] : []));
   chat.setConnected(Boolean(room && view && screen !== 'disconnected'), view?.me.id);
   window.MoDITAds?.setVisible($('catana-ad'), ['home', 'game'].includes(screen));
   if (view) $('announcer').textContent = view.phase === 'lobby' ? `${view.players.length} players in the lobby.` : turnAnnouncement(view);
@@ -43,6 +47,7 @@ function render() {
 function clearPending() { pending = false; clearTimeout(pendingTimer); }
 function receive(next) {
   const previous = view; view = next; clearPending(); ui.selection = null;
+  if (previous?.trade?.id !== next.trade?.id) ui.counterOfferId = null;
   if (previous?.phase !== next.phase) ui.resourceDraft = resourceBag();
   if (next.phase === 'setup_settlement' && previous?.phase !== 'setup_road') { ui.reviewResult = false; ui.inspectedHex = undefined; }
   screen = next.phase === 'disconnected' ? 'disconnected' : next.phase === 'lobby' ? 'lobby' : 'game';
@@ -133,7 +138,8 @@ async function handleButton(node) {
     case 'finish-roads': action('FINISH_ROADS'); break;
     case 'accept-trade': action('ACCEPT_TRADE', { offer: view.trade.id }); break;
     case 'cancel-trade': action('CANCEL_TRADE'); break;
-    case 'counteroffer': ui.panel = 'trade'; ui.tradeMode = 'offer'; ui.tradeDraft = { give: { ...view.trade.want }, want: { ...view.trade.give }, target: view.trade.proposer }; render(); break;
+    case 'counteroffer': ui.panel = 'trade'; ui.tradeMode = 'offer'; ui.counterOfferId = view.trade.id; ui.tradeDraft = { give: { ...view.trade.want }, want: { ...view.trade.give }, target: view.trade.proposer }; render(); break;
+    case 'review-offer': ui.counterOfferId = null; render(); break;
   }
 }
 document.addEventListener('click', event => { const node = event.target.closest('[data-action]'); if (node) void handleButton(node); });

@@ -2,7 +2,7 @@
 
 A complete turn-based resource-trading board game for **2–4 human players**, with original terrain artwork, mouse/touch controls and an English interface. Both public game collections list it with its own generated cover. Open **`/multiplayer/games/catana/`**; invitations use that same pathname with `?room=XXXXXXXX`.
 
-On desktop screens wider than 900px, the island and all five private resource cards fit together in the viewport. The action sidebar scrolls independently when needed. Smaller screens retain the stacked touch layout. Each 2:1 harbor uses the same terrain artwork as its resource; general 3:1 harbors retain their teal background.
+On tablet and desktop screens wider than 700px, the island, all five private resource cards and the action panel fit together in the viewport. Resources sit below the island; the action panel has no internal scrolling. Compact trade and resource-selection forms retain 44px touch controls, and identical development cards are grouped with their counts and one playable card per type. Smaller screens retain the stacked touch layout. Island journal sits below Room chat, starts collapsed and preserves its open state during game updates. Each 2:1 harbor uses the same terrain artwork as its resource; general 3:1 harbors retain their teal background.
 
 ## Run
 

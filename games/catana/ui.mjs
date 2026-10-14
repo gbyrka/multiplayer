@@ -223,8 +223,8 @@ function resourcePicker(view, ui, mode, pending) {
   return el('form', { 'data-form': mode, id: 'resource-picker', 'data-render-key': `picker-${mode}` },
     el('h3', {}, mode === 'discard' ? `Return ${count} cards to the bank` : `Take ${count} cards from the bank`),
     el('p', { class: 'muted small' }, mode === 'discard' ? 'Keep the resources you need most. Your selection is private.' : 'Choose any combination of the available resources.'),
-    RESOURCES.map(resource => el('label', { class: 'resource-choice', for: `choose-${resource}` }, el('span', {}, resourceIcon(resource), RESOURCE_NAMES[resource]), el('span', { class: 'muted small' }, `${limits[resource]} available`),
-      el('input', { type: 'number', id: `choose-${resource}`, name: resource, min: 0, max: limits[resource], step: 1, value: draft[resource], inputmode: 'numeric', 'data-draft': 'resources', 'aria-label': `${RESOURCE_NAMES[resource]} to ${mode === 'discard' ? 'discard' : 'take'}` }))),
+    el('div', { class: 'resource-choices' }, RESOURCES.map(resource => el('label', { class: 'resource-choice', for: `choose-${resource}` }, el('span', {}, resourceIcon(resource), RESOURCE_NAMES[resource]), el('span', { class: 'muted small' }, `${limits[resource]} available`),
+      el('input', { type: 'number', id: `choose-${resource}`, name: resource, min: 0, max: limits[resource], step: 1, value: draft[resource], inputmode: 'numeric', 'data-draft': 'resources', 'aria-label': `${RESOURCE_NAMES[resource]} to ${mode === 'discard' ? 'discard' : 'take'}` })))),
     el('p', { class: 'selection-count', id: 'selection-count', 'data-required': count }, `${sum} / ${count} selected`),
     el('button', { type: 'submit', class: 'button primary wide', id: 'submit-resources', disabled: sum !== count || pending }, mode === 'discard' ? 'DISCARD SELECTED' : 'TAKE RESOURCES'));
 }
@@ -233,12 +233,13 @@ function buildPanel(view, ui, pending) {
     el('p', { class: 'muted small' }, ownTurn(view) ? 'Choose a piece, then tap a glowing location.' : 'Plan your next move while your friends build.'),
     el('div', { class: 'build-buttons' }, ['road', 'settlement', 'city'].map(kind => button([
       el('span', { class: 'build-symbol', 'aria-hidden': 'true' }, { road: '↝', settlement: '⌂', city: '♜' }[kind]), el('span', {}, el('strong', {}, kind[0].toUpperCase() + kind.slice(1)), el('small', {}, costLabel(COSTS[kind]))),
-    ], 'build-mode', { class: `button build-button${ui.buildMode === kind ? ' selected' : ''}`, 'data-kind': kind, 'aria-pressed': String(ui.buildMode === kind), disabled: pending || !view.legal[`${kind === 'city' ? 'citie' : kind}s`].length }))),
-    button([el('strong', {}, 'Buy development card'), el('small', {}, costLabel(COSTS.development))], 'buy-development', { class: 'button development-buy', disabled: pending || !view.legal.canBuyDevelopment }),
+    ], 'build-mode', { class: `button build-button${ui.buildMode === kind ? ' selected' : ''}`, 'data-kind': kind, 'aria-pressed': String(ui.buildMode === kind), disabled: pending || !view.legal[`${kind === 'city' ? 'citie' : kind}s`].length })),
+      button([el('strong', {}, 'Buy development card'), el('small', {}, costLabel(COSTS.development))], 'buy-development', { class: 'button development-buy', disabled: pending || !view.legal.canBuyDevelopment })),
     el('p', { class: 'muted small' }, `${view.developmentRemaining} development cards in the deck.`),
     renderSelection(view, ui, pending));
 }
 function tradePanel(view, ui, pending) {
+  if (view.trade && ui.counterOfferId !== view.trade.id) return el('div', { class: 'trade-panel' }, renderOffer(view, pending));
   const active = ownTurn(view), mode = active ? ui.tradeMode ?? 'bank' : 'offer', draft = ui.tradeDraft ?? { give: resourceBag(), want: resourceBag(), target: '' };
   const give = ui.bankGive ?? 'brick', receive = ui.bankReceive ?? 'lumber', ratio = view.me.ratios[give];
   return el('div', { class: 'trade-panel' },
@@ -251,13 +252,15 @@ function tradePanel(view, ui, pending) {
       el('button', { type: 'submit', class: 'button primary wide', disabled: pending }, 'TRADE WITH BANK')) : el('form', { 'data-form': 'offer', id: 'player-trade' },
       el('h3', {}, 'Make an offer.'), el('p', { class: 'muted small' }, 'Only trades involving the current player are allowed. Every exchange is checked before cards change hands.'),
       el('div', { class: 'trade-grid-heading' }, el('span', {}, 'RESOURCE'), el('span', {}, 'GIVE'), el('span', {}, 'ASK')),
-      RESOURCES.map(resource => el('div', { class: 'trade-resource-row' }, el('span', {}, resourceIcon(resource), RESOURCE_NAMES[resource]),
-        el('input', { type: 'number', name: `give-${resource}`, min: 0, max: view.me.resources[resource], value: draft.give[resource], inputmode: 'numeric', 'data-draft': 'trade-give', 'data-resource': resource, 'aria-label': `${RESOURCE_NAMES[resource]} to offer` }),
-        el('input', { type: 'number', name: `want-${resource}`, min: 0, max: 19, value: draft.want[resource], inputmode: 'numeric', 'data-draft': 'trade-want', 'data-resource': resource, 'aria-label': `${RESOURCE_NAMES[resource]} to request` }))),
+      el('div', { class: 'trade-resources' }, RESOURCES.map(resource => el('div', { class: 'trade-resource-row' }, el('span', {}, resourceIcon(resource), RESOURCE_NAMES[resource]),
+        el('label', { class: 'trade-field-label', for: `offer-give-${resource}` }, 'GIVE'),
+        el('input', { id: `offer-give-${resource}`, type: 'number', name: `give-${resource}`, min: 0, max: view.me.resources[resource], value: draft.give[resource], inputmode: 'numeric', 'data-draft': 'trade-give', 'data-resource': resource, 'aria-label': `${RESOURCE_NAMES[resource]} to offer` }),
+        el('label', { class: 'trade-field-label', for: `offer-want-${resource}` }, 'ASK'),
+        el('input', { id: `offer-want-${resource}`, type: 'number', name: `want-${resource}`, min: 0, max: 19, value: draft.want[resource], inputmode: 'numeric', 'data-draft': 'trade-want', 'data-resource': resource, 'aria-label': `${RESOURCE_NAMES[resource]} to request` })))),
       el('label', { for: 'trade-target' }, 'OFFER TO'), el('select', { id: 'trade-target', name: 'target', 'data-draft': 'trade-target' }, active ? el('option', { value: '', selected: !draft.target }, 'Everyone') : null,
         view.players.filter(player => player.id !== view.me.id && (active || player.id === view.currentPlayerId)).map(player => el('option', { value: player.id, selected: draft.target === player.id }, player.name))),
       el('button', { type: 'submit', class: 'button primary wide', disabled: pending }, 'PROPOSE TRADE')),
-    view.trade ? renderOffer(view, pending) : null);
+    view.trade ? button('Back to the offer', 'review-offer', { class: 'button quiet wide' }) : null);
 }
 function renderOffer(view, pending) {
   const offer = view.trade, eligible = offer.proposer !== view.me.id && (offer.target === null || offer.target === view.me.id) && (ownTurn(view) || offer.proposer === view.currentPlayerId);
@@ -270,10 +273,14 @@ function renderOffer(view, pending) {
 }
 function cardsPanel(view, pending) {
   const descriptions = { knight: 'Move the robber and steal a card. Played Knights count toward Largest Army.', road_building: 'Place up to two free roads using the usual placement rules.', year_of_plenty: 'Take any two available resource cards from the bank.', monopoly: 'Choose a resource. Every opponent gives you all their cards of that type.', victory_point: 'One hidden victory point. Revealed automatically when you win.' };
-  return el('div', { class: 'development-hand' }, view.me.development.length ? view.me.development.map(card => el('article', { class: `development-card${card.playable ? ' playable' : ''}`, 'data-render-key': `dev-${card.id}` },
+  const groups = Object.keys(DEVELOPMENT_NAMES).map(type => {
+    const cards = view.me.development.filter(card => card.type === type);
+    return cards.length ? { cards, card: cards.find(card => card.playable) ?? cards.find(card => !card.boughtThisTurn) ?? cards[0] } : null;
+  }).filter(Boolean);
+  return el('div', { class: 'development-hand' }, groups.length ? groups.map(({ card, cards }) => el('article', { class: `development-card${card.playable ? ' playable' : ''}`, 'data-render-key': `dev-${card.type}`, title: descriptions[card.type] },
     el('span', { class: 'development-mark', 'aria-hidden': 'true' }, { knight: '⚑', road_building: '↝', year_of_plenty: '✦', monopoly: '◈', victory_point: '♛' }[card.type]),
-    el('div', {}, el('h3', {}, DEVELOPMENT_NAMES[card.type]), el('p', { class: 'small muted' }, descriptions[card.type]),
-      card.type !== 'victory_point' ? button(card.boughtThisTurn ? 'Available on a later turn' : `PLAY ${DEVELOPMENT_NAMES[card.type].toUpperCase()}`, 'play-development', { class: 'button secondary wide', 'data-card': card.id, disabled: pending || !card.playable }) : el('span', { class: 'hidden-point' }, '+1 VP · PRIVATE')))) :
+    el('div', {}, el('h3', {}, DEVELOPMENT_NAMES[card.type], cards.length > 1 ? ` ×${cards.length}` : null), el('p', { class: 'small muted' }, descriptions[card.type]),
+      card.type !== 'victory_point' ? button(card.boughtThisTurn ? 'Available on a later turn' : `PLAY ${DEVELOPMENT_NAMES[card.type].toUpperCase()}`, 'play-development', { class: 'button secondary wide', 'data-card': card.id, disabled: pending || !card.playable }) : el('span', { class: 'hidden-point' }, `+${cards.length} VP · PRIVATE`)))) :
     el('p', { class: 'muted' }, 'Your story is still unwritten. Buy development cards with 1 wool, 1 grain, and 1 ore.'), el('p', { class: 'muted small' }, 'Play one card per turn, even before rolling. Newly bought cards must wait. Hidden victory points can win immediately.'));
 }
 function renderActions(view, ui, pending) {
@@ -315,11 +322,14 @@ export function renderGame(view, ui, pending) {
       renderHand(view),
       el('div', { class: 'sidebar', 'data-render-key': 'sidebar' },
         view.phase === 'game_result' && ui.reviewResult ? button('SHOW RESULTS · PLAY AGAIN', 'show-result', { class: 'button primary', 'data-render-key': 'show-result' }) : null,
-        renderActions(view, ui, pending),
-        el('details', { class: 'journal panel', open: true, 'data-render-key': 'journal' }, el('summary', {}, 'Island journal'), el('ol', {}, view.log.toReversed().map(entry => el('li', { 'data-render-key': `event-${entry.id}-${entry.text}` }, entry.text))))),
+        renderActions(view, ui, pending)),
     ),
     view.phase === 'game_result' ? renderResult(view, pending) : null,
   );
+}
+export function renderJournal(view, open = false) {
+  return el('details', { class: 'journal panel', open, 'data-render-key': 'journal' }, el('summary', {}, 'Island journal'),
+    el('ol', {}, view.log.toReversed().map(entry => el('li', { 'data-render-key': `event-${entry.id}-${entry.text}` }, entry.text))));
 }
 function renderResult(view, pending) {
   const winner = view.players.find(player => player.id === view.winnerId);
