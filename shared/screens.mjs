@@ -41,7 +41,7 @@ export function renderCollection(games) {
           el('span', { class: 'art-signature' }, '♣ ♦ ♥ ♠')),
         el('div', { class: 'featured-content' }, eyebrow(game.category),
           el('h2', {}, game.title), el('p', { class: 'game-subtitle' }, game.subtitle), el('p', { class: 'muted' }, game.description),
-          el('div', { class: 'game-facts' }, el('span', {}, game.players), el('span', {}, game.duration), el('span', {}, game.controls ? 'Keyboard required' : 'Mouse & touch')),
+          el('div', { class: 'game-facts' }, el('span', {}, game.players), el('span', {}, game.duration), el('span', {}, game.inputLabel ?? (game.controls ? 'Keyboard required' : 'Mouse & touch'))),
           game.href ? el('a', { class: 'button primary', href: game.href }, 'PLAY ', game.title, el('span', { 'aria-hidden': 'true' }, '↗')) :
             button(['PLAY ', game.title, el('span', { 'aria-hidden': 'true' }, '↗')], 'select-game', { class: 'button primary', 'data-game': game.id }),
         ),

@@ -294,11 +294,12 @@ test('stale remote epochs cannot undo a pause and leaving a guest returns the re
   session.lost(first); assert.equal(session.arena, null); assert.equal(session.players.length, 2); assert.equal(session.links.get(second).slot, 1);
   assert.equal(session.players[1].ready, false); assert.equal(views.at(-1).kind, 'lobby');
 });
-test('HAMSTER is only a direct entry, is noindexed, and every production module is versioned', async () => {
+test('HAMSTER is listed in the public collection and every production module is versioned', async () => {
   const root = new URL('../', import.meta.url), html = await readFile(new URL('games/hamster/index.html', root), 'utf8');
-  assert.match(html, /name="robots" content="noindex, nofollow"/);
-  const { COLLECTION_GAMES } = await import('../games/registry.mjs'); assert.ok(COLLECTION_GAMES.every(game => game.id !== 'hamster'));
-  const collection = await readFile(new URL('index.html', root), 'utf8'); assert.ok(!collection.includes('games/hamster/'));
+  assert.doesNotMatch(html, /noindex/);
+  const { COLLECTION_GAMES } = await import('../games/registry.mjs');
+  assert.deepEqual(COLLECTION_GAMES.map(game => game.id), ['catana', 'hamster', 'plan', 'tow']);
+  assert.equal(COLLECTION_GAMES.find(game => game.id === 'hamster').href, './games/hamster/');
   const files = (await readdir(root, { recursive: true })).filter(file => file.endsWith('.mjs') && !file.startsWith('tests/') && !file.startsWith('node_modules/')).map(file => './' + file).sort();
   const config = JSON.parse(await readFile(new URL('config.json', root), 'utf8')); assert.deepEqual([...config.modules].sort(), files);
 });

@@ -1,6 +1,6 @@
 # Multiplayer — good games, good company
 
-A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.**, **TOW — Keep your trailer close.** or **Catana Codex — A world worth building.** from the collection.
+A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.**, **TOW — Keep your trailer close.** **Catana Codex — A world worth building.** or **HAMSTER multiplayer — Little paws. Big company.** from the collection.
 
 **TOW** is online multiplayer trailer racing for **2–4 drivers**, available at `./games/tow/`. **Keyboard controls only for now.** The collection links to TOW's independent realtime racing entry point; its physics and networking modules are loaded only when opening that game. See [TOW's controls, advertising and test instructions](games/tow/README.md).
 
@@ -145,7 +145,7 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 
 **Catana Codex**, a board game for **2–4 friends**, is listed in both the multiplayer collection and the sibling games catalog, linking to `./games/catana/`. It uses PLAN's existing authoritative `GameRoom`, transport and private views, with an original terrain atlas and a complete resource-trading rules engine. Three or four players play to 10 VP; two players play to 12 VP with dice-directed robber destinations. Its game modules load only when opening its standalone entry. The generated cover master and prompt are in [marketing/CATANA-PROMPT.md](marketing/CATANA-PROMPT.md). See [Catana's rules, architecture and tests](games/catana/README.md).
 
-An unlisted **HAMSTER multiplayer** prototype lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is intentionally omitted from the public collection and game catalog; open its direct URL to create or join a room. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
+**HAMSTER multiplayer** lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is listed in both public collections, after Catana Codex and before PLAN and TOW in a two-column grid. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
 
 ```text
 index.html                 Inline version loader, shell, dialog and announcements
@@ -243,7 +243,7 @@ The optional release recovery checks cache an incompatible dependency, verify au
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-release-recovery.mjs
 ```
 
-`tests/browser-domain.mjs` checks HTTPS migration across all sibling repositories, so run it with the complete local workspace. It serves local files through Playwright request interception under the production hostnames; it makes no public requests and needs no web server. It covers old-domain/HTTP redirects, room codes, DOCK challenge tokens, HTTPS navigation and metadata, local previews, and the unlisted HAMSTER entry:
+`tests/browser-domain.mjs` checks HTTPS migration across all sibling repositories, so run it with the complete local workspace. It serves local files through Playwright request interception under the production hostnames; it makes no public requests and needs no web server. It covers old-domain/HTTP redirects, room codes, DOCK challenge tokens, HTTPS navigation and metadata, local previews, and the HAMSTER entry:
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/browser-domain.mjs

@@ -1,5 +1,5 @@
 {
-  "version": "catana3",
+  "version": "picnic4",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

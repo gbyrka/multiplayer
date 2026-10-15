@@ -103,13 +103,13 @@ async function fixture(host, callback) {
 
 try {
   const collection = await page(); await collection.goto(new URL('../../', base).href); await collection.locator('.featured-game').first().waitFor();
-  assert.equal(await collection.locator('a[href*="games/hamster"]').count(), 0);
+  assert.equal(await collection.locator('a[href*="games/hamster"]').count(), 1);
   assert.ok(!(await collection.evaluate(() => performance.getEntriesByType('resource').map(r => r.name))).some(name => name.includes('/games/hamster/')));
-  await collection.context().close(); pass('The public collection has no HAMSTER link and loads none of its files');
+  await collection.context().close(); pass('The public collection links to HAMSTER without loading its game modules');
 
   const host = await page(); await host.goto(base); await host.locator('#home:not([hidden])').waitFor();
   await observeLabels(host);
-  assert.equal(await host.locator('meta[name="robots"]').getAttribute('content'), 'noindex, nofollow');
+  assert.equal(await host.locator('meta[name="robots"]').count(), 0);
   for (const width of [320, 390, 768, 1440]) await noOverflow(host, width);
   await capture(host, 'home-desktop');
   await host.locator('#your-name').fill('Greg'); await host.locator('#connect').click(); await host.locator('#lobby:not([hidden])').waitFor();

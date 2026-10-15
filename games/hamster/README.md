@@ -2,7 +2,7 @@
 
 A friendly, slightly chaotic 3D picnic for **2–4 players**. Based on the sibling HAMSTER: the same detailed furry hamster, wooden habitat, three floors, ramps, hideout, water bottle, wheel and pastel Y-shaped tubes.
 
-**Direct entry:** `./games/hamster/`, beside PLAN and TOW. On the existing GitHub Pages deployment the path is `https://mod-it.games/multiplayer/games/hamster/`. It is intentionally absent from the public multiplayer collection and the general games catalog. Its HTML has `noindex, nofollow`. This is an unlisted game, not a password-protected site.
+**Direct entry:** `./games/hamster/`, beside PLAN and TOW. On the existing GitHub Pages deployment the path is `https://mod-it.games/multiplayer/games/hamster/`. It is listed in the public multiplayer collection and the general games catalog, beside Catana Codex in the first row.
 
 ## Play locally
 

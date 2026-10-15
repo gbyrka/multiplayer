@@ -42,7 +42,7 @@ try {
   await page.goto(`${base}/games/`);
   await page.waitForFunction(() => document.documentElement.dataset.appVersion);
   const section = page.locator('#multiplayer');
-  assert.equal(await section.locator('a').count(), 4);
+  assert.equal(await section.locator('a').count(), 5);
   await section.getByRole('link', { name: /Play PLAN/ }).click();
   await page.locator('#entry-form').waitFor();
   assert.equal(new URL(page.url()).searchParams.get('game'), 'plan');
@@ -52,7 +52,7 @@ try {
   assert.equal(new URL(page.url()).pathname, '/multiplayer/games/tow/');
   await page.getByRole('link', { name: '← All multiplayer' }).click();
   await page.locator('.featured-game').first().waitFor();
-  assert.equal(await page.locator('.featured-game').count(), 3);
+  assert.equal(await page.locator('.featured-game').count(), 4);
   await page.goto(`${base}/games/`);
   await section.getByRole('link', { name: /Play Catana Codex/ }).click();
   await page.locator('#entry-form').waitFor();
@@ -66,7 +66,13 @@ try {
   await section.getByRole('link', { name: /All multiplayer/ }).click();
   await page.locator('.featured-game').first().waitFor();
   assert.equal(new URL(page.url()).pathname, '/multiplayer/');
-  pass('All four catalog links work; Catana opens its standalone entry from both collections');
+  for (const path of ['/games/', '/multiplayer/']) {
+    await page.goto(base + path);
+    await page.getByRole('link', { name: /Play HAMSTER/i }).first().click();
+    await page.locator('#home:not([hidden])').waitFor();
+    assert.equal(new URL(page.url()).pathname, '/multiplayer/games/hamster/');
+  }
+  pass('All five catalog links work; Catana and HAMSTER open from both collections');
 
   for (const path of ['/games/', '/multiplayer/', '/multiplayer/games/tow/']) {
     await page.goto(base + path);
@@ -76,6 +82,20 @@ try {
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 950 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${path} overflows at ${width}px`);
+      if (!path.includes('tow')) {
+        const cards = page.locator(path === '/games/' ? '#multiplayer .game-card' : '.featured-game');
+        const titles = await cards.locator('h2, h3').allTextContents();
+        assert.deepEqual(titles, ['Catana Codex', 'HAMSTER multiplayer', 'PLAN', 'TOW']);
+        if (width > 800) {
+          const boxes = await cards.evaluateAll(nodes => nodes.map(node => {
+            const { x, y } = node.getBoundingClientRect(); return { x, y };
+          }));
+          assert.equal(boxes[0].y, boxes[1].y);
+          assert.equal(boxes[2].y, boxes[3].y);
+          assert.ok(boxes[0].x < boxes[1].x && boxes[0].y < boxes[2].y);
+          assert.equal(boxes[0].x, boxes[2].x);
+        }
+      }
       const notice = page.locator('.keyboard-notice').first();
       assert.ok(await notice.isVisible());
       const box = await notice.boundingBox();

@@ -113,12 +113,12 @@ try {
     const link = page.locator(`a[href="..${path}"]`).first();
     assert.equal(await link.evaluate(anchor => anchor.href), origin + path);
   }
-  assert.equal(await page.locator('a[href*="multiplayer/games/hamster"]').count(), 0);
+  assert.equal(await page.locator('a[href*="multiplayer/games/hamster"]').count(), 1);
   await page.locator('a[href="../dock/"]').first().click();
   await page.waitForURL(origin + '/dock/');
   await page.getByRole('link', { name: '← Browse all games' }).click();
   await page.waitForURL(origin + '/games/');
-  pass('Catalog and return navigation use custom-domain HTTPS URLs, while HAMSTER multiplayer remains unlisted');
+  pass('Catalog and return navigation use custom-domain HTTPS URLs, including the public HAMSTER multiplayer link');
 
   await page.goto(`${origin}/dock/`);
   const challenge = await page.evaluate(() => buildChallengeUrl(1234));
