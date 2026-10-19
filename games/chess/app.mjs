@@ -8,19 +8,43 @@ import { chessGame } from './game-core.mjs';
 import { renderHome, renderLobby, renderGame, renderSide, renderRules, statusText, formatTime } from './ui.mjs';
 
 const $ = id => document.getElementById(id), params = new URLSearchParams(location.search), sound = new GameSound();
-const ui = { joining: params.has('room'), code: normalizeRoomCode(params.get('room')).slice(0, 8), name: '', error: '', selected: null, promotion: null, pending: false, settingsDirty: false };
+const ui = { joining: params.has('room'), code: normalizeRoomCode(params.get('room')).slice(0, 8), name: '', error: '', selected: null, promotion: null, pending: false, settingsDirty: false, panel: 'chat', drawerOpen: false, settingsDraft: null };
 try { ui.name = localStorage.getItem('multiplayer:name') ?? ''; } catch { /* Optional storage. */ }
 let room = null, view = null, screen = 'home', attempt = 0, pendingTimer, toastTimer, receivedAt = performance.now(), supportError = '', testMode = false;
+const compactPanels = matchMedia('(max-width: 980px), (max-height: 600px)');
+let panelOpener = null;
 const chat = new ChatPanel((text, requestId) => room?.sendChat(text, requestId)); $('chat-root').append(chat.element);
 void checkMultiplayerSupport().then(ok => { testMode = !ok; }, error => { supportError = error.message; if (screen === 'home') { ui.error = supportError; render(); } });
 const inviteURL = (inRoom = true) => { const url = new URL(location.origin + location.pathname); if (inRoom && room) url.searchParams.set('room', room.roomCode); return url.href; };
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 6500); }
 function status(text) { $('connection-status').textContent = text; if ($('connecting-detail')) $('connecting-detail').textContent = text; }
 function clearPending() { ui.pending = false; clearTimeout(pendingTimer); }
+function syncPanels() {
+  const sidebar = $('sidebar'), compact = compactPanels.matches;
+  const inRoom = Boolean(room && view && !['home', 'connecting', 'error'].includes(screen));
+  sidebar.hidden = !inRoom || (compact && !ui.drawerOpen);
+  sidebar.dataset.panel = ui.panel; sidebar.dataset.open = String(ui.drawerOpen);
+  sidebar.setAttribute('role', compact ? 'dialog' : 'complementary');
+  if (compact && ui.drawerOpen) sidebar.setAttribute('aria-modal', 'true'); else sidebar.removeAttribute('aria-modal');
+  $('panel-backdrop').hidden = !inRoom || !compact || !ui.drawerOpen;
+  for (const panel of ['chat', 'moves', 'table']) {
+    const tab = $(`${panel}-tab`), selected = ui.panel === panel;
+    tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
+  }
+  $('match-info').setAttribute('aria-labelledby', ui.panel === 'moves' ? 'moves-tab' : 'table-tab');
+}
+function openPanel(panel, opener) {
+  ui.panel = panel; ui.drawerOpen = compactPanels.matches; if (!$('sidebar').contains(opener)) panelOpener = opener; render();
+  $(`${panel}-tab`).focus({ preventScroll: true });
+}
+function closePanel() {
+  ui.drawerOpen = false; syncPanels(); panelOpener?.focus({ preventScroll: true });
+}
+compactPanels.addEventListener('change', syncPanels);
 function render() {
   $('boot').hidden = true;
   const inRoom = Boolean(room && view && !['home', 'connecting', 'error'].includes(screen));
-  $('page-layout').classList.toggle('in-room', inRoom); $('sidebar').hidden = !inRoom;
+  $('page-layout').classList.toggle('in-room', inRoom); document.body.dataset.screen = screen;
   let node;
   if (screen === 'home') node = renderHome(ui);
   else if (screen === 'connecting') node = el('section', { class: 'connection-panel panel' }, eyebrow('A TABLE IS WAITING'), el('h1', {}, 'Pulling up a chair…'), el('p', { id: 'connecting-detail' }, $('connection-status').textContent), button('CANCEL', 'cancel-connect', { class: 'button secondary' }));
@@ -29,10 +53,11 @@ function render() {
   else node = view.phase === 'lobby' ? renderLobby(view, room.roomCode, inviteURL(), ui) : renderGame(view, ui);
   patchChildren($('main'), node);
   patchChildren($('match-info'), ...(inRoom ? [renderSide(view, ui.pending)] : []));
-  $('leave').hidden = !room || screen === 'connecting';
+  $('leave').hidden = !room || screen === 'connecting'; $('room-toggle').hidden = screen !== 'lobby';
   $('sound-toggle').textContent = sound.enabled ? 'SOUND ON' : 'SOUND OFF'; $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
   chat.setConnected(inRoom && screen !== 'disconnected', view?.me.id);
-  window.MoDITAds?.setVisible($('chess-ad'), ['home', 'lobby', 'game'].includes(screen));
+  syncPanels();
+  window.MoDITAds?.setVisible($('chess-ad'), $('about-dialog').open);
   if (view && screen === 'game') $('announcer').textContent = `${statusText(view).title}. ${statusText(view).body}`;
   updateClocks();
 }
@@ -49,7 +74,8 @@ function updateClocks() {
 }
 setInterval(updateClocks, 100);
 function receive(next) {
-  const previous = view; if (next.phase === 'game_result' && previous?.phase !== 'game_result') $('dialog').close(); view = next; receivedAt = performance.now(); clearPending(); ui.selected = null; ui.promotion = null; ui.settingsDirty = false;
+  const previous = view; if (next.phase === 'game_result' && previous?.phase !== 'game_result') $('dialog').close(); view = next; receivedAt = performance.now(); clearPending(); ui.selected = null; ui.promotion = null; ui.settingsDirty = false; ui.settingsDraft = null;
+  if (previous?.phase !== next.phase) { ui.drawerOpen = false; if (next.phase === 'lobby') ui.panel = 'chat'; }
   screen = next.phase === 'disconnected' ? 'disconnected' : next.phase === 'lobby' ? 'lobby' : 'game';
   if (next.phase === 'disconnected') ui.error = `${next.disconnectedNames.join(', ')} disconnected. This game has stopped; its clock is frozen.`;
   history.replaceState(null, '', inviteURL());
@@ -94,7 +120,7 @@ async function connect(form) {
   }
 }
 function leave() {
-  attempt++; room?.close(); room = null; view = null; clearPending(); chat.reset(); sound.stop(); ui.error = ''; ui.selected = null; ui.promotion = null; ui.settingsDirty = false;
+  attempt++; room?.close(); room = null; view = null; clearPending(); chat.reset(); sound.stop(); ui.error = ''; ui.selected = null; ui.promotion = null; ui.settingsDirty = false; ui.settingsDraft = null; ui.drawerOpen = false;
   screen = 'home'; history.replaceState(null, '', inviteURL(false)); status('A classic. A table for two.'); render();
 }
 function dialog(content) { $('dialog-content').replaceChildren(content); $('dialog').showModal(); }
@@ -113,6 +139,12 @@ function selectSquare(square) {
 async function handle(name, node) {
   sound.unlock();
   switch (name) {
+    case 'open-chat': openPanel('chat', node); break;
+    case 'open-moves': openPanel('moves', node); break;
+    case 'open-table': openPanel('table', node); break;
+    case 'close-panel': closePanel(); break;
+    case 'about': $('about-dialog').showModal(); window.MoDITAds?.setVisible($('chess-ad'), true); break;
+    case 'close-about': $('about-dialog').close(); break;
     case 'switch-mode': ui.name = $('your-name')?.value ?? ui.name; ui.code = $('room-code-input')?.value ?? ui.code; ui.joining = !ui.joining; ui.error = ''; render(); break;
     case 'copy-invite': try { await navigator.clipboard.writeText(inviteURL()); toast('Invite link copied.'); } catch { $('invite-link').select(); toast('Select and copy the invitation.'); } break;
     case 'start': if (!ui.settingsDirty) send('START_GAME'); break;
@@ -140,8 +172,27 @@ document.addEventListener('click', event => {
   const node = event.target.closest('[data-action]'); if (node && !node.disabled) void handle(node.dataset.action, node);
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !$('dialog').open && (ui.selected || ui.promotion)) { ui.selected = null; ui.promotion = null; render(); }
+  if ($('dialog').open || $('about-dialog').open) return;
+  if (ui.drawerOpen && compactPanels.matches) {
+    if (event.key === 'Escape') { event.preventDefault(); closePanel(); return; }
+    if (event.key === 'Tab') {
+      const controls = [...$('sidebar').querySelectorAll('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter(node => node.getClientRects().length && node.tabIndex >= 0);
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  }
+  if (event.key === 'Escape' && (ui.selected || ui.promotion)) { ui.selected = null; ui.promotion = null; render(); }
+  const tab = event.target.closest('[role="tab"]');
+  if (tab && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    const tabs = [...$('sidebar').querySelectorAll('[role="tab"]')].filter(node => node.getClientRects().length);
+    const index = (tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    void handle(tabs[index].dataset.action, tabs[index]);
+  }
 });
+$('about-dialog').addEventListener('close', () => window.MoDITAds?.setVisible($('chess-ad'), false));
 document.addEventListener('submit', event => {
   const form = event.target; if (!form.dataset.form) return; event.preventDefault(); sound.unlock();
   if (form.dataset.form === 'connect') { void connect(form); return; }
@@ -154,6 +205,9 @@ document.addEventListener('submit', event => {
 function settingsChanged(event) {
   if (!event.target.closest('#settings-form')) return;
   ui.settingsDirty = true;
+  const form = event.target.closest('#settings-form');
+  const draftMinutes = Number(form.elements.minutes.value) || 10;
+  ui.settingsDraft = { hostColor: form.elements.hostColor.value, minutes: $('use-clock').checked ? draftMinutes : 0, clockMinutes: draftMinutes };
   const input = $('clock-minutes'); input.disabled = !$('use-clock').checked;
   const start = document.querySelector('[data-action="start"]'); if (start) start.disabled = true;
   const status = document.querySelector('.lobby-status'); if (status) status.textContent = 'Save your settings to continue.';

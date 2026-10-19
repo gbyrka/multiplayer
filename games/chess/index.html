@@ -25,19 +25,30 @@
   <a class="skip-link" href="#main">Skip to game</a>
   <header class="site-header">
     <a href="../../" class="brand" aria-label="All multiplayer games"><span class="brand-mark" aria-hidden="true">♞</span><span class="brand-title">CHESS<small>A TABLE FOR TWO · MoD-IT</small></span></a>
-    <nav class="header-actions" aria-label="Game navigation"><span id="connection-status" class="connection-status" role="status">A classic. A table for two.</span><button class="button quiet" data-action="rules" type="button">HOW TO PLAY</button><button id="sound-toggle" class="button quiet" data-action="toggle-sound" aria-pressed="true" type="button">SOUND ON</button><button id="leave" class="button quiet" data-action="leave" type="button" hidden>LEAVE ROOM</button></nav>
+    <nav class="header-actions" aria-label="Game navigation"><span id="connection-status" class="connection-status" role="status">A classic. A table for two.</span><button class="button quiet" data-action="rules" type="button">HOW TO PLAY</button><button id="sound-toggle" class="button quiet" data-action="toggle-sound" aria-pressed="true" type="button">SOUND ON</button><button id="room-toggle" class="button quiet room-panel-button" data-action="open-chat" type="button" hidden>CHAT</button><button id="leave" class="button quiet" data-action="leave" type="button" hidden>LEAVE ROOM</button></nav>
   </header>
   <div id="page-layout" class="page-layout">
     <main id="main"></main>
-    <aside id="sidebar" class="sidebar" aria-label="At the table" hidden><div id="match-info"></div><div id="chat-root"></div></aside>
+    <aside id="sidebar" class="sidebar" aria-label="At the table" hidden>
+      <div class="sidebar-tabs" role="tablist" aria-label="Room panels">
+        <button type="button" class="button" id="chat-tab" role="tab" aria-controls="chat-root" data-action="open-chat">CHAT</button>
+        <button type="button" class="button moves-tab" id="moves-tab" role="tab" aria-controls="match-info" data-action="open-moves">MOVES</button>
+        <button type="button" class="button table-tab" id="table-tab" role="tab" aria-controls="match-info" data-action="open-table">TABLE</button>
+        <button type="button" class="button sidebar-close" data-action="close-panel" aria-label="Close room panel">✕</button>
+      </div>
+      <div id="match-info" role="tabpanel"></div><div id="chat-root" role="tabpanel" aria-labelledby="chat-tab"></div>
+    </aside>
   </div>
+  <button id="panel-backdrop" class="panel-backdrop" data-action="close-panel" aria-label="Close room panel" tabindex="-1" hidden></button>
   <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
   <div id="toast" class="toast" role="status" hidden></div>
   <div id="boot" class="boot">Setting the table…</div>
   <dialog id="dialog"><button class="button quiet dialog-close" data-action="close-dialog" type="button" aria-label="Close dialog">CLOSE ×</button><div id="dialog-content"></div></dialog>
   <noscript><p class="boot">Enable JavaScript to play.</p></noscript>
+  <dialog id="about-dialog"><button class="button quiet dialog-close" data-action="close-about" type="button" aria-label="Close about">CLOSE ×</button><h2>CHESS · MoD-IT</h2><p class="muted">A table for two. Made for friends, near and far.</p>
   <aside id="chess-ad" class="ad-placement ad-placement-game" aria-label="Advertisement" hidden><p class="ad-placement-label">ADVERTISEMENT</p><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-3806610967714181" data-ad-slot="9380002810" data-ad-format="auto" data-full-width-responsive="true"></ins></aside>
-  <footer class="privacy-footer"><span>Every move. A little more thought.</span><a href="../../">All multiplayer games</a><a href="../../../games/privacy.html">Privacy Policy</a></footer>
+  </dialog>
+  <footer class="privacy-footer"><span>MoD-IT · CHESS</span><a href="../../../games/privacy.html">Privacy</a><button type="button" data-action="about">About &amp; sponsors</button></footer>
   <script type="module">
     const refresh = new URL(location.href).searchParams.get('_refresh');
     const refreshApp = () => {

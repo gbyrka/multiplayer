@@ -51,16 +51,36 @@ async function hooks(p) {
 }
 const clickSquare=async(p,s)=>{const node=p.locator(`[data-square="${s}"]`);if(await p.evaluate(()=>navigator.maxTouchPoints>0))await node.tap();else await node.click();};
 const play=async(p,a,b)=>{await clickSquare(p,a);await clickSquare(p,b);};
-async function noOverflow(p,width){await p.setViewportSize({width,height:1050});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Overflow at ${width}px`);}
+async function noOverflow(p,width,height=1050){
+  await p.setViewportSize({width,height});
+  const dimensions=await p.evaluate(()=>({root:[document.documentElement.scrollWidth,document.documentElement.scrollHeight],body:[document.body.scrollWidth,document.body.scrollHeight],viewport:[innerWidth,innerHeight]}));
+  assert.ok(dimensions.root[0]<=width+1&&dimensions.body[0]<=width+1&&dimensions.root[1]<=height+1&&dimensions.body[1]<=height+1,`Page must fit ${width}x${height}: ${JSON.stringify(dimensions)}`);
+  const controls=await p.locator('.lobby-heading, .invite-card, .lobby-players, #settings-form, .lobby-start, .game .chess-board, #game-status, .game>.player-bar, .game-toolbar, .promotion-panel').evaluateAll(nodes=>nodes.filter(node=>node.getClientRects().length).map(node=>{const {x,y,width,height}=node.getBoundingClientRect();return {class:node.className,x,y,width,height};}));
+  for(const box of controls)assert.ok(box.x>=-1&&box.y>=-1&&box.x+box.width<=width+1&&box.y+box.height<=height+1,`Important content must be visible at ${width}x${height}: ${JSON.stringify(box)}`);
+}
+async function fitScreens(p,phase){
+  for(const [width,height] of [[1440,900],[1366,768],[1280,720],[1024,600],[768,1024],[390,844],[375,667],[320,568],[320,480],[667,375],[568,320]]){
+    await noOverflow(p,width,height);
+    if(width<=980||height<=600)assert.equal(await p.locator('#sidebar').isHidden(),true,'Resizing must keep the board visible, without opening the room drawer');
+    if([[1366,768],[375,667],[568,320]].some(([w,h])=>w===width&&h===height))await p.screenshot({path:`${output}/${phase}-${width}x${height}.png`});
+  }
+  await p.setViewportSize({width:1440,height:900});
+}
 async function fixture(p,fen,extra={}){await p.evaluate(({fen,extra})=>window.__setFixture({fen,...extra}),{fen,extra});await p.waitForTimeout(50);}
 try {
   const host=await page();await host.goto(base);await host.locator('.home').waitFor();await hooks(host);
   assert.equal(await host.locator('meta[name="robots"]').getAttribute('content'),'noindex, nofollow');
   for(const width of [320,390,768,1024,1440])await noOverflow(host,width);
-  await host.screenshot({path:`${output}/home-1440.png`,fullPage:true});
+  await fitScreens(host,'home');await host.screenshot({path:`${output}/home-1440.png`});
   await host.locator('#your-name').fill('Alex');await host.getByRole('button',{name:'CREATE A TABLE ↗',exact:true}).click();await host.locator('.lobby').waitFor();
   await host.locator('select[name="hostColor"]').selectOption('b');await host.locator('#use-clock').check();await host.locator('#clock-minutes').fill('5');
   assert.equal(await host.locator('[data-action="start"]').isDisabled(),true);
+  // Opening a panel while editing must preserve the host's unsaved choices.
+  await host.locator('#table-tab').click();await host.locator('#chat-tab').click();
+  assert.equal(await host.locator('select[name="hostColor"]').inputValue(),'b');
+  assert.equal(await host.locator('#use-clock').isChecked(),true);
+  assert.equal(await host.locator('#clock-minutes').isEnabled(),true);
+  assert.equal(await host.locator('#clock-minutes').inputValue(),'5');
   await host.getByRole('button',{name:'SAVE SETTINGS'}).click();
   const invite=await host.locator('#invite-link').inputValue();assert.match(invite,/games\/chess\/\?room=/);
   const guest=await page(true);await guest.goto(invite);await guest.locator('.home').waitFor();await hooks(guest);
@@ -68,14 +88,25 @@ try {
   assert.match(await guest.locator('.guest-settings').innerText(),/Host plays Black.*5 min/);
   await guest.getByRole('button',{name:'I’M READY'}).click();await host.locator('[data-action="start"]:not(:disabled)').waitFor();
   for(const width of [320,390,768,1024,1440])await noOverflow(host,width);
-  await host.screenshot({path:`${output}/lobby-1440.png`,fullPage:true});
+  assert.equal(await host.getByText('Your next', {exact:true}).count(),0);
+  await fitScreens(host,'lobby');await host.screenshot({path:`${output}/lobby-1440.png`});
   await host.locator('[data-action="start"]').click();await host.locator('.chess-board').waitFor();await guest.locator('.game').waitFor();
   assert.equal(await host.locator('.square').first().getAttribute('data-square'),'h1');assert.equal(await guest.locator('.square').first().getAttribute('data-square'),'a8');
   assert.equal(await host.locator('.can-move').count(),0);assert.equal(await guest.locator('.can-move').count(),10);
   await clickSquare(guest,'e2');assert.deepEqual((await guest.locator('.legal-target').evaluateAll(n=>n.map(x=>x.dataset.square))).sort(),['e3','e4']);assert.equal(await guest.locator('.can-move').count(),0);
+  await noOverflow(guest,375,667);await guest.screenshot({path:`${output}/destinations-375x667.png`});
   await guest.keyboard.press('Escape');
   for(const width of [320,390,768,1024,1440]){await noOverflow(guest,width);if(width===390||width===1440)await guest.screenshot({path:`${output}/white-${width}.png`,fullPage:true});}
-  await host.screenshot({path:`${output}/black-1440.png`,fullPage:true});
+  await fitScreens(host,'black');await fitScreens(guest,'white');
+  await host.screenshot({path:`${output}/black-1440.png`});
+  // The mobile drawer preserves the board size and gives chat/moves their own bounded panel.
+  await noOverflow(guest,375,667);await guest.getByRole('button',{name:'Open room chat',exact:true}).click();
+  await guest.locator('#sidebar:not([hidden])').waitFor();await guest.screenshot({path:`${output}/chat-drawer-375x667.png`});
+  await guest.locator('#chat-input').fill('Mobile draft.');await guest.keyboard.press('Escape');
+  assert.equal(await guest.locator('#sidebar').isHidden(),true);await noOverflow(guest,375,667);
+  await guest.getByRole('button',{name:'Open room chat',exact:true}).click();assert.equal(await guest.locator('#chat-input').inputValue(),'Mobile draft.');
+  await guest.keyboard.press('Escape');await guest.getByRole('button',{name:'Open move history',exact:true}).click();assert.equal(await guest.locator('.moves-panel').isVisible(),true);
+  await guest.keyboard.press('Escape');await noOverflow(guest,1440,900);await guest.locator('#chat-tab').click();
   await guest.locator('#chat-input').fill('Good luck!');await guest.locator('.chat-send').click();await host.getByText('Good luck!',{exact:true}).waitFor();
   await guest.locator('#chat-input').fill('A draft stays here.');
   await play(guest,'e2','e4');await host.locator('.can-move').first().waitFor();assert.equal(await guest.locator('#chat-input').inputValue(),'A draft stays here.');
@@ -88,18 +119,18 @@ try {
   await fixture(host,'k3r3/8/8/8/8/8/8/R3K3 w - - 0 1');
   assert.equal(await guest.locator('#game-status h1').innerText(),'CHECK');assert.equal(await guest.locator('.in-check').getAttribute('data-square'),'e1');
   assert.equal(await guest.locator('[data-square="a1"]').isDisabled(),true);
-  await guest.screenshot({path:`${output}/check.png`,fullPage:true});
+  await fitScreens(guest,'check');await guest.screenshot({path:`${output}/check.png`});
   await fixture(host,'7k/P7/8/8/8/8/8/4K3 w - - 0 1');
-  await play(guest,'a7','a8');await guest.locator('.promotion-panel').waitFor();assert.equal(await guest.locator('.promotion-choice').count(),4);
+  await play(guest,'a7','a8');await guest.locator('.promotion-panel').waitFor();await fitScreens(guest,'promotion');assert.equal(await guest.locator('.promotion-choice').count(),4);
   await guest.getByRole('button',{name:'Promote to knight',exact:true}).click();await guest.locator('[data-square="a8"] .piece-w').waitFor();assert.equal(await guest.locator('#game-status h1').innerText(),'DRAW');
   await fixture(host,'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1');await play(guest,'e1','g1');await guest.locator('[data-square="f1"] .piece').waitFor();assert.equal(await guest.locator('[data-square="f1"] .piece').count(),1);
   await fixture(host,'4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2');await play(guest,'e5','d6');await guest.locator('[data-square="d5"] .piece').waitFor({state:'detached'});assert.equal(await guest.locator('[data-square="d5"] .piece').count(),0);
   console.log('PASS pinned/blocked pieces, check evasion, underpromotion, castling and en passant through the interface');
 
-  await fixture(host,'7k/5Q2/6K1/8/8/8/8/8 b - - 0 1');await host.getByRole('heading',{name:'STALEMATE · DRAW'}).waitFor();assert.equal(await host.locator('.legal-target').count(),0);await host.screenshot({path:`${output}/stalemate.png`,fullPage:true});
+  await fixture(host,'7k/5Q2/6K1/8/8/8/8/8 b - - 0 1');await host.getByRole('heading',{name:'STALEMATE · DRAW'}).waitFor();await fitScreens(host,'stalemate');assert.equal(await host.locator('.legal-target').count(),0);await host.screenshot({path:`${output}/stalemate.png`,fullPage:true});
   await fixture(host,'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   for(const [p,a,b] of [[guest,'f2','f3'],[host,'e7','e5'],[guest,'g2','g4'],[host,'d8','h4']])await play(p,a,b);
-  await guest.getByRole('heading',{name:'CHECKMATE',exact:true}).waitFor();assert.match(await guest.locator('#game-status').innerText(),/Alex wins with Black/);await host.screenshot({path:`${output}/checkmate.png`,fullPage:true});
+  await guest.getByRole('heading',{name:'CHECKMATE',exact:true}).waitFor();await fitScreens(host,'checkmate');assert.match(await guest.locator('#game-status').innerText(),/Alex wins with Black/);await host.screenshot({path:`${output}/checkmate.png`,fullPage:true});
   await host.locator('[data-action="play-again"]').click();await guest.locator('.lobby').waitFor();assert.equal(await guest.locator('[data-action="ready"]').innerText(),'I’M READY');assert.equal(await host.getByText('Good luck!',{exact:true}).count(),1);
   await guest.locator('[data-action="ready"]').click();await host.locator('[data-action="start"]:not(:disabled)').click();await guest.locator('.game').waitFor();
   await host.evaluate(()=>window.__setFixture({fen:'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',clock:{w:400,b:60000,running:'w',since:performance.now()}}));
@@ -118,10 +149,13 @@ try {
   }
   const list=await page();await list.goto(origin+'/multiplayer/');await list.locator('.featured-game').first().waitFor();assert.equal(await list.locator('a[href*="games/chess"]').count(),0);
   await list.goto(origin+'/games/');assert.equal(await list.locator('a[href*="games/chess"]').count(),0);
-  await host.goto(base);await host.locator('.home').waitFor();const ad=host.locator('#chess-ad');await ad.scrollIntoViewIfNeeded();assert.equal(await ad.locator('.adsbygoogle').count(),1);
-  const spacing=await host.evaluate(()=>document.querySelector('#chess-ad').getBoundingClientRect().top-document.querySelector('#page-layout').getBoundingClientRect().bottom);assert.ok(spacing>=149);
+  await host.goto(base);await host.locator('.home').waitFor();await noOverflow(host,1366,768);
+  await host.getByRole('button',{name:'About & sponsors',exact:true}).click();
+  const ad=host.locator('#chess-ad');assert.equal(await ad.isVisible(),true);assert.equal(await ad.locator('.adsbygoogle').count(),1);
+  assert.equal(await host.locator('#about-dialog').getAttribute('open'),'');await host.getByRole('button',{name:'Close about',exact:true}).click();
+  await noOverflow(host,1366,768);
   assert.deepEqual(errors,[]);
-  console.log('PASS Analytics on PLAN/TOW/HAMSTER/Catana/CHESS, consent handling, unlisted entry, separated ad placement and no browser exceptions');
+  console.log('PASS Analytics on PLAN/TOW/HAMSTER/Catana/CHESS, consent handling, unlisted entry, sponsors outside the playing area and no browser exceptions');
 }catch(error){failed=true;for(let i=0;i<contexts.length;i++){const p=contexts[i].pages()[0];if(p)await p.screenshot({path:`${output}/failure-${i}.png`,fullPage:true}).catch(()=>{});}console.error(error);}
 finally{for(const c of contexts)await c.close();await browser.close();server.close();signal.close();}
 // PeerServer heartbeat timers do not expose a public disposal API.

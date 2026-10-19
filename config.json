@@ -1,5 +1,5 @@
 {
-  "version": "chess1",
+  "version": "chess2",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
