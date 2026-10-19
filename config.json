@@ -1,5 +1,5 @@
 {
-  "version": "picnic4",
+  "version": "chess1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -47,6 +47,11 @@
     "./games/catana/board.mjs",
     "./games/catana/constants.mjs",
     "./games/catana/game-core.mjs",
-    "./games/catana/ui.mjs"
+    "./games/catana/ui.mjs",
+    "./games/chess/action-schema.mjs",
+    "./games/chess/app.mjs",
+    "./games/chess/game-core.mjs",
+    "./games/chess/ui.mjs",
+    "./games/chess/vendor/chess.mjs"
   ]
 }

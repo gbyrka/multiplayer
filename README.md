@@ -143,6 +143,8 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 
 ## Shared code and adding another game
 
+**CHESS — A table for two** is a two-player game available only at `./games/chess/`. It is not linked from either game catalog and is marked `noindex, nofollow`. It shares the room, chat, advertising and consent-based Google Analytics helper, with legal move guidance, per-player board orientation, host-selected colors and an optional chess clock. See [CHESS rules, controls, limitations and tests](games/chess/README.md).
+
 **Catana Codex**, a board game for **2–4 friends**, is listed in both the multiplayer collection and the sibling games catalog, linking to `./games/catana/`. It uses PLAN's existing authoritative `GameRoom`, transport and private views, with an original terrain atlas and a complete resource-trading rules engine. Three or four players play to 10 VP; two players play to 12 VP with dice-directed robber destinations. Its game modules load only when opening its standalone entry. The generated cover master and prompt are in [marketing/CATANA-PROMPT.md](marketing/CATANA-PROMPT.md). See [Catana's rules, architecture and tests](games/catana/README.md).
 
 **HAMSTER multiplayer** lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is listed in both public collections, after Catana Codex and before PLAN and TOW in a two-column grid. See [HAMSTER's rules, controls and tests](games/hamster/README.md).

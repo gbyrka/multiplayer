@@ -45,6 +45,7 @@ try {
   await page.locator('.featured-game').first().waitFor();
   // TOW links to its own entry point; the collection must not load its racing modules.
   const expected = [...config.modules.filter(path => !path.startsWith('./games/tow/') && !path.startsWith('./games/hamster/') &&
+    (!path.startsWith('./games/chess/') || path === './games/chess/action-schema.mjs') &&
     (!path.startsWith('./games/catana/') || ['./games/catana/action-schema.mjs', './games/catana/constants.mjs'].includes(path))).map(path => path.slice(2)), 'style.css'];
   const assertAssets = async current => {
     const assets = await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /\.(mjs|css)(\?|$)/.test(entry.name) && !new URL(entry.name).pathname.endsWith('/ads.css')).map(entry => entry.name));
