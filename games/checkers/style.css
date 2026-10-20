@@ -1,0 +1,24 @@
+/* The versioned chess stylesheet supplies the shared fullscreen table layout. */
+.piece-count { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.capture-banner { background: #e1b85316; border-color: #efd49480; }
+.capture-banner h1 { color: #ffdc84; }
+.capture-banner p { color: #e7d5a8; }
+.counter-ring { fill: none; stroke-width: 1.2; }
+.piece-w .counter-ring { stroke: #a88446; }
+.piece-b .counter-ring { stroke: #9cba9b; }
+.counter-seam { fill: none; stroke-width: 1.6; }
+.piece-w .counter-seam { stroke: #a4824c; }
+.piece-b .counter-seam { stroke: #a5bd94; }
+.counter-crown { fill: #e9ca7a; stroke: #795e2b; stroke-width: 1; }
+.piece-w .counter-crown { fill: #a47c37; stroke: #fff0bd; }
+.captured-square .piece { opacity: .22; }
+.captured-square::after { content: '×'; position: absolute; z-index: 4; color: #f3c998; font-size: clamp(14px, 2vw, 25px); pointer-events: none; }
+.checkers-settings { display: flex; flex-direction: column; gap: 14px; }
+.checkers-settings > .button { align-self: stretch; width: 100%; }
+.checkers-settings > .small-note { line-height: 1.8; }
+.move-history td { overflow-wrap: anywhere; }
+@media (max-width: 600px), (max-height: 600px) {
+  .piece-count { font-size: 8px; }
+  .checkers-settings { gap: 9px; }
+  .checkers-settings > .small-note { display: block; font-size: 9px; }
+}

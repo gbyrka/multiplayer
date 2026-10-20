@@ -42,8 +42,8 @@ const assertFreshGraph = async page => {
   assert.equal(mapped.length, config.modules.length);
   assert.ok(mapped.every(value => new URL(value).searchParams.get('v') === config.version && new URL(value).searchParams.get('refresh') === token));
   const styles = await page.locator('link[rel="stylesheet"]').evaluateAll(elements => elements.map(element => element.href).filter(value => new URL(value).pathname.endsWith('/style.css')));
-  assert.equal(styles.length, 1);
-  assert.equal(new URL(styles[0]).searchParams.get('refresh'), token);
+  assert.equal(styles.length, new URL(page.url()).pathname.includes('/checkers/') ? 2 : 1);
+  assert.ok(styles.every(style => new URL(style).searchParams.get('refresh') === token));
   return token;
 };
 
@@ -91,7 +91,7 @@ try {
   pass('Persistent failure stops after one retry; RELOAD escapes even a cached failed retry');
   await context.close();
 
-  for (const game of ['tow', 'hamster', 'catana', 'chess']) {
+  for (const game of ['tow', 'hamster', 'catana', 'chess', 'checkers']) {
     failure = 'normal'; target = `games/${game}/app.mjs`;
     context = await browser.newContext();
     page = await context.newPage();

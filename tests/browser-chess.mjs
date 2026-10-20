@@ -148,14 +148,14 @@ try {
     assert.ok(await p.evaluate(()=>!window.dataLayer.some(x=>x[1]==='denied_test')));await p.close();
   }
   const list=await page();await list.goto(origin+'/multiplayer/');await list.locator('.featured-game').first().waitFor();assert.equal(await list.locator('a[href*="games/chess"]').count(),0);
-  await list.goto(origin+'/games/');assert.equal(await list.locator('a[href*="games/chess"]').count(),0);
+  await list.goto(origin+'/games/');assert.equal(await list.locator('a[href*="games/chess"]').count(),1);
   await host.goto(base);await host.locator('.home').waitFor();await noOverflow(host,1366,768);
   await host.getByRole('button',{name:'About & sponsors',exact:true}).click();
   const ad=host.locator('#chess-ad');assert.equal(await ad.isVisible(),true);assert.equal(await ad.locator('.adsbygoogle').count(),1);
   assert.equal(await host.locator('#about-dialog').getAttribute('open'),'');await host.getByRole('button',{name:'Close about',exact:true}).click();
   await noOverflow(host,1366,768);
   assert.deepEqual(errors,[]);
-  console.log('PASS Analytics on PLAN/TOW/HAMSTER/Catana/CHESS, consent handling, unlisted entry, sponsors outside the playing area and no browser exceptions');
+  console.log('PASS Analytics on PLAN/TOW/HAMSTER/Catana/CHESS, consent handling, catalog entry, sponsors outside the playing area and no browser exceptions');
 }catch(error){failed=true;for(let i=0;i<contexts.length;i++){const p=contexts[i].pages()[0];if(p)await p.screenshot({path:`${output}/failure-${i}.png`,fullPage:true}).catch(()=>{});}console.error(error);}
 finally{for(const c of contexts)await c.close();await browser.close();server.close();signal.close();}
 // PeerServer heartbeat timers do not expose a public disposal API.

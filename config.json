@@ -1,5 +1,5 @@
 {
-  "version": "chess2",
+  "version": "draughts1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -52,6 +52,11 @@
     "./games/chess/app.mjs",
     "./games/chess/game-core.mjs",
     "./games/chess/ui.mjs",
-    "./games/chess/vendor/chess.mjs"
+    "./games/chess/vendor/chess.mjs",
+    "./games/checkers/action-schema.mjs",
+    "./games/checkers/app.mjs",
+    "./games/checkers/game-core.mjs",
+    "./games/checkers/rules.mjs",
+    "./games/checkers/ui.mjs"
   ]
 }

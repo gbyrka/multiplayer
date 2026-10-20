@@ -27,7 +27,7 @@ let checks = 0;
 const pass = label => { checks++; console.log(`PASS ${label}`); };
 
 async function context(blockAds = false) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 950 }, reducedMotion: 'reduce' });
   await context.route('**/pagead2.googlesyndication.com/**', route => blockAds ? route.abort() : route.fulfill({ contentType: 'text/javascript', body: '' }));
   await context.route('**/www.googletagmanager.com/**', route => {
     analyticsRequests.push(route.request().url());
@@ -42,7 +42,7 @@ try {
   await page.goto(`${base}/games/`);
   await page.waitForFunction(() => document.documentElement.dataset.appVersion);
   const section = page.locator('#multiplayer');
-  assert.equal(await section.locator('a').count(), 5);
+  assert.equal(await section.locator('a').count(), 7);
   await section.getByRole('link', { name: /Play PLAN/ }).click();
   await page.locator('#entry-form').waitFor();
   assert.equal(new URL(page.url()).searchParams.get('game'), 'plan');
@@ -63,7 +63,7 @@ try {
   await page.locator('#entry-form').waitFor();
   assert.equal(new URL(page.url()).pathname, '/multiplayer/games/catana/');
   await page.goto(`${base}/games/`);
-  await section.getByRole('link', { name: /All multiplayer/ }).click();
+  await section.getByRole('link', { name: /Multiplayer collection/ }).click();
   await page.locator('.featured-game').first().waitFor();
   assert.equal(new URL(page.url()).pathname, '/multiplayer/');
   for (const path of ['/games/', '/multiplayer/']) {
@@ -72,28 +72,47 @@ try {
     await page.locator('#home:not([hidden])').waitFor();
     assert.equal(new URL(page.url()).pathname, '/multiplayer/games/hamster/');
   }
-  pass('All five catalog links work; Catana and HAMSTER open from both collections');
+  for (const game of ['chess', 'checkers']) {
+    await page.goto(`${base}/games/`);
+    await section.getByRole('link', { name: new RegExp(`Play ${game}`, 'i') }).click();
+    await page.locator('.home').waitFor();
+    assert.equal(new URL(page.url()).pathname, `/multiplayer/games/${game}/`);
+  }
+  pass('All seven catalog links work, including CHESS and CHECKERS');
 
   for (const path of ['/games/', '/multiplayer/', '/multiplayer/games/tow/']) {
     await page.goto(base + path);
     await page.waitForFunction(() => document.documentElement.dataset.appVersion);
     if (path.endsWith('tow/')) await page.locator('#home').waitFor();
     else if (path === '/multiplayer/') await page.locator('.featured-game').first().waitFor();
-    for (const width of [320, 390, 768, 1280]) {
+    for (const width of [320, 390, 768, 900, 1024, 1280, 1440]) {
       await page.setViewportSize({ width, height: 950 });
+      await page.mouse.move(0, 0);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${path} overflows at ${width}px`);
       if (!path.includes('tow')) {
         const cards = page.locator(path === '/games/' ? '#multiplayer .game-card' : '.featured-game');
         const titles = await cards.locator('h2, h3').allTextContents();
-        assert.deepEqual(titles, ['Catana Codex', 'HAMSTER multiplayer', 'PLAN', 'TOW']);
-        if (width > 800) {
-          const boxes = await cards.evaluateAll(nodes => nodes.map(node => {
-            const { x, y } = node.getBoundingClientRect(); return { x, y };
-          }));
-          assert.equal(boxes[0].y, boxes[1].y);
-          assert.equal(boxes[2].y, boxes[3].y);
-          assert.ok(boxes[0].x < boxes[1].x && boxes[0].y < boxes[2].y);
-          assert.equal(boxes[0].x, boxes[2].x);
+        const catalog = path === '/games/';
+        assert.deepEqual(titles, catalog
+          ? ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']
+          : ['Catana Codex', 'HAMSTER multiplayer', 'PLAN', 'TOW']);
+        const columns = catalog ? (width > 900 ? 3 : width > 540 ? 2 : 1) : (width > 800 ? 2 : 1);
+        const boxes = await cards.evaluateAll(nodes => nodes.map(node => {
+          const { x, y } = node.getBoundingClientRect(); return { x, y };
+        }));
+        for (let i = 1; i < boxes.length; i++) {
+          if (i % columns) {
+            assert.equal(boxes[i].y, boxes[i - 1].y);
+            assert.ok(boxes[i].x > boxes[i - 1].x);
+          } else {
+            assert.ok(boxes[i].y > boxes[i - 1].y);
+            assert.equal(boxes[i].x, boxes[0].x);
+          }
+        }
+        if (catalog) {
+          assert.equal(await page.locator('.hero').count(), 0);
+          assert.doesNotMatch(await page.locator('body').innerText(), /A little time|A little adventure|A good hand|Small worlds to explore|Good company/);
+          if (width > 900) assert.ok(boxes[0].y < 220, 'Cards should start near the top');
         }
       }
       const notice = page.locator('.keyboard-notice').first();
@@ -104,7 +123,7 @@ try {
     }
     await page.locator('img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
   }
-  pass('Both catalogs and TOW fit 320–1280px, load local artwork and keep keyboard notices visible');
+  pass('Both catalogs and TOW fit 320–1440px in the requested order, load local artwork and keep keyboard notices visible');
 
   await page.goto(`${base}/multiplayer/games/tow/`);
   await page.locator('#home').waitFor();

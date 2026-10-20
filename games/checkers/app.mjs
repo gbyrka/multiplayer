@@ -1,0 +1,198 @@
+import { GameRoom } from '../../shared/room.mjs';
+import { loadPeerJS, checkMultiplayerSupport, MULTIPLAYER_TEST_WARNING } from '../../shared/peer-loader.mjs';
+import { normalizeRoomCode, validateName, isValidRoomCode } from '../../shared/random.mjs';
+import { el, button, patchChildren } from '../../shared/dom.mjs';
+import { ChatPanel } from '../../shared/chat-ui.mjs';
+import { GameSound } from '../../shared/sound.mjs';
+import { checkersGame } from './game-core.mjs';
+import { renderHome, renderLobby, renderGame, renderSide, renderRules, statusText } from './ui.mjs';
+
+const $ = id => document.getElementById(id), params = new URLSearchParams(location.search), sound = new GameSound();
+const ui = { joining: params.has('room'), code: normalizeRoomCode(params.get('room')).slice(0, 8), name: '', error: '', selected: null, pending: false, settingsDirty: false, panel: 'chat', drawerOpen: false, settingsDraft: null };
+try { ui.name = localStorage.getItem('multiplayer:name') ?? ''; } catch { /* Optional storage. */ }
+let room = null, view = null, screen = 'home', attempt = 0, pendingTimer, toastTimer, supportError = '', testMode = false;
+const compactPanels = matchMedia('(max-width: 980px), (max-height: 600px)');
+let panelOpener = null;
+const chat = new ChatPanel((text, requestId) => room?.sendChat(text, requestId)); $('chat-root').append(chat.element);
+void checkMultiplayerSupport().then(ok => { testMode = !ok; }, error => { supportError = error.message; if (screen === 'home') { ui.error = supportError; render(); } });
+const inviteURL = (inRoom = true) => { const url = new URL(location.origin + location.pathname); if (inRoom && room) url.searchParams.set('room', room.roomCode); return url.href; };
+function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 6500); }
+function status(text) { $('connection-status').textContent = text; if ($('connecting-detail')) $('connecting-detail').textContent = text; }
+function clearPending() { ui.pending = false; clearTimeout(pendingTimer); }
+function syncPanels() {
+  const sidebar = $('sidebar'), compact = compactPanels.matches;
+  const inRoom = Boolean(room && view && !['home', 'connecting', 'error'].includes(screen));
+  sidebar.hidden = !inRoom || (compact && !ui.drawerOpen);
+  sidebar.dataset.panel = ui.panel; sidebar.dataset.open = String(ui.drawerOpen);
+  sidebar.setAttribute('role', compact ? 'dialog' : 'complementary');
+  if (compact && ui.drawerOpen) sidebar.setAttribute('aria-modal', 'true'); else sidebar.removeAttribute('aria-modal');
+  $('panel-backdrop').hidden = !inRoom || !compact || !ui.drawerOpen;
+  for (const panel of ['chat', 'moves', 'table']) {
+    const tab = $(`${panel}-tab`), selected = ui.panel === panel;
+    tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
+  }
+  $('match-info').setAttribute('aria-labelledby', ui.panel === 'moves' ? 'moves-tab' : 'table-tab');
+}
+function openPanel(panel, opener) {
+  ui.panel = panel; ui.drawerOpen = compactPanels.matches; if (!$('sidebar').contains(opener)) panelOpener = opener; render();
+  $(`${panel}-tab`).focus({ preventScroll: true });
+}
+function closePanel() {
+  ui.drawerOpen = false; syncPanels(); panelOpener?.focus({ preventScroll: true });
+}
+compactPanels.addEventListener('change', syncPanels);
+function render() {
+  $('boot').hidden = true;
+  const inRoom = Boolean(room && view && !['home', 'connecting', 'error'].includes(screen));
+  $('page-layout').classList.toggle('in-room', inRoom); document.body.dataset.screen = screen;
+  let node;
+  if (screen === 'home') node = renderHome(ui);
+  else if (screen === 'connecting') node = el('section', { class: 'connection-panel panel' }, eyebrow('A TABLE IS WAITING'), el('h1', {}, 'Pulling up a chair…'), el('p', { id: 'connecting-detail' }, $('connection-status').textContent), button('CANCEL', 'cancel-connect', { class: 'button secondary' }));
+  else if (screen === 'error' || screen === 'disconnected') node = el('section', { class: 'connection-panel panel' }, el('h1', {}, screen === 'error' ? 'Let’s reconnect.' : 'The table is paused.'), el('p', {}, ui.error || 'Your opponent disconnected. This game has stopped.'),
+    view?.me.host && view.phase === 'disconnected' ? button('RETURN TO LOBBY', 'return-lobby', { class: 'button primary', disabled: ui.pending }) : button('BACK TO THE START', 'home', { class: 'button primary' }));
+  else node = view.phase === 'lobby' ? renderLobby(view, room.roomCode, inviteURL(), ui) : renderGame(view, ui);
+  patchChildren($('main'), node);
+  patchChildren($('match-info'), ...(inRoom ? [renderSide(view, ui.pending)] : []));
+  $('leave').hidden = !room || screen === 'connecting'; $('room-toggle').hidden = screen !== 'lobby';
+  $('sound-toggle').textContent = sound.enabled ? 'SOUND ON' : 'SOUND OFF'; $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
+  chat.setConnected(inRoom && screen !== 'disconnected', view?.me.id);
+  syncPanels();
+  window.MoDITAds?.setVisible($('checkers-ad'), $('about-dialog').open);
+  if (view && screen === 'game') $('announcer').textContent = `${statusText(view).title}. ${statusText(view).body}`;
+}
+function eyebrow(text) { return el('p', { class: 'eyebrow' }, text); }
+function receive(next) {
+  const previous = view; if (next.phase === 'game_result' && previous?.phase !== 'game_result') $('dialog').close(); view = next; clearPending(); ui.selected = next.myTurn ? next.continuation ?? null : null; ui.settingsDirty = false; ui.settingsDraft = null;
+  if (previous?.phase !== next.phase) { ui.drawerOpen = false; if (next.phase === 'lobby') ui.panel = 'chat'; }
+  screen = next.phase === 'disconnected' ? 'disconnected' : next.phase === 'lobby' ? 'lobby' : 'game';
+  if (next.phase === 'disconnected') ui.error = `${next.disconnectedNames.join(', ')} disconnected. This game has stopped; the host can reopen the lobby.`;
+  history.replaceState(null, '', inviteURL());
+  if (previous && next.stepSerial > previous.stepSerial) sound.play('card');
+  if (next.phase === 'game_result' && previous?.phase !== 'game_result' && next.result.winnerId === next.me.id) sound.play('victory');
+  if (previous?.phase === 'lobby' && next.phase === 'playing') window.gtag?.('event', 'game_start', { game_name: 'checkers' });
+  if (next.phase === 'game_result' && previous?.phase !== 'game_result') window.gtag?.('event', 'game_end', { game_name: 'checkers', ending: next.result.reason });
+  render();
+}
+function send(type, payload = {}) {
+  if (!room || ui.pending) return;
+  ui.pending = true; render();
+  pendingTimer = setTimeout(() => { clearPending(); toast('Still waiting for the host. Check your connection.'); render(); }, 12000);
+  room.act(type, payload);
+}
+const action = (name, payload = {}) => send('CHECKERS_ACTION', { action: name, ...payload });
+async function connect(form) {
+  let name, code;
+  try {
+    if (supportError) throw new Error(supportError);
+    const data = new FormData(form); name = validateName(data.get('name')); code = normalizeRoomCode(data.get('room'));
+    if (ui.joining && !isValidRoomCode(code)) throw new Error('Enter the 8-character room code.');
+  } catch (error) { ui.error = error.message; render(); return; }
+  ui.name = name; ui.code = code; ui.error = ''; screen = 'connecting'; const current = ++attempt; status('Opening your table…'); render();
+  try {
+    const Peer = await loadPeerJS(); if (current !== attempt) return;
+    const nextRoom = new GameRoom({ Peer, game: checkersGame, appVersion: document.documentElement.dataset.appVersion ?? 'development',
+      onView: next => { if (room === nextRoom) receive(next); }, onStatus: text => { if (room === nextRoom) status(text); },
+      onError: text => { if (room === nextRoom) { clearPending(); toast(text); render(); } },
+      onEnded: text => { if (room === nextRoom) { clearPending(); screen = 'disconnected'; ui.error = text; render(); } },
+      onChat: (snapshot, requestId) => { if (room === nextRoom) chat.update(snapshot, requestId); },
+      onChatError: (text, requestId) => { if (room === nextRoom) chat.fail(text, requestId); },
+    });
+    room = nextRoom;
+    if (ui.joining) await nextRoom.join(name, code); else await nextRoom.create(name);
+    if (current !== attempt) { nextRoom.close(); return; }
+    status('Connected · a table for two'); try { localStorage.setItem('multiplayer:name', name); } catch { /* Optional. */ }
+    if (testMode) toast(MULTIPLAYER_TEST_WARNING);
+  } catch (error) {
+    if (current !== attempt) return;
+    room?.close(); room = null; view = null; screen = 'error'; ui.error = error.message; render();
+  }
+}
+function leave() {
+  attempt++; room?.close(); room = null; view = null; clearPending(); chat.reset(); sound.stop(); ui.error = ''; ui.selected = null; ui.settingsDirty = false; ui.settingsDraft = null; ui.drawerOpen = false;
+  screen = 'home'; history.replaceState(null, '', inviteURL(false)); status('A classic. A table for two.'); render();
+}
+function dialog(content) { $('dialog-content').replaceChildren(content); $('dialog').showModal(); }
+function selectSquare(square) {
+  if (!view?.myTurn || ui.pending) return;
+  if (ui.selected) {
+    const moves = view.legalMoves.filter(m => m.from === ui.selected && m.to === square);
+    if (moves.length) {
+      action('MOVE', { from: ui.selected, to: square });
+      return;
+    }
+  }
+  ui.selected = view.continuation ?? (ui.selected === square ? null : view.legalMoves.some(m => m.from === square) ? square : null); render();
+}
+async function handle(name, node) {
+  sound.unlock();
+  switch (name) {
+    case 'open-chat': openPanel('chat', node); break;
+    case 'open-moves': openPanel('moves', node); break;
+    case 'open-table': openPanel('table', node); break;
+    case 'close-panel': closePanel(); break;
+    case 'about': $('about-dialog').showModal(); window.MoDITAds?.setVisible($('checkers-ad'), true); break;
+    case 'close-about': $('about-dialog').close(); break;
+    case 'switch-mode': ui.name = $('your-name')?.value ?? ui.name; ui.code = $('room-code-input')?.value ?? ui.code; ui.joining = !ui.joining; ui.error = ''; render(); break;
+    case 'copy-invite': try { await navigator.clipboard.writeText(inviteURL()); toast('Invite link copied.'); } catch { $('invite-link').select(); toast('Select and copy the invitation.'); } break;
+    case 'start': if (!ui.settingsDirty) send('START_GAME'); break;
+    case 'ready': send('SET_READY', { ready: !view.me.ready }); break;
+    case 'cancel-selection': ui.selected = view?.continuation ?? null; render(); break;
+    case 'offer-draw': action('OFFER_DRAW'); break;
+    case 'accept-draw': action('ACCEPT_DRAW'); break;
+    case 'decline-draw': action('DECLINE_DRAW'); break;
+    case 'resign': dialog(el('div', {}, eyebrow('ONE LAST THOUGHT'), el('h2', {}, 'Resign this game?'), el('p', {}, 'Your opponent wins. You can play another game from the same room.'), button('YES, RESIGN', 'confirm-resign', { class: 'button primary' }), button('KEEP PLAYING', 'close-dialog', { class: 'button text-button' }))); break;
+    case 'confirm-resign': $('dialog').close(); action('RESIGN'); break;
+    case 'return-lobby': send('RETURN_TO_LOBBY'); break;
+    case 'play-again': send('PLAY_AGAIN'); break;
+    case 'rules': dialog(renderRules()); break;
+    case 'close-dialog': $('dialog').close(); break;
+    case 'toggle-sound': sound.setEnabled(!sound.enabled); render(); break;
+    case 'leave': dialog(el('div', {}, el('h2', {}, 'Leave the table?'), el('p', {}, room?.isHost ? 'Leaving closes the room for both players.' : 'Leaving stops this game for both players.'), button('LEAVE ROOM', 'confirm-leave', { class: 'button primary' }), button('STAY', 'close-dialog', { class: 'button text-button' }))); break;
+    case 'confirm-leave': $('dialog').close(); leave(); break;
+    case 'home': case 'cancel-connect': leave(); break;
+  }
+}
+document.addEventListener('click', event => {
+  const square = event.target.closest('[data-square]'); if (square && !square.disabled) { sound.unlock(); selectSquare(square.dataset.square); return; }
+  const node = event.target.closest('[data-action]'); if (node && !node.disabled) void handle(node.dataset.action, node);
+});
+document.addEventListener('keydown', event => {
+  if ($('dialog').open || $('about-dialog').open) return;
+  if (ui.drawerOpen && compactPanels.matches) {
+    if (event.key === 'Escape') { event.preventDefault(); closePanel(); return; }
+    if (event.key === 'Tab') {
+      const controls = [...$('sidebar').querySelectorAll('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter(node => node.getClientRects().length && node.tabIndex >= 0);
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  }
+  if (event.key === 'Escape' && (ui.selected)) { ui.selected = view?.continuation ?? null; render(); }
+  const tab = event.target.closest('[role="tab"]');
+  if (tab && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    const tabs = [...$('sidebar').querySelectorAll('[role="tab"]')].filter(node => node.getClientRects().length);
+    const index = (tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    void handle(tabs[index].dataset.action, tabs[index]);
+  }
+});
+$('about-dialog').addEventListener('close', () => window.MoDITAds?.setVisible($('checkers-ad'), false));
+document.addEventListener('submit', event => {
+  const form = event.target; if (!form.dataset.form) return; event.preventDefault(); sound.unlock();
+  if (form.dataset.form === 'connect') { void connect(form); return; }
+  if (form.dataset.form === 'settings' && !ui.pending) {
+    const data = new FormData(form);
+    action('SETTINGS', { hostColor: data.get('hostColor') });
+  }
+});
+function settingsChanged(event) {
+  if (!event.target.closest('#settings-form')) return;
+  ui.settingsDirty = true;
+  const form = event.target.closest('#settings-form');
+  ui.settingsDraft = { hostColor: form.elements.hostColor.value };
+  const start = document.querySelector('[data-action="start"]'); if (start) start.disabled = true;
+  const status = document.querySelector('.lobby-status'); if (status) status.textContent = 'Save your settings to continue.';
+}
+document.addEventListener('input', settingsChanged); document.addEventListener('change', settingsChanged);
+render();

@@ -126,7 +126,7 @@ test('wire schema rejects fake identities, invalid squares, settings and promoti
   }
   for(const p of [null,[],{action:'MOVE',from:'a2',to:'a9'},{action:'MOVE',from:'e2',to:'e4',playerId:'host'},{action:'MOVE',from:'a7',to:'a8',promotion:'k'},{action:'SETTINGS',hostColor:'w',minutes:-1},{action:'SETTINGS',hostColor:'w',minutes:181},{action:'SETTINGS',hostColor:'w',minutes:1.5},{action:'RESIGN',winnerId:'guest'}]) assert.equal(isChessAction(p),false);
 });
-test('chess stays unlisted and all production modules are versioned, with local licensed rules', async () => {
+test('chess is omitted from the multiplayer collection and all production modules are versioned, with local licensed rules', async () => {
   const {COLLECTION_GAMES}=await import('../games/registry.mjs'); assert.ok(COLLECTION_GAMES.every(g=>g.id!=='chess'));
   const root=new URL('../',import.meta.url), html=await readFile(new URL('games/chess/index.html',root),'utf8');
   assert.match(html,/noindex, nofollow/); assert.match(html,/monetization\.js/); assert.match(html,/9380002810/);
