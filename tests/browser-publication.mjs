@@ -96,7 +96,7 @@ try {
         assert.deepEqual(titles, catalog
           ? ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']
           : ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']);
-        const columns = catalog ? (width > 900 ? 3 : width > 540 ? 2 : 1) : (width > 800 ? 2 : 1);
+        const columns = catalog ? (width > 900 ? 3 : width > 540 ? 2 : 1) : (width > 1000 ? 3 : width > 600 ? 2 : 1);
         const boxes = await cards.evaluateAll(nodes => nodes.map(node => {
           const { x, y } = node.getBoundingClientRect(); return { x, y };
         }));

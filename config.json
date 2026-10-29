@@ -1,5 +1,5 @@
 {
-  "version": "boardlaunch1",
+  "version": "boardlaunch2",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

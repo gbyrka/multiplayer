@@ -29,7 +29,7 @@ export function renderCollection(games) {
     el('section', { class: 'game-collection', 'aria-label': 'Choose a game' }, games.map(game =>
       el('article', { class: 'featured-game' },
         game.cover ? el('div', { class: 'game-art cover-art' },
-          el('picture', {}, game.coverSrcset ? el('source', { type: 'image/webp', srcset: game.coverSrcset, sizes: '(max-width: 560px) calc(100vw - 40px), 50vw' }) : null,
+          el('picture', {}, game.coverSrcset ? el('source', { type: 'image/webp', srcset: game.coverSrcset, sizes: '(max-width: 600px) 100vw, (max-width: 1000px) 50vw, 33vw' }) : null,
             el('img', { src: game.cover, alt: game.coverAlt, width: '1200', height: '800', decoding: 'async', loading: 'lazy' })),
           game.controls ? el('span', { class: 'keyboard-notice' }, game.controls) : null) :
         el('div', { class: 'game-art', 'aria-hidden': 'true' }, el('span', { class: 'art-orbit orbit-one' }), el('span', { class: 'art-orbit orbit-two' }),
