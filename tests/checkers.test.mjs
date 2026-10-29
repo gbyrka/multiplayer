@@ -76,9 +76,9 @@ test('wire schema rejects clocks, forged identity, impossible squares and chess 
   for(const p of [{action:'SETTINGS',hostColor:'random'},{action:'MOVE',from:'c3',to:'d4'},{action:'RESIGN'}]){assert.ok(isCheckersAction(p));assert.ok(isClientMessage(message('CHECKERS_ACTION',p)));}
   for(const p of [null,[],{action:'SETTINGS',hostColor:'w',minutes:5},{action:'MOVE',from:'c3',to:'c4'},{action:'MOVE',from:'c3',to:'j9'},{action:'MOVE',from:'c3',to:'d4',playerId:'host'},{action:'MOVE',from:'a7',to:'b8',promotion:'q'},{action:'RESIGN',winnerId:'guest'}])assert.equal(isCheckersAction(p),false);
 });
-test('checkers is omitted from the multiplayer collection; production modules are versioned and artwork is local',async()=>{
-  const {COLLECTION_GAMES}=await import('../games/registry.mjs');assert.ok(COLLECTION_GAMES.every(g=>g.id!=='checkers'));
-  const root=new URL('../',import.meta.url),html=await readFile(new URL('games/checkers/index.html',root),'utf8');assert.match(html,/noindex, nofollow/);assert.match(html,/monetization\.js/);assert.match(html,/baseStyle.href = '\.\.\/chess\/style.css' \+ assetQuery/);
+test('checkers is listed in the public multiplayer collection and indexable; production modules are versioned and artwork is local',async()=>{
+  const {COLLECTION_GAMES}=await import('../games/registry.mjs');assert.equal(COLLECTION_GAMES.find(g=>g.id==='checkers')?.href,'./games/checkers/');
+  const root=new URL('../',import.meta.url),html=await readFile(new URL('games/checkers/index.html',root),'utf8');assert.doesNotMatch(html,/noindex|nofollow/);assert.match(html,/monetization\.js/);assert.match(html,/baseStyle.href = '\.\.\/chess\/style.css' \+ assetQuery/);
   const config=JSON.parse(await readFile(new URL('config.json',root),'utf8'));
   const files=(await readdir(root,{recursive:true})).filter(f=>f.endsWith('.mjs')&&!f.startsWith('tests/')&&!f.startsWith('node_modules/')).map(f=>'./'+f).sort();assert.deepEqual([...config.modules].sort(),files);
 });

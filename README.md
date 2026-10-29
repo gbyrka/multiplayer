@@ -4,6 +4,8 @@ A small collection of browser games to play with friends. Choose **PLAN — Pred
 
 **TOW** is online multiplayer trailer racing for **2–4 drivers**, available at `./games/tow/`. **Keyboard controls only for now.** The collection links to TOW's independent realtime racing entry point; its physics and networking modules are loaded only when opening that game. See [TOW's controls, advertising and test instructions](games/tow/README.md).
 
+**TOW: Driver’s Seat** is an unlisted cockpit variant at `./games/tow-drivers-seat/`, with a live left mirror, an animated steering wheel and hands, and all-driver progress bars. It shares TOW’s original controls, generated tracks, physics and sound. It is omitted from both public catalogs and opts out of search indexing. See [its rendering budget, controls and checks](games/tow-drivers-seat/README.md).
+
 PLAN is a complete, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. PLAN cards are drawn with HTML/CSS; TOW uses local cover/social images and Canvas vehicle art. There are no external fonts, frameworks or sound assets.
 
 **Preview:** a dark emerald card table, cream and gold details, white playing cards, a lobby with an invite link, mobile player tiles, bidding controls and a scoreboard grouped by round and deal. A gold/mint victory animation follows the visual style of Sokoban. Running the optional browser tests saves screenshots in `test-results/`.

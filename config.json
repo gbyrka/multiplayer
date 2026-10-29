@@ -1,5 +1,5 @@
 {
-  "version": "boardlaunch2",
+  "version": "driverseat1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -57,6 +57,11 @@
     "./games/checkers/app.mjs",
     "./games/checkers/game-core.mjs",
     "./games/checkers/rules.mjs",
-    "./games/checkers/ui.mjs"
+    "./games/checkers/ui.mjs",
+    "./games/tow/client.mjs",
+    "./games/tow-drivers-seat/app.mjs",
+    "./games/tow-drivers-seat/scene.mjs",
+    "./games/tow-drivers-seat/cockpit.mjs",
+    "./games/tow-drivers-seat/progress.mjs"
   ]
 }

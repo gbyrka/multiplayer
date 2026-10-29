@@ -8,7 +8,8 @@ import { dirname, join } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const { chromium } = process.env.PLAYWRIGHT_MODULE ? await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE)) : await import('playwright');
-const { PeerServer } = process.env.PEER_SERVER_MODULE ? await import(pathToFileURL(process.env.PEER_SERVER_MODULE)) : await import('peer');
+const peerModule = process.env.PEER_SERVER_MODULE ? await import(pathToFileURL(process.env.PEER_SERVER_MODULE)) : await import('peer');
+const { PeerServer } = peerModule.default ?? peerModule;
 const clientPath = process.env.PEERJS_SCRIPT ?? join(dirname(require.resolve('peerjs')), 'peerjs.min.js');
 const clientSource = await readFile(clientPath, 'utf8');
 const root = new URL('../', import.meta.url), output = process.env.SCREENSHOT_DIR ?? 'test-results/tow';
@@ -27,9 +28,9 @@ const server = createServer(async (request, response) => {
   } catch { response.writeHead(404).end(); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const entry = new URL(process.env.TOW_URL ?? `http://127.0.0.1:${server.address().port}/multiplayer/games/tow/`);
+const entry = new URL(process.env.TOW_URL ?? `http://127.0.0.1:${server.address().port}/multiplayer/games/${process.env.TOW_GAME ?? 'tow'}/`);
 entry.searchParams.set('debug', '1');
-const base = entry.href;
+const base = entry.href, cockpit = entry.pathname.includes('/tow-drivers-seat/');
 const browser = await chromium.launch({ headless: true });
 const errors = [], contexts = [], pages = [];
 let checks = 0, failure = false;
@@ -108,7 +109,7 @@ async function noOverflow(page, width) {
 }
 async function driveRoad(page, slot) {
   await page.evaluate(async slot => {
-    const { makeTrack } = await import('./track.mjs');
+    const { makeTrack } = await import('../tow/track.mjs');
     const { drivingLine, drivingMask } = await import('../../tests/tow-driver.mjs');
     const track = makeTrack(window.__tow.snapshots.at(-1).state.seed), line = drivingLine(track);
     window.__bot = setInterval(() => {
@@ -130,6 +131,7 @@ async function stopDriving(page) {
 
 try {
   const host = await page(), guest = await page({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  if (!cockpit) {
   await host.goto(new URL('../../', base).href); await host.locator('.featured-game').first().waitFor();
   assert.equal(await host.getByText('TOW', { exact: true }).count(), 1);
   assert.equal(await host.locator('a[href="./games/tow/"]').count(), 1);
@@ -139,6 +141,7 @@ try {
   assert.equal(new URL(host.url()).pathname, new URL(base).pathname);
   assert.equal(await host.locator('meta[name="robots"]').count(), 0);
   pass('The public TOW card links to an indexable game with a keyboard notice');
+  }
   await host.goto(base); await host.locator('#home').waitFor();
   assert.equal(await host.getByRole('button', { name: /^CREATE/ }).count(), 1);
   assert.equal(await host.locator('#create-tab, #join-tab').count(), 0);
@@ -198,10 +201,15 @@ try {
   await host.keyboard.up('ArrowUp'); await guest.keyboard.up('ArrowUp');
   assert.ok(Number(await host.locator('#speed').textContent()) > 30); assert.ok(Number(await guest.locator('#speed').textContent()) > 30);
   assert.ok((await latest(guest)).progress.every(s => s > 360));
-  const pixels = await guest.locator('#game').evaluate(canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.some((value, i) => i % 4 !== 3 && value > 100));
-  assert.ok(pixels); assert.ok(await guest.locator('#minimap').isVisible());
+  if (cockpit) {
+    assert.ok(await guest.locator('.cockpit-overlay').isVisible());
+    assert.equal(await guest.locator('.standings-row').count(), 2);
+  } else {
+    const pixels = await guest.locator('#game').evaluate(canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.some((value, i) => i % 4 !== 3 && value > 100));
+    assert.ok(pixels); assert.ok(await guest.locator('#minimap').isVisible());
+  }
   await host.screenshot({ path: `${output}/race-desktop.png`, fullPage: true }); await guest.screenshot({ path: `${output}/race-mobile.png`, fullPage: true });
-  pass('Shared seed, synchronized countdown, immediate steering, moving trailers, camera and minimap');
+  pass(`Shared seed, synchronized countdown, driving and moving trailers with ${cockpit ? 'cockpit and all-driver progress' : 'overhead camera and minimap'}`);
 
   const late = await page(); await late.goto(link); await late.locator('#home').waitFor();
   await late.locator('#your-name').fill('Late'); await late.locator('#connect').click();
@@ -303,7 +311,8 @@ try {
   for (const driver of racers) {
     const state = await latest(driver); assert.equal(state.id, race4.id); assert.equal(state.seed, race4.seed); assert.equal(state.rigs.length, 4);
     assert.match(await driver.locator('#position').textContent(), /^[1-4] \/ 4$/);
-    assert.ok(await driver.locator('#minimap').isVisible());
+    assert.ok(await driver.locator(cockpit ? '.cockpit-overlay' : '#minimap').isVisible());
+    if (cockpit) assert.equal(await driver.locator('.standings-row').count(), 4);
     assert.ok(await audible(driver) > .001);
   }
   const channels4 = await host.evaluate(() => window.__tow.channels.filter(channel => channel.readyState === 'open').map(channel => channel.label));
@@ -313,10 +322,13 @@ try {
 
   for (const driver of racers) await driver.keyboard.down('ArrowUp');
   await host.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.masks.every(mask => mask & 1));
-  await untilTick(host, race4.tick + 170);
+  // Measure from accepted pedal input, after the per-page HUD/audio checks.
+  // Four software-rendered WebGL clients can advance the clock during those checks.
+  const accelerationStart = await latest(host);
+  await untilTick(host, accelerationStart.tick + 170);
   const moved4 = await latest(host);
   for (const driver of racers) await driver.keyboard.up('ArrowUp');
-  assert.ok(moved4.progress.every((s, slot) => s > race4.progress[slot] + 50), `all four drivers independently accelerate: ${moved4.progress}`);
+  assert.ok(moved4.progress.every((s, slot) => s > accelerationStart.progress[slot] + 50), `all four drivers independently accelerate: ${moved4.progress}`);
   assert.ok(moved4.rigs.flat(2).every(Number.isFinite));
   await fourth.keyboard.down('KeyH');
   for (const driver of racers.slice(0, 3)) await driver.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.horns[3] === true);
@@ -359,7 +371,9 @@ try {
   pass('Four-player driving continues while one guest has 150ms added round-trip delay and 15% packet loss');
 
   await host.locator('#pause').click();
-  for (const driver of racers) await driver.waitForFunction(() => window.__tow.snapshots.at(-1)?.state.phase === 'paused');
+  // Delayed transient packets can arrive after the reliable pause snapshot.
+  // The UI uses the accepted epoch; raw wire arrival order is not state order.
+  for (const driver of racers) await driver.locator('#race-overlay:not([hidden])').waitFor();
   const paused4 = await latest(host); await new Promise(resolve => setTimeout(resolve, 200));
   for (const driver of racers) { assert.equal((await latest(driver)).tick, paused4.tick); assert.ok(await audible(driver) < .00001); }
   await host.locator('#resume').click(); for (const driver of racers) await untilTick(driver, paused4.tick + 10);

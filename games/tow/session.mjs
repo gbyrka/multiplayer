@@ -8,8 +8,8 @@ const FAST_LABEL = 'tow-state-v1';
 
 /** PLAN's star topology: one reliable and one transient channel per guest. */
 export class RaceSession {
-  constructor({ Peer, version, onLobby, onSnapshot, onStatus, onEnded, onNotice = () => {} }) {
-    Object.assign(this, { Peer, version, onLobby, onSnapshot, onStatus, onEnded, onNotice });
+  constructor({ Peer, version, namespace = 'tow-v1-', onLobby, onSnapshot, onStatus, onEnded, onNotice = () => {} }) {
+    Object.assign(this, { Peer, version, namespace, onLobby, onSnapshot, onStatus, onEnded, onNotice });
     this.closed = false; this.players = []; this.links = new Map(); this.fast = null; this.race = null;
     this.mask = 0; this.pausedPhase = null;
     this.rtt = 0; this.delay = 0; this.loss = 0; this.lastSnapshot = 0;
@@ -25,7 +25,7 @@ export class RaceSession {
   }
 
   networkFor() {
-    const network = new StarNetwork({ Peer: this.Peer, namespace: 'tow-v1-',
+    const network = new StarNetwork({ Peer: this.Peer, namespace: this.namespace,
       onConnection: connection => {
         if (this.closed || this.network !== network) return;
         if (this.isHost && (this.race || this.links.size >= MAX_PLAYERS - 1)) {

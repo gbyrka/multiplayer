@@ -44,7 +44,7 @@ try {
   await page.goto(base);
   await page.locator('.featured-game').first().waitFor();
   // TOW links to its own entry point; the collection must not load its racing modules.
-  const expected = [...config.modules.filter(path => !path.startsWith('./games/tow/') && !path.startsWith('./games/hamster/') &&
+  const expected = [...config.modules.filter(path => !path.startsWith('./games/tow/') && !path.startsWith('./games/tow-drivers-seat/') && !path.startsWith('./games/hamster/') &&
     (!path.startsWith('./games/checkers/') || path === './games/checkers/action-schema.mjs') &&
     (!path.startsWith('./games/chess/') || path === './games/chess/action-schema.mjs') &&
     (!path.startsWith('./games/catana/') || ['./games/catana/action-schema.mjs', './games/catana/constants.mjs'].includes(path))).map(path => path.slice(2)), 'style.css'];

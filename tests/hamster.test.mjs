@@ -298,7 +298,7 @@ test('HAMSTER is listed in the public collection and every production module is 
   const root = new URL('../', import.meta.url), html = await readFile(new URL('games/hamster/index.html', root), 'utf8');
   assert.doesNotMatch(html, /noindex/);
   const { COLLECTION_GAMES } = await import('../games/registry.mjs');
-  assert.deepEqual(COLLECTION_GAMES.map(game => game.id), ['catana', 'hamster', 'plan', 'tow']);
+  assert.deepEqual(COLLECTION_GAMES.map(game => game.id), ['catana', 'hamster', 'tow', 'chess', 'checkers', 'plan']);
   assert.equal(COLLECTION_GAMES.find(game => game.id === 'hamster').href, './games/hamster/');
   const files = (await readdir(root, { recursive: true })).filter(file => file.endsWith('.mjs') && !file.startsWith('tests/') && !file.startsWith('node_modules/')).map(file => './' + file).sort();
   const config = JSON.parse(await readFile(new URL('config.json', root), 'utf8')); assert.deepEqual([...config.modules].sort(), files);

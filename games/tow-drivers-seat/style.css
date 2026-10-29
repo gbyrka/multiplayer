@@ -1,0 +1,64 @@
+/* The shared TOW stylesheet is loaded first by the versioned entry loader. */
+:root { --lime:#efc178; --ink:#f0eee5; --muted:#a8b7ad; --line:#afc9bb26; background:#14201d; }
+body { background:radial-gradient(ellipse at 20% 0,#30413a,#14201d 70%); }
+.drivers-seat .app { width:min(1500px,100%); padding:14px 26px; }
+.drivers-seat .collection-link { margin-bottom:4px; }
+.drivers-seat .masthead { gap:18px; margin-bottom:16px; }
+.drivers-seat .identity { gap:12px; }
+.drivers-seat h1 { display:flex; align-items:center; gap:0; font-size:36px; }
+.drivers-seat h1 small { font-size:12px; font-weight:600; letter-spacing:.17em; margin:0 0 0 19px; padding:8px 0 8px 19px; border-left:1px solid #efc17855; }
+.drivers-seat .road-sign { width:42px; height:47px; font-size:32px; background:#efc178; }
+.drivers-seat .identity .eyebrow { font-size:8px; letter-spacing:.13em; }
+.drivers-seat .player-badge { color:#efc178; }
+.drivers-seat .panel { background:linear-gradient(125deg,#263a31,#1a2924); border-radius:14px; }
+.drivers-seat .panel h2 { font-size:clamp(32px,3.6vw,53px); }
+.drivers-seat .primary { background:#efc178; border-color:#efc178; color:#263129; }
+.drivers-seat .primary:hover { background:#ffda9b; }
+.cockpit-preview { position:relative; height:165px; max-width:440px; overflow:hidden; border:1px solid #d4d7bb26; border-radius:9px; margin:24px 0; background:linear-gradient(#d6dfd2,#ece2bd 51%,#899776 52%,#677f5f); }
+.preview-horizon { position:absolute; width:120%; height:85px; top:35px; left:-10%; background:#7f9276; border-radius:50% 65% 0 0; transform:rotate(-4deg); }
+.preview-road { position:absolute; width:88%; left:4%; top:65px; height:130px; background:#4c5350; clip-path:polygon(56% 0,58% 0,100% 100%,0 100%); }
+.preview-dash { position:absolute; bottom:-20px; height:65px; width:110%; left:-5%; background:linear-gradient(#3d4841,#111e1b); border-top:3px solid #777966; border-radius:60% 45% 0 0; }
+.preview-wheel { position:absolute; bottom:-48px; left:30%; width:130px; height:130px; border:12px solid #17221e; border-radius:50%; color:#efc178; font-weight:850; font-size:27px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #687467,inset 0 0 0 2px #687467; background:radial-gradient(ellipse,#26352e 0 25%,transparent 26%); }
+.preview-wheel span { font-size:13px; }
+.preview-caption { position:absolute; top:14px; left:16px; font-size:8px; font-weight:800; letter-spacing:.17em; color:#354b3f; }
+.drivers-seat .board-wrap { height:clamp(370px,calc(100dvh - 270px),900px); background:#b9c7b6; }
+.drivers-seat .game-shell { border-color:#b8c8b43b; }
+.drivers-seat .minimap { display:none; }
+.cockpit-overlay { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.view-label { position:absolute; left:7%; top:20px; color:#3c5149; font-size:9px; letter-spacing:.14em; font-weight:750; pointer-events:none; }
+.view-label i { display:inline-block; background:#52714d; width:5px; height:5px; border-radius:50%; margin-right:6px; }
+.view-label span { display:block; margin:6px 0 0 13px; font-size:7px; letter-spacing:.08em; opacity:.75; }
+.race-standings { position:absolute; right:7%; top:16px; width:clamp(170px,23%,275px); padding:12px 14px; border:1px solid #dddcc329; border-radius:8px; background:#172821e6; box-shadow:0 4px 14px #14251d12; pointer-events:none; }
+.standings-title { display:flex; justify-content:space-between; color:#d4d9c7; font-size:8px; letter-spacing:.12em; margin-bottom:10px; }
+.standings-title span:last-child { color:#efc178; }
+.standings-row + .standings-row { margin-top:8px; }
+.standings-meta { display:flex; justify-content:space-between; gap:10px; font-size:9px; margin-bottom:4px; }
+.standings-name { color:#c7d2c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.is-you .standings-name { color:var(--driver); font-weight:750; }
+.standings-value { color:#d6dfcf; font-variant-numeric:tabular-nums; font-size:8px; }
+.standings-track { height:3px; border-radius:3px; background:#d6d5bc21; overflow:hidden; }
+.standings-track i { display:block; height:100%; background:var(--driver); transform-origin:left; transition:transform 120ms linear; }
+.drivers-seat .dashboard { min-height:54px; background:#17241f; padding:7px 20px; }
+.drivers-seat .mission-bar { background:#1a2923; padding:11px 20px; }
+.drivers-seat .race-progress { max-width:400px; width:38%; }
+.drivers-seat .race-overlay { z-index:3; }
+.drivers-seat .countdown { z-index:2; }
+@media(max-width:720px) {
+  .drivers-seat .app { padding:10px; }
+  .drivers-seat .masthead { gap:10px; }
+  .drivers-seat h1 { font-size:30px; }
+  .drivers-seat h1 small { font-size:9px; letter-spacing:.1em; margin-left:10px; padding-left:10px; }
+  .drivers-seat .identity .eyebrow { font-size:6px; }
+  .drivers-seat .road-sign { display:none; }
+  .drivers-seat #connection-status { margin:0 0 0 auto; font-size:9px; }
+  .drivers-seat #sound-toggle,.drivers-seat #leave { font-size:9px; padding:8px 4px; }
+  .view-label { top:12px; left:8%; font-size:7px; max-width:115px; }
+  .view-label span { font-size:6px; }
+  .race-standings { right:8%; top:12px; width:156px; padding:9px 10px; }
+  .standings-title { font-size:7px; margin-bottom:8px; }
+  .standings-meta { font-size:8px; }
+  .drivers-seat .board-wrap { height:clamp(370px,calc(100dvh - 300px),720px); }
+  .drivers-seat .mission-bar { padding:10px; font-size:9px; }
+  .drivers-seat .dashboard { padding:7px 10px; }
+}
+@media(prefers-reduced-motion:reduce) { .standings-track i { transition:none; } }
