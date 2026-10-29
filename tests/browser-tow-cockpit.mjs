@@ -127,9 +127,38 @@ try {
   pass(`Live mirror reflects the trailer and a rival behind, excludes a rival ahead (${JSON.stringify(views)})`);
   await page.evaluate(()=>{
     const {race,scene,makeRig}=fixture;race.rigs=Array.from({length:4},(_,i)=>makeRig(race.track,i,9000+i*125,4));
-    race.rigs[0].car.steer=.18;race.rigs[0].car.speed=220;race.progress=[9000,9125,9250,9375];renderFixture();
+    race.rigs[0].car.steer=.18;race.rigs[0].car.speed=220;race.rigs[1].car.braking=true;race.progress=[9000,9125,9250,9375];renderFixture();
   });
   await page.screenshot({path:`${output}/drive.png`,fullPage:true});
+  const stopLights=await page.evaluate(()=>{
+    const {scene,race,THREE}=fixture;
+    const target=new THREE.WebGLRenderTarget(320,200),camera=new THREE.PerspectiveCamera(50,1.6,.1,60);
+    const car=scene.models[1].car;car.updateMatrixWorld(true);
+    camera.position.set(0,1.8,10).applyMatrix4(car.matrixWorld);
+    camera.lookAt(new THREE.Vector3(0,.9,0).applyMatrix4(car.matrixWorld));
+    const capture=braking=>{
+      race.rigs[1].car.braking=braking;renderFixture();
+      scene.renderer.setRenderTarget(target);scene.renderer.render(scene.world,camera);
+      const pixels=new Uint8Array(320*200*4);scene.renderer.readRenderTargetPixels(target,0,0,320,200,pixels);scene.renderer.setRenderTarget(null);return pixels;
+    };
+    const off=capture(false),on=capture(true);
+    const independent=scene.models[1].brakeLights.emissiveIntensity>0 && scene.models.filter((_,i)=>i!==1).every(m=>m.brakeLights.emissiveIntensity===0);
+    const released=capture(false);
+    let brighter=0;for(let i=0;i<on.length;i+=4)if(on[i]>off[i]+20)brighter++;
+    const restored=off.every((v,i)=>v===released[i]);
+    // Braking must not change the smaller speed/gear display at all.
+    const ctx=scene.cockpit.displayCtx,driver=race.rigs[0].car;driver.braking=false;renderFixture();
+    const display=ctx.getImageData(0,0,384,128).data;driver.braking=true;renderFixture();
+    const after=ctx.getImageData(0,0,384,128).data;
+    const noIndicator=display.every((v,i)=>v===after[i]);driver.braking=false;renderFixture();target.dispose();
+    return {brighter,independent,restored,noIndicator};
+  });
+  assert.ok(stopLights.brighter>50,JSON.stringify(stopLights));
+  assert.ok(stopLights.independent,'one driver braking does not light other cars');
+  assert.ok(stopLights.restored,'rear lamps return to their original appearance on release');
+  assert.ok(stopLights.noIndicator,'braking does not add a warning or change the instrument display');
+  assert.ok(await page.locator('#brake-indicator').isHidden());
+  pass(`Rear stop lamps brighten only for the braking rig and extinguish on release (${stopLights.brighter} pixels); speedometer has no brake indicator`);
   const before=await page.locator('.is-you .standings-value').innerText();
   await page.evaluate(()=>{fixture.race.progress[0]=fixture.race.track.start;renderFixture();});
   assert.equal(await page.locator('.is-you .standings-value').innerText(),'0%');assert.notEqual(before,'0%');

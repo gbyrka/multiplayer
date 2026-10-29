@@ -7,7 +7,7 @@ const soft = new THREE.SphereGeometry(1, 10, 8), up = new THREE.Vector3(0, 1, 0)
 const mat = color => new THREE.MeshLambertMaterial({ color });
 const trim = mat('#293a32'), leather = mat('#14261e'), edge = mat('#75806a'), metal = mat('#8c9981');
 const paint = mat('#c9af79'), cloth = mat('#657e69'), cuff = mat('#384f3f');
-const skin = mat('#d8a580'), knuckle = mat('#e7b791');
+const skin = mat('#d8a580');
 function piece(parent, geometry, material, p, size) {
   const mesh = new THREE.Mesh(geometry, material); mesh.position.set(...p); mesh.scale.set(...size); parent.add(mesh); return mesh;
 }
@@ -18,12 +18,8 @@ function bar(parent, a, b, radius, material) {
 }
 function hand(parent, side) {
   const palm = new THREE.Group(); palm.position.set(side * .18, .005, .018); palm.rotation.z = side * .12; parent.add(palm);
-  piece(palm, soft, skin, [0,0,0], [.032,.052,.024]);
-  // Curled fingers go over the front of the rim; the thumb closes on its inside.
-  for (let i=0;i<4;i++) {
-    const finger = piece(palm, soft, knuckle, [-side*.006, .031-i*.019, .015], [.034,.011,.021]); finger.rotation.y=side*.35;
-  }
-  const thumb = piece(palm, soft, skin, [-side*.030,-.015,.030], [.016,.037,.017]); thumb.rotation.z=-side*.45;
+  // A single smooth grip reads better at this scale than separate fingers.
+  piece(palm, soft, skin, [0,0,0], [.035,.052,.030]);
   return palm;
 }
 
@@ -79,7 +75,8 @@ export class Cockpit {
       sleeve:piece(g,rod,cloth,[0,0,0],[1,1,1]),wrist:piece(g,rod,skin,[0,0,0],[1,1,1]),
       cuff:piece(g,rod,cuff,[0,0,0],[1,1,1]) }));
     // Small instrument texture is updated only when its displayed values change.
-    const pod=new THREE.Group();pod.position.set(-.43,1.05,-.76);pod.rotation.x=-.20;g.add(pod);
+    const pod=new THREE.Group();pod.name='instrument-cluster';pod.position.set(-.43,1.05,-.76);pod.rotation.x=-.20;pod.scale.setScalar(.75);g.add(pod);
+    piece(g,box,trim,[-.43,.95,-.76],[.12,.07,.04]);
     piece(pod,box,leather,[0,0,0],[.49,.17,.07]);
     this.display=document.createElement('canvas');this.display.width=384;this.display.height=128;this.displayCtx=this.display.getContext('2d');
     this.displayTexture=new THREE.CanvasTexture(this.display);this.displayTexture.colorSpace=THREE.SRGBColorSpace;
@@ -115,14 +112,14 @@ export class Cockpit {
       this.delta.copy(this.wrist).lerp(this.grip,.12);this.segment(arm.cuff,this.wrist,this.delta,.045);
     }
     const speed=Math.round(Math.abs(car.speed)*4.5/64*3.6),gear=car.speed < -1?'R':car.speed>1?'D':'N';
-    const key=`${speed}/${gear}/${car.braking}/${color}`;
+    const key=`${speed}/${gear}`;
     if(key===this.displayKey)return;this.displayKey=key;
     const ctx=this.displayCtx;ctx.fillStyle='#10251e';ctx.fillRect(0,0,384,128);
     ctx.fillStyle='#c9d7b9';ctx.font='600 38px system-ui';ctx.fillText(gear,28,76);
     ctx.fillStyle='#f1cd89';ctx.font='600 70px system-ui';ctx.textAlign='center';ctx.fillText(String(speed).padStart(2,'0'),184,87);
     ctx.fillStyle='#a8b79a';ctx.font='600 16px system-ui';ctx.fillText('KM/H',311,62);
-    ctx.fillStyle=car.braking?'#ef9d82':'#c5d69b';ctx.fillRect(26,110,Math.min(330,330*speed/120),3);
-    if(car.braking){ctx.font='600 13px system-ui';ctx.fillText('BRAKE',311,90);}ctx.textAlign='left';
+    ctx.fillStyle='#c5d69b';ctx.fillRect(26,110,Math.min(330,330*speed/120),3);
+    ctx.textAlign='left';
     this.displayTexture.needsUpdate=true;
   }
 }

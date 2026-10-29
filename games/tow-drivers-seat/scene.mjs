@@ -14,7 +14,7 @@ const shadow = new THREE.CircleGeometry(1, 16); shadow.rotateX(-Math.PI / 2);
 const material = color => new THREE.MeshLambertMaterial({ color });
 const asphalt = material('#62685f'), shoulder = material('#b6b49a'), paint = material('#e9dfb7');
 const dark = material('#283d35'), tyres = material('#24302b'), glass = material('#66877e');
-const chrome = material('#a7b2a0'), cream = material('#e2e2ce'), red = material('#d27960');
+const chrome = material('#a7b2a0'), cream = material('#e2e2ce');
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#344a36', transparent: true, opacity: .36, depthWrite: false });
 
 function part(parent, geometry, mat, x, y, z, sx, sy, sz) {
@@ -53,6 +53,9 @@ function label(text, color) {
 }
 function vehicle(color) {
   const car = new THREE.Group(), trailer = new THREE.Group(), body = material(color);
+  // Each rig owns its rear-lamp material. Emission is cheap and follows the
+  // shared braking flag in both the forward view and the physical mirror.
+  const brakeLights = new THREE.MeshLambertMaterial({ color: '#6f3028', emissive: '#ff2410', emissiveIntensity: 0 });
   part(car, shadow, shadowMat, 0, .025, 0, 1.05, 1.9, 1.9);
   part(car, box, dark, 0, .40, 0, 1.66, .38, 3.15);
   part(car, box, body, 0, .65, 0, 1.7, .52, 3.20);
@@ -65,8 +68,9 @@ function vehicle(color) {
     part(car, box, body, side * .98, 1.04, -.53, .23, .15, .30);
     part(car, box, chrome, side * .866, .91, .45, .025, .04, .22);
     part(car, box, cream, side * .58, .75, -1.615, .35, .18, .025);
-    part(car, box, red, side * .61, .72, 1.615, .30, .19, .025);
+    part(car, box, brakeLights, side * .61, .72, 1.615, .30, .19, .025);
   }
+  part(car, box, brakeLights, 0, 1.50, 1.08, .34, .045, .025);
   part(car, box, dark, 0, .59, -1.625, .65, .19, .05);
   part(car, box, chrome, 0, .41, -1.635, 1.6, .09, .07);
   part(car, box, chrome, 0, .41, 1.635, 1.6, .09, .07);
@@ -84,7 +88,7 @@ function vehicle(color) {
   const trailerBody = part(trailer, box, cream, 0, .83, 0, 1.60, .62, 2.90);
   part(trailer, box, chrome, 0, 1.16, 0, 1.64, .08, 2.94);
   part(trailer, box, material('#9caa91'), 0, 1.205, 0, 1.44, .025, 2.72);
-  for (const x of [-.7,.7]) part(trailer, box, red, x, .71, 1.46, .18, .14, .03);
+  for (const x of [-.7,.7]) part(trailer, box, brakeLights, x, .71, 1.46, .18, .14, .03);
   const trailerWheels = [];
   for (const x of [-.85,.85]) {
     const wheel = part(trailer, cylinder, tyres, x, .39, .4, .38, .18, .38); wheel.rotation.z = Math.PI / 2; trailerWheels.push(wheel);
@@ -92,7 +96,7 @@ function vehicle(color) {
     for (const z of [-1.35, 0, 1.35]) part(trailer, box, chrome, x * .91, .83, z, .04, .62, .06);
   }
   mergeStaticMeshes(car, new Set(frontWheels)); mergeStaticMeshes(trailer, new Set([drawbar, trailerBody, ...trailerWheels]));
-  return { car, trailer, frontWheels, drawbar, trailerBody, trailerWheels };
+  return { car, trailer, frontWheels, drawbar, trailerBody, trailerWheels, brakeLights };
 }
 
 export class CockpitScene {
@@ -122,7 +126,7 @@ export class CockpitScene {
   configure(track) {
     if (this.environment) {
       this.world.remove(this.environment);
-      const geometries = new Set(), materials = new Set(), retained = [asphalt,shoulder,paint,dark,tyres,glass,chrome,cream,red,shadowMat];
+      const geometries = new Set(), materials = new Set(), retained = [asphalt,shoulder,paint,dark,tyres,glass,chrome,cream,shadowMat];
       this.environment.traverse(node => {
         if (node.geometry && ![box,cylinder,cone,shadow].includes(node.geometry)) geometries.add(node.geometry);
         if (node.material && !retained.includes(node.material)) materials.add(node.material);
@@ -222,6 +226,8 @@ export class CockpitScene {
     this.models.forEach((model,i)=> {
       const rig=rigs[i];model.car.visible=model.trailer.visible=!!rig;if(!rig)return;
       for(const kind of ['car','trailer']) {const b=rig[kind];model[kind].position.set(b.x*SCALE,0,b.y*SCALE);model[kind].rotation.y=-b.a;}
+      model.brakeLights.emissiveIntensity=rig.car.braking ? 2.5 : 0;
+      model.brakeLights.color.set(rig.car.braking ? '#ff4935' : '#6f3028');
       model.frontWheels.forEach(w=>w.rotation.y=-rig.car.steer);
       if(model.name!==names[i]) {
         if(model.label) {model.car.remove(model.label);model.label.material.map.dispose();model.label.material.dispose();}

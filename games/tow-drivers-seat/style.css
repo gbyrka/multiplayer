@@ -62,3 +62,6 @@ body { background:radial-gradient(ellipse at 20% 0,#30413a,#14201d 70%); }
   .drivers-seat .dashboard { padding:7px 10px; }
 }
 @media(prefers-reduced-motion:reduce) { .standings-track i { transition:none; } }
+
+/* Also hide the old indicator when a browser reuses an earlier entry page. */
+.drivers-seat #brake-indicator { display:none; }

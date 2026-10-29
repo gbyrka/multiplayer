@@ -1,5 +1,5 @@
 {
-  "version": "driverseat2",
+  "version": "driverseat3",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
