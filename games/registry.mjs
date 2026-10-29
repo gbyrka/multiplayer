@@ -26,7 +26,7 @@ export const COLLECTION_GAMES = Object.freeze([Object.freeze({
   players: '2–4 players', duration: '3 min', inputLabel: 'Keyboard & touch', category: '3D PICNIC · ONLINE MULTIPLAYER',
   href: './games/hamster/', cover: './assets/hamster-cover.webp',
   coverAlt: 'A golden hamster surrounded by wooden hideouts, colorful tunnels and treats',
-}), ...GAMES, Object.freeze({
+}), Object.freeze({
   id: 'tow', title: 'TOW', subtitle: 'Keep your trailer close.',
   description: 'Race your friends along a new winding road. Dodge the barrels, mind the corners, and bring your trailer across the finish.',
   players: '2–4 drivers', duration: '1–3 min', category: 'TRAILER RACING · ONLINE MULTIPLAYER',
@@ -34,4 +34,18 @@ export const COLLECTION_GAMES = Object.freeze([Object.freeze({
   coverSrcset: './assets/tow-cover-600.webp 600w, ./assets/tow-cover-1200.webp 1200w',
   coverAlt: 'Four colorful cars towing ivory trailers around a winding forest road',
   controls: 'Keyboard controls only for now',
-})]);
+}), Object.freeze({
+  id: 'chess', title: 'CHESS', subtitle: 'A table for two.',
+  description: 'Classic chess with legal move hints and an optional clock.',
+  players: '2 players', duration: 'Optional clock', category: 'BOARD GAMES · ONLINE MULTIPLAYER',
+  href: './games/chess/', cover: './assets/chess-cover.jpg',
+  coverSrcset: './assets/chess-cover-600.webp 600w, ./assets/chess-cover-1200.webp 1200w',
+  coverAlt: 'CHESS on a green and cream board',
+}), Object.freeze({
+  id: 'checkers', title: 'CHECKERS', subtitle: 'A table for two.',
+  description: '8×8 checkers with compulsory captures and flying kings.',
+  players: '2 players', duration: 'No clock', category: 'BOARD GAMES · ONLINE MULTIPLAYER',
+  href: './games/checkers/', cover: './assets/checkers-cover.jpg',
+  coverSrcset: './assets/checkers-cover-600.webp 600w, ./assets/checkers-cover-1200.webp 1200w',
+  coverAlt: 'CHECKERS on a green and cream board',
+}), ...GAMES]);

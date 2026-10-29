@@ -1,6 +1,6 @@
 # CHESS — A table for two
 
-Two-player browser chess at `./games/chess/`, published as `https://mod-it.games/multiplayer/games/chess/`. It is linked from the sibling games catalog and omitted from the multiplayer collection. Its HTML retains `noindex, nofollow`. Anyone with the direct link can also open it.
+Two-player browser chess at `./games/chess/`, published as `https://mod-it.games/multiplayer/games/chess/`. It is listed in both catalogs and is indexable. Anyone with the direct link can also open it.
 
 From the multiplayer repository root, run `python3 -m http.server 8080` and open `http://localhost:8080/games/chess/`. There is no build step, package installation or runtime chess CDN. Publish the whole repository, including the new modules in `config.json` and the local vendor files.
 

@@ -52,7 +52,7 @@ try {
   assert.equal(new URL(page.url()).pathname, '/multiplayer/games/tow/');
   await page.getByRole('link', { name: '← All multiplayer' }).click();
   await page.locator('.featured-game').first().waitFor();
-  assert.equal(await page.locator('.featured-game').count(), 4);
+  assert.equal(await page.locator('.featured-game').count(), 6);
   await page.goto(`${base}/games/`);
   await section.getByRole('link', { name: /Play Catana Codex/ }).click();
   await page.locator('#entry-form').waitFor();
@@ -73,8 +73,8 @@ try {
     assert.equal(new URL(page.url()).pathname, '/multiplayer/games/hamster/');
   }
   for (const game of ['chess', 'checkers']) {
-    await page.goto(`${base}/games/`);
-    await section.getByRole('link', { name: new RegExp(`Play ${game}`, 'i') }).click();
+    await page.goto(`${base}/multiplayer/`);
+    await page.getByRole('link', { name: new RegExp(`Play ${game}`, 'i') }).click();
     await page.locator('.home').waitFor();
     assert.equal(new URL(page.url()).pathname, `/multiplayer/games/${game}/`);
   }
@@ -95,7 +95,7 @@ try {
         const catalog = path === '/games/';
         assert.deepEqual(titles, catalog
           ? ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']
-          : ['Catana Codex', 'HAMSTER multiplayer', 'PLAN', 'TOW']);
+          : ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']);
         const columns = catalog ? (width > 900 ? 3 : width > 540 ? 2 : 1) : (width > 800 ? 2 : 1);
         const boxes = await cards.evaluateAll(nodes => nodes.map(node => {
           const { x, y } = node.getBoundingClientRect(); return { x, y };

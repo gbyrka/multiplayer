@@ -1,6 +1,6 @@
 # CHECKERS — A table for two
 
-Two-player checkers at `./games/checkers/`, deployed as `https://mod-it.games/multiplayer/games/checkers/`. It is linked from the sibling games catalog and omitted from the multiplayer collection; its HTML retains `noindex, nofollow`. No clock is offered or accepted by the protocol.
+Two-player checkers at `./games/checkers/`, deployed as `https://mod-it.games/multiplayer/games/checkers/`. It is listed in both catalogs and is indexable. No clock is offered or accepted by the protocol.
 
 The layout, board perspective, selection, highlight colors, compact lobby and panel behavior match CHESS. The full-window layout uses CHESS's stylesheet as an explicitly versioned base and adds local counter/capture styles. Each player sees their pieces nearest them. Original shaded SVG counters replace chess pieces, and kings are double-stacked with a crown mark. The host chooses White, Black or random colors; White always starts. Saving settings resets guest readiness, and a rematch reuses the room/chat while returning to the lobby.
 

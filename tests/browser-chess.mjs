@@ -69,7 +69,7 @@ async function fitScreens(p,phase){
 async function fixture(p,fen,extra={}){await p.evaluate(({fen,extra})=>window.__setFixture({fen,...extra}),{fen,extra});await p.waitForTimeout(50);}
 try {
   const host=await page();await host.goto(base);await host.locator('.home').waitFor();await hooks(host);
-  assert.equal(await host.locator('meta[name="robots"]').getAttribute('content'),'noindex, nofollow');
+  assert.equal(await host.locator('meta[name="robots"]').count(),0);
   for(const width of [320,390,768,1024,1440])await noOverflow(host,width);
   await fitScreens(host,'home');await host.screenshot({path:`${output}/home-1440.png`});
   await host.locator('#your-name').fill('Alex');await host.getByRole('button',{name:'CREATE A TABLE ↗',exact:true}).click();await host.locator('.lobby').waitFor();
@@ -147,7 +147,7 @@ try {
     await p.evaluate(()=>{window.googlefc.getGoogleConsentModeValues=()=>({analyticsStoragePurposeConsentStatus:2});window.googlefc.callbackQueue.find(x=>x.CONSENT_MODE_DATA_READY).CONSENT_MODE_DATA_READY();window.gtag('event','denied_test');});
     assert.ok(await p.evaluate(()=>!window.dataLayer.some(x=>x[1]==='denied_test')));await p.close();
   }
-  const list=await page();await list.goto(origin+'/multiplayer/');await list.locator('.featured-game').first().waitFor();assert.equal(await list.locator('a[href*="games/chess"]').count(),0);
+  const list=await page();await list.goto(origin+'/multiplayer/');await list.locator('.featured-game').first().waitFor();assert.equal(await list.locator('a[href*="games/chess"]').count(),1);
   await list.goto(origin+'/games/');assert.equal(await list.locator('a[href*="games/chess"]').count(),1);
   await host.goto(base);await host.locator('.home').waitFor();await noOverflow(host,1366,768);
   await host.getByRole('button',{name:'About & sponsors',exact:true}).click();
