@@ -1,5 +1,5 @@
 {
-  "version": "driverseat1",
+  "version": "driverseat2",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -62,6 +62,7 @@
     "./games/tow-drivers-seat/app.mjs",
     "./games/tow-drivers-seat/scene.mjs",
     "./games/tow-drivers-seat/cockpit.mjs",
-    "./games/tow-drivers-seat/progress.mjs"
+    "./games/tow-drivers-seat/progress.mjs",
+    "./games/tow-drivers-seat/view-geometry.mjs"
   ]
 }

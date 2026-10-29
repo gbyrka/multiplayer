@@ -4,6 +4,7 @@ import { COLORS } from '../tow/scene.mjs';
 import { Cockpit } from './cockpit.mjs';
 import { RaceProgress } from './progress.mjs';
 import { mergeStaticMeshes } from '../hamster/static-batches.mjs';
+import { positionDriverCamera, positionMirrorCamera } from './view-geometry.mjs';
 
 const SCALE = 1 / 20;
 const box = new THREE.BoxGeometry(1, 1, 1);
@@ -54,7 +55,7 @@ function vehicle(color) {
   const car = new THREE.Group(), trailer = new THREE.Group(), body = material(color);
   part(car, shadow, shadowMat, 0, .025, 0, 1.05, 1.9, 1.9);
   part(car, box, dark, 0, .40, 0, 1.66, .38, 3.15);
-  part(car, box, body, 0, .72, 0, 1.7, .58, 3.20);
+  part(car, box, body, 0, .65, 0, 1.7, .52, 3.20);
   part(car, box, glass, 0, 1.19, .18, 1.47, .66, 1.53);
   part(car, box, body, 0, 1.55, .22, 1.60, .14, 1.70);
   for (const side of [-1, 1]) {
@@ -77,19 +78,21 @@ function vehicle(color) {
     if (z < 0) frontWheels.push(pivot);
   }
   part(trailer, shadow, shadowMat, 0, .025, 0, 1.1, 1.8, 1.8);
-  part(trailer, box, chrome, 0, .37, -.7, .10, .10, 3.8);
+  const drawbar = part(trailer, box, chrome, 0, .37, -.7, .10, .10, 3.8);
+  drawbar.name = 'trailer-drawbar';
   part(trailer, box, dark, 0, .48, 0, 1.60, .16, 2.90);
-  part(trailer, box, cream, 0, .83, 0, 1.60, .62, 2.90);
+  const trailerBody = part(trailer, box, cream, 0, .83, 0, 1.60, .62, 2.90);
   part(trailer, box, chrome, 0, 1.16, 0, 1.64, .08, 2.94);
   part(trailer, box, material('#9caa91'), 0, 1.205, 0, 1.44, .025, 2.72);
   for (const x of [-.7,.7]) part(trailer, box, red, x, .71, 1.46, .18, .14, .03);
+  const trailerWheels = [];
   for (const x of [-.85,.85]) {
-    const wheel = part(trailer, cylinder, tyres, x, .39, .4, .38, .18, .38); wheel.rotation.z = Math.PI / 2;
+    const wheel = part(trailer, cylinder, tyres, x, .39, .4, .38, .18, .38); wheel.rotation.z = Math.PI / 2; trailerWheels.push(wheel);
     part(trailer, box, chrome, x, .71, .4, .22, .09, 1.0);
     for (const z of [-1.35, 0, 1.35]) part(trailer, box, chrome, x * .91, .83, z, .04, .62, .06);
   }
-  mergeStaticMeshes(car, new Set(frontWheels)); mergeStaticMeshes(trailer);
-  return { car, trailer, frontWheels };
+  mergeStaticMeshes(car, new Set(frontWheels)); mergeStaticMeshes(trailer, new Set([drawbar, trailerBody, ...trailerWheels]));
+  return { car, trailer, frontWheels, drawbar, trailerBody, trailerWheels };
 }
 
 export class CockpitScene {
@@ -108,14 +111,13 @@ export class CockpitScene {
     this.camera = new THREE.PerspectiveCamera(70, 1, .08, 290);
     this.rearCamera = new THREE.PerspectiveCamera(76, 1.43, .08, 200);
     this.mirrorTarget = new THREE.WebGLRenderTarget(256, 180, { depthBuffer: true, stencilBuffer: false });
-    this.mirrorWorld = new THREE.Scene();
-    const mirrorMat = new THREE.MeshBasicMaterial({ map: this.mirrorTarget.texture, toneMapped: false, depthTest: false, depthWrite: false });
-    const mirrorPlane = new THREE.Mesh(new THREE.PlaneGeometry(2,2), mirrorMat); mirrorPlane.scale.x = -1; mirrorMat.side = THREE.DoubleSide;
-    this.mirrorWorld.add(mirrorPlane); this.flatCamera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-    this.cockpit = new Cockpit(canvas); this.progress = new RaceProgress(document.getElementById('race-standings'));
-    this.look = new THREE.Vector3();
+    this.cockpit = new Cockpit(canvas, this.mirrorTarget.texture); this.world.add(this.cockpit.group);
+    this.progress = new RaceProgress(document.getElementById('race-standings'));
     this.canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); this.contextLost = true; });
-    this.canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.mirrorAt = -Infinity; });
+    this.canvas.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false; this.mirrorAt = -Infinity; this.forceFrame = true;
+      this.cockpit.ctx.resetTransform(); this.cockpit.ctx.clearRect(0,0,this.cockpit.canvas.width,this.cockpit.canvas.height);
+    });
   }
   configure(track) {
     if (this.environment) {
@@ -193,9 +195,8 @@ export class CockpitScene {
     const rect=this.canvas.getBoundingClientRect();this.width=Math.max(1,rect.width);this.height=Math.max(1,rect.height);
     const density=Math.min(this.pixelRatio,Math.sqrt(1800000/(this.width*this.height)));
     this.renderer.setPixelRatio(density);this.renderer.setSize(this.width,this.height,false);
-    this.camera.aspect=this.width/this.height;this.camera.updateProjectionMatrix();
+    positionDriverCamera(this.camera, new THREE.Matrix4(), this.width/this.height);
     this.cockpit.resize(this.width,this.height,Math.min(devicePixelRatio||1,1.5));
-    const m=this.cockpit.mirror;this.rearCamera.aspect=m.w/m.h;this.rearCamera.updateProjectionMatrix();
     this.mirrorAt=-Infinity; this.forceFrame=true;
   }
   updateHUD(state,slot,names) { this.progress.update(state,slot,names); }
@@ -227,27 +228,23 @@ export class CockpitScene {
         model.name=names[i];model.label=label(`${i+1} · ${names[i]}`,COLORS[i]);model.label.position.set(0,2.25,0);model.car.add(model.label);
       }
     });
-    const car=rigs[slot].car,s=Math.sin(car.a),c=Math.cos(car.a),x=car.x*SCALE,z=car.y*SCALE,own=this.models[slot];
-    // Eye is inside the driver's seat, offset left. No camera orbit or chase lag.
-    this.camera.position.set(x-c*.39-s*.10,1.34,z-s*.39+c*.10);
-    this.look.set(this.camera.position.x+s*20,-2.86,this.camera.position.z-c*20);this.camera.lookAt(this.look);
-    this.ground.position.x=x;this.ground.position.z=z;
+    const car=rigs[slot].car, own=this.models[slot];
+    own.car.updateMatrixWorld(true);
+    positionDriverCamera(this.camera, own.car.matrixWorld, this.width/this.height);
+    this.cockpit.group.position.copy(own.car.position); this.cockpit.group.quaternion.copy(own.car.quaternion);
+    this.cockpit.draw(car,COLORS[slot],renderDT);
+    this.ground.position.x=own.car.position.x;this.ground.position.z=own.car.position.z;
     const renderer=this.renderer;renderer.info.reset();
-    // Left mirror uses the same rig positions. Omit our near car body so its
-    // cabin does not occlude the trailer in this compact convex-mirror view.
-    own.car.visible=false;
+    // Reflect the actual seated eye across the physical glass. Keep the complete
+    // exterior: the body, rear bumper and trailer must occlude one another.
     if(this.elapsed-this.mirrorAt>=1/15) {
       this.mirrorAt=this.elapsed;
-      this.rearCamera.position.set(x-c*1.12+s*.46,1.13,z-s*1.12-c*.46);
-      this.look.set(this.rearCamera.position.x-s*20+c*1.35,1.0,this.rearCamera.position.z+c*20+s*1.35);this.rearCamera.lookAt(this.look);
-      renderer.setRenderTarget(this.mirrorTarget);renderer.setScissorTest(false);renderer.clear();renderer.render(this.world,this.rearCamera);
+      positionMirrorCamera(this.rearCamera,this.camera.position,this.cockpit.mirror,own.car.matrixWorld);
+      this.cockpit.group.visible=false; // No render-target feedback from the glass.
+      renderer.setRenderTarget(this.mirrorTarget);renderer.render(this.world,this.rearCamera);
     }
-    own.car.visible=false;own.trailer.visible=false;
-    renderer.setRenderTarget(null);renderer.setViewport(0,0,this.width,this.height);renderer.setScissorTest(false);renderer.clear();renderer.render(this.world,this.camera);
-    own.car.visible=true;own.trailer.visible=true;
-    const m=this.cockpit.mirror;
-    renderer.autoClear=false;renderer.setViewport(m.x,this.height-m.y-m.h,m.w,m.h);renderer.setScissor(m.x,this.height-m.y-m.h,m.w,m.h);renderer.setScissorTest(true);renderer.render(this.mirrorWorld,this.flatCamera);
-    renderer.setScissorTest(false);renderer.autoClear=true;
-    this.cockpit.draw(car,COLORS[slot],renderDT);
+    this.cockpit.group.visible=true;own.car.visible=false;
+    renderer.setRenderTarget(null);renderer.render(this.world,this.camera);
+    own.car.visible=true;
   }
 }

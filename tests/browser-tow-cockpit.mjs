@@ -25,6 +25,7 @@ const pass = message => { checks++; console.log(`PASS ${message}`); };
 try {
   const page = await browser.newPage({ viewport:{width:1440,height:1000} });
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if(message.type()==='error')errors.push(message.text()); });
   await page.route(/googlesyndication|googletagmanager|google-analytics/, route => route.fulfill({ contentType:'text/javascript',body:'' }));
   await page.goto(`${base}/multiplayer/games/tow-drivers-seat/`);
   await page.locator('#home:not([hidden])').waitFor();
@@ -45,12 +46,14 @@ try {
     const {createRace}=await import('/multiplayer/games/tow/race.mjs');
     const {pointAt}=await import('/multiplayer/games/tow/track.mjs');
     const {makeRig}=await import('/multiplayer/games/tow/physics.mjs');
+    const THREE=await import('/multiplayer/games/hamster/vendor/three.mjs');
+    const geometry=await import('/multiplayer/games/tow-drivers-seat/view-geometry.mjs');
     document.getElementById('home').hidden=true;document.getElementById('race').hidden=false;
     const previous=document.getElementById('game'),canvas=previous.cloneNode();previous.replaceWith(canvas);
     document.querySelector('.cockpit-overlay')?.remove();
     const scene=new CockpitScene(canvas),race=createRace(12345,'fixture',4);
     const names=['Alex','Morgan','Charlie','Sam'];race.phase='racing';scene.configure(race.track);
-    window.fixture={scene,race,names,pointAt,makeRig};
+    window.fixture={scene,race,names,pointAt,makeRig,geometry,THREE};
     window.renderFixture=()=>{scene.updateHUD(race,0,names);scene.draw(race.rigs,0,names,race,1/15);};
     window.renderFixture();
   });
@@ -60,12 +63,38 @@ try {
   });
   await page.screenshot({path:`${output}/grid.png`,fullPage:true});
   assert.ok(initial.calls<200,`draw calls: ${initial.calls}`);assert.ok(initial.triangles<60000,`triangles: ${initial.triangles}`);
-  await page.screenshot({path:`${output}/grid.png`,fullPage:true});
   await page.evaluate(()=>{fixture.race.rigs[0].car.steer=.45;for(let i=0;i<10;i++)renderFixture();});
   assert.ok(await page.evaluate(()=>fixture.scene.cockpit.angle>.9));
   await page.evaluate(()=>{fixture.race.rigs[0].car.steer=-.45;for(let i=0;i<10;i++)renderFixture();});
   assert.ok(await page.evaluate(()=>fixture.scene.cockpit.angle<-.9));
   pass(`Cockpit renders four rigs with bounded work (${initial.calls} draw calls, ${initial.triangles} triangles) and steering follows both turns`);
+  const surfaces=await page.evaluate(()=>{
+    const {scene,race,makeRig,THREE}=fixture;
+    race.rigs=Array.from({length:4},(_,i)=>makeRig(race.track,i,6000,4));
+    // Remove all other rigs from this optical-occlusion fixture.
+    for(let i=1;i<4;i++){race.rigs[i].car.x+=20000;race.rigs[i].trailer.x+=20000;}
+    const read=()=>{scene.mirrorAt=-Infinity;renderFixture();const pixels=new Uint8Array(256*180*4);scene.renderer.readRenderTargetPixels(scene.mirrorTarget,0,0,256,180,pixels);return pixels;};
+    const before=read(),own=scene.models[0];
+    const highlight=new THREE.MeshBasicMaterial({color:'#ff00ff'});
+    const diff=pixels=>pixels.reduce((sum,v,i)=>sum+(Math.abs(v-before[i])>10?1:0),0);
+    const check=mesh=>{const material=mesh.material;mesh.material=highlight;const result=diff(read());mesh.material=material;return result;};
+    const drawbar=check(own.drawbar),leftWheel=check(own.trailerWheels[0]),rightWheel=check(own.trailerWheels[1]);
+    const material=own.trailerBody.material;
+    own.trailerBody.material=Array(6).fill(material);own.trailerBody.material[1]=highlight;const leftSide=diff(read());
+    own.trailerBody.material=Array(6).fill(material);own.trailerBody.material[5]=highlight;const front=diff(read());
+    own.trailerBody.material=material;highlight.dispose();read();
+    const pixels=read(),canvas=document.createElement('canvas');canvas.width=256;canvas.height=180;
+    const ctx=canvas.getContext('2d'),image=ctx.createImageData(256,180);
+    for(let row=0;row<180;row++)image.data.set(pixels.subarray(row*256*4,(row+1)*256*4),(179-row)*256*4);
+    ctx.putImageData(image,0,0);canvas.id='mirror-debug';canvas.style.cssText='width:768px;height:540px;image-rendering:pixelated';document.body.append(canvas);
+    return {drawbar,leftWheel,rightWheel,leftSide,front};
+  });
+  await page.locator('#mirror-debug').screenshot({path:`${output}/mirror-straight.png`});
+  await page.locator('#mirror-debug').evaluate(canvas=>canvas.remove());
+  assert.equal(surfaces.drawbar,0,'the coupling is hidden, not exposed by omitting the car');
+  assert.equal(surfaces.rightWheel,0,'the far wheel is occluded');
+  assert.ok(surfaces.leftSide>100&&surfaces.leftWheel>30,'the near flank and near wheel are visible');
+  pass('Physical mirror shows the near trailer flank and left wheel, with zero visible coupling or right wheel');
   // Mirror uses the actual articulated trailer, and really excludes off-camera rivals.
   const views=await page.evaluate(()=>{
     const {scene,race,makeRig}=fixture;race.rigs=Array.from({length:4},(_,i)=>makeRig(race.track,i,6000,4));
@@ -81,6 +110,19 @@ try {
     const diff=(a,b)=>a.reduce((sum,v,i)=>sum+(Math.abs(v-b[i])>10?1:0),0);
     return {trailer:diff(baseline,noTrailer),behind:diff(baseline,behind),ahead:diff(baseline,ahead)};
   });
+  const articulation=await page.evaluate(()=>{
+    const {scene,race}=fixture,rig=race.rigs[0],car=rig.car;
+    const read=()=>{scene.mirrorAt=-Infinity;renderFixture();const pixels=new Uint8Array(256*180*4);scene.renderer.readRenderTargetPixels(scene.mirrorTarget,0,0,256,180,pixels);return pixels;};
+    const straight=read(),results=[];
+    for(const angle of [-.3,.3]) {
+      rig.trailer.a=car.a+angle;
+      rig.trailer.x=car.x-Math.sin(car.a)*40-Math.sin(rig.trailer.a)*54;
+      rig.trailer.y=car.y+Math.cos(car.a)*40+Math.cos(rig.trailer.a)*54;
+      const pixels=read();results.push(pixels.reduce((sum,v,i)=>sum+(Math.abs(v-straight[i])>10?1:0),0));
+    }
+    return results;
+  });
+  assert.ok(articulation.every(changed=>changed>300),'actual articulated geometry changes the reflected trailer on either turn');
   assert.ok(views.trailer>300,JSON.stringify(views));assert.ok(views.behind>50,JSON.stringify(views));assert.ok(views.ahead<views.behind*.15,JSON.stringify(views));
   pass(`Live mirror reflects the trailer and a rival behind, excludes a rival ahead (${JSON.stringify(views)})`);
   await page.evaluate(()=>{
@@ -97,8 +139,9 @@ try {
   for(const width of [320,390,768,1440]) {
     await page.setViewportSize({width,height:1000});await page.evaluate(()=>{fixture.scene.resize();renderFixture();});
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`race overflow at ${width}`);
-    const boxes=await page.evaluate(()=>{const m=fixture.scene.cockpit.mirror;return {m,w:fixture.scene.width,h:fixture.scene.height};});
-    assert.ok(boxes.m.x>=0&&boxes.m.x+boxes.m.w<boxes.w&&boxes.m.y+boxes.m.h<boxes.h);
+    const points=await page.evaluate(()=>{const {scene,geometry}=fixture;return geometry.projectedMirror(scene.cockpit.mirror,scene.models[0].car.matrixWorld,scene.camera,scene.width,scene.height);});
+    assert.ok(points.some(p=>p.x>0&&p.x<width*.25),'physical mirror is partly visible through the side window');
+    assert.ok(points.some(p=>p.x<0),'outer mirror fragment is clipped by the actual field of view');
     await page.screenshot({path:`${output}/race-${width}.png`,fullPage:true});
   }
   const pauseWork=await page.evaluate(()=>{
@@ -119,5 +162,19 @@ try {
   assert.ok(memory.at(-1).geometries<=memory[1].geometries+1,JSON.stringify(memory));
   assert.ok(memory.at(-1).textures<=memory[1].textures+1,JSON.stringify(memory));
   assert.deepEqual(errors,[]);pass('Race fits small screens; repeated rematches keep GPU geometry and texture memory bounded; no browser exceptions');
+  const contextRecovery=await page.evaluate(()=>{
+    const extension=fixture.scene.renderer.getContext().getExtension('WEBGL_lose_context');
+    if(!extension)return false;window.loseGraphics=extension;extension.loseContext();return true;
+  });
+  if(contextRecovery) {
+    await page.waitForFunction(()=>fixture.scene.contextLost);
+    await page.evaluate(()=>renderFixture());
+    assert.ok(await page.evaluate(()=>fixture.scene.cockpit.ctx.getImageData(0,0,1,1).data[3]>0));
+    await page.evaluate(()=>loseGraphics.restoreContext());
+    await page.waitForFunction(()=>!fixture.scene.contextLost);
+    await page.evaluate(()=>renderFixture());
+    assert.equal(await page.evaluate(()=>fixture.scene.cockpit.ctx.getImageData(0,0,1,1).data[3]),0);
+    assert.deepEqual(errors,[]);pass('Context restoration redraws the physical cabin and clears its temporary message');
+  }
   console.log(`TOW cockpit browser checks: ${checks} passed.`);
 } finally { await browser.close();server.close(); }

@@ -8,7 +8,11 @@ Serve the workspace root with `python3 -m http.server 8080`, then open **http://
 
 The host creates a room, shares its link, and starts when the other drivers choose READY. Drive with **arrow keys**, brake with **Space**, hold **H** for the horn, and use **R** to reset to the checkpoint with the original three-second penalty. **Escape** pauses/resumes for the host. Existing touch buttons are retained; as in TOW, keyboard play is the supported input.
 
-The view is inside the left-hand driver's seat. Both hands grip the wheel and follow its actual steering angle, including the steering reduction at speed. A small, horizontally reflected left mirror shows the same generated road, obstacles, your independently articulated trailer and other drivers when they are behind you. It is a rear camera, not a position-based illustration. The local car's cabin is omitted from the mirror pass so it cannot obscure the trailer in the compact view.
+The eye sits at the left seat's centreline, **0.43 m left of the car's centre**, with the steering wheel on that same centreline. The 1.70 m-wide car's bonnet, windshield pillars, side window, dashboard and centre console use the same car coordinates. The console and bonnet centre are therefore to the driver's right. Both hands grip the wheel and follow its actual steering angle, including the steering reduction at speed.
+
+The left mirror is a **0.28 × 0.17 m planar surface outside the side window**, at local position `(-1.04, 1.10, -0.55)` m. Its outer portion naturally falls outside the driver's field of view; it is not a screen inset. `view-geometry.mjs` reflects the seated eye through this plane, constructs an off-axis camera bounded by the four glass corners, and clips at the glass. The glass's UVs map the reflected view back onto that physical surface. The mirror and cabin keep their car-relative positions at every heading and screen size.
+
+The reflected pass retains the **complete exterior car and articulated trailer**, with depth testing. The body occludes the coupling and far parts of the trailer. With the rig straight, the visible near flank, left wheel and front-left edge appear beside the car's inner-edge sliver; the drawbar, centre of the trailer's front and right wheel do not. Turning changes what is actually exposed through the mirror aperture, rather than drawing a fixed trailer image or filtering parts to force a view. Other drivers and obstacles appear only when their geometry enters the reflected field of view.
 
 The compact upper-right panel gives every driver a named, color-coded progress bar, current position and percentage. It uses authoritative host progress, so checkpoint resets move the bar back. Only a completed trailer crossing marks a driver FINISHED; an unfinished driver remains below 100%. The existing route percentage, speed, gear, clock, pause, results and penalties remain available.
 
@@ -20,9 +24,9 @@ Rooms use their own `tow-cockpit-v1-` discovery namespace, so a room code from t
 
 ## Rendering budget
 
-- One WebGL renderer, with a separate Canvas 2D overlay for the cabin. Dashboard trim is cached at resize; only the wheel, hands and instruments animate.
+- One WebGL renderer for the road, physical cabin and mirror. Static cabin surfaces and hand details are merged; only the steering assembly and arms move. A small instrument texture updates only when its displayed values change. The transparent screen overlay is used only for a graphics-context restoration message.
 - Low-poly vehicles with merged static parts; spatially batched trees, markings, barrels and crates. Short road chunks and distant batches are frustum-culled for each camera.
-- No live shadow maps, reflective material shaders, post-processing or giant route-sized texture.
+- No live shadow maps, post-processing or giant route-sized texture.
 - The mirror renders at **256 × 180**, at most **15 times per second**, sharing vehicle geometry with the main view.
 - Paused/results scenes redraw only when needed. Software rendering is capped at 30 graphics frames per second, without changing simulation, input or sound updates.
 - Main resolution is capped at **1.4× device density** and approximately **1.8 million pixels**. Software renderers start at lower resolution; persistent slow frames reduce graphics resolution, preserving the original simulation and network rates.
@@ -43,4 +47,4 @@ TOW_GAME=tow-drivers-seat SCREENSHOT_DIR=test-results/tow-drivers-seat-network n
 
 The browser scripts use development-only Playwright/Chromium, plus `peer` and `peerjs` for the WebRTC tests. See the original TOW README for `PLAYWRIGHT_MODULE`, `PEER_SERVER_MODULE` and `PEERJS_SCRIPT` overrides.
 
-The cockpit test renders actual WebGL frames and reads the mirror render target to verify that the trailer and a rival behind change the image, while a rival ahead does not. It also checks steering, all-driver progress/reset/finish states, layout at 320–1440px and GPU memory across rematches. The shared integration script runs real two-, three- and four-player WebRTC sessions with audio and delayed/lost packets in either view. Screenshots stay under gitignored `test-results/`.
+The cockpit test renders actual WebGL frames and reads the mirror render target. It recolors individual trailer surfaces to verify that the left side and left wheel contribute pixels while the coupling and right wheel contribute none. It checks changing articulation and rivals entering/leaving the reflected view. Node tests additionally verify the left seat position, equal incidence/reflection angles, exact projection of all four mirror corners, and sight lines through the car geometry. It also checks steering, all-driver progress/reset/finish states, layout at 320–1440px and GPU memory across rematches. The shared integration script runs real two-, three- and four-player WebRTC sessions with audio and delayed/lost packets in either view. Screenshots stay under gitignored `test-results/`.
