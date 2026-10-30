@@ -2,6 +2,8 @@
 
 A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.**, **TOW — Keep your trailer close.** **Catana Codex — A world worth building.** or **HAMSTER multiplayer — Little paws. Big company.** from the collection.
 
+**Boggle — Good words. Good company.** is an unlisted word game for 2–6 friends at `./games/boggle/`, with local Polish/English inflection dictionaries, keyboard/mouse/touch input, a host-selected minimum of 3, 4 or 5 letters, and longest-word paths after each round. It is omitted from both public catalogs and opts out of indexing. See [its rules, dictionary policy and checks](games/boggle/README.md).
+
 **TOW** is online multiplayer trailer racing for **2–4 drivers**, available at `./games/tow/`. **Keyboard controls only for now.** The collection links to TOW's independent realtime racing entry point; its physics and networking modules are loaded only when opening that game. See [TOW's controls, advertising and test instructions](games/tow/README.md).
 
 **TOW: Driver’s Seat** is an unlisted cockpit variant at `./games/tow-drivers-seat/`, with a live left mirror, an animated steering wheel and hands, and all-driver progress bars. It shares TOW’s original controls, generated tracks, physics and sound. It is omitted from both public catalogs and opts out of search indexing. See [its rendering budget, controls and checks](games/tow-drivers-seat/README.md).

@@ -24,8 +24,8 @@ export function connectionError(error) {
 
 /** Generic STAR transport. It knows peers and health, never hands, bids or scores. */
 export class StarNetwork {
-  constructor({ Peer, namespace, onConnection, onData, onLost, onStatus, onFatal }) {
-    Object.assign(this, { Peer, namespace, onConnection, onData, onLost, onStatus, onFatal });
+  constructor({ Peer, namespace, onConnection, onData, onLost, onStatus, onFatal, maxStateMessageLength = 32768 }) {
+    Object.assign(this, { Peer, namespace, onConnection, onData, onLost, onStatus, onFatal, maxStateMessageLength });
     this.connections = new Map();
     this.disposed = false;
     this.lastTick = Date.now();
@@ -130,7 +130,7 @@ export class StarNetwork {
       const now = Date.now();
       if (now - record.windowStart > 10000) { record.windowStart = now; record.count = 0; }
       if (++record.count > 100) { this.drop(connection); return; }
-      if (!isMessage(data, this.host ? 2048 : 32768)) return;
+      if (!isMessage(data, this.host ? 2048 : this.maxStateMessageLength)) return;
       record.lastSeen = now;
       if (data.type === 'PING') { this.send(connection, message('PONG', {}, data.requestId)); return; }
       if (data.type === 'PONG') return;

@@ -1,5 +1,5 @@
 {
-  "version": "driverseat3",
+  "version": "boggle1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -63,6 +63,13 @@
     "./games/tow-drivers-seat/scene.mjs",
     "./games/tow-drivers-seat/cockpit.mjs",
     "./games/tow-drivers-seat/progress.mjs",
-    "./games/tow-drivers-seat/view-geometry.mjs"
+    "./games/tow-drivers-seat/view-geometry.mjs",
+    "./games/boggle/action-schema.mjs",
+    "./games/boggle/app.mjs",
+    "./games/boggle/board.mjs",
+    "./games/boggle/dictionary.mjs",
+    "./games/boggle/dictionary-worker.mjs",
+    "./games/boggle/game-core.mjs",
+    "./games/boggle/ui.mjs"
   ]
 }

@@ -19,6 +19,7 @@ export class GameRoom {
   #network() {
     const network = new this.Network({
       Peer: this.Peer, namespace: this.game.peerNamespace,
+      maxStateMessageLength: this.game.maxStateMessageLength ?? 32768,
       onConnection: connection => {
         if (this.network !== network || this.closed) return;
         if (this.isHost) {
@@ -91,7 +92,7 @@ export class GameRoom {
       if (!binding.playerId || !ACTION_TYPES.has(data.type)) return;
       this.#action(binding.playerId, data, binding.requests, connection);
     } else {
-      if (connection !== this.network.hostConnection || !isMessage(data)) return;
+      if (connection !== this.network.hostConnection || !isMessage(data, this.game.maxStateMessageLength ?? 32768)) return;
       const { type, payload } = data;
       if (type === 'JOIN_ACCEPTED' && typeof payload.playerId === 'string' && payload.roomCode === this.roomCode && payload.gameId === this.game.id) {
         this.playerId = payload.playerId;
@@ -194,7 +195,9 @@ export class GameRoom {
     if (requests.has(data.requestId)) return;
     requests.add(data.requestId);
     try {
-      if (data.type !== 'SET_READY' && data.baseRevision !== this.#state.revision) {
+      const concurrent = this.game.acceptsConcurrentAction?.(data.type, data.payload) &&
+        Number.isSafeInteger(data.baseRevision) && data.baseRevision >= 0 && data.baseRevision <= this.#state.revision;
+      if (data.type !== 'SET_READY' && !concurrent && data.baseRevision !== this.#state.revision) {
         throw new Error('The table changed. Please try your move again.');
       }
       this.#state = this.game.adapter.applyAction(this.#state, playerId, data.type, data.payload);

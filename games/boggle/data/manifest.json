@@ -1,0 +1,26 @@
+{
+  "version": "boggle1",
+  "alphabet": "abcdefghijklmnopqrstuvwxyząćęłńóśźż",
+  "sources": {
+    "sgjp": "https://download.sgjp.pl/morfeusz/20261018/sgjp-20261018.tab.gz",
+    "esdbRevision": "7f2f4078354752045ee16a041605686561122185"
+  },
+  "languages": {
+    "pl": {
+      "words": 3832790,
+      "longest": 34,
+      "nodes": 118542,
+      "edges": 358635,
+      "bytes": 912162,
+      "sha256": "72d0870079db1f04915b8a370a30dd02ef431abefc624256fe5a866ced5d18e6"
+    },
+    "en": {
+      "words": 132698,
+      "longest": 45,
+      "nodes": 47091,
+      "edges": 104540,
+      "bytes": 308241,
+      "sha256": "177dc8e9c1d5c307f8bd0c9b5d5f85a7e379b9f66cbc8e169ee299a402b2d90c"
+    }
+  }
+}
