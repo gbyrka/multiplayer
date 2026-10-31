@@ -5,20 +5,21 @@ import { el, button, patchChildren } from '../../shared/dom.mjs';
 import { ChatPanel } from '../../shared/chat-ui.mjs';
 import { GameSound } from '../../shared/sound.mjs';
 import { createBoggleGame } from './game-core.mjs';
+import { SoloSession } from './solo-session.mjs';
 import { findPath, normalizeWord, isWord, neighbors } from './dictionary.mjs';
 import { renderHome, renderLobby, renderGame, renderRules } from './ui.mjs';
 
 const $ = id => document.getElementById(id), params = new URLSearchParams(location.search), sound = new GameSound();
 const ui = { joining: params.has('room'), code: normalizeRoomCode(params.get('room')).slice(0, 8), name: '', error: '', pending: false, preparing: false,
-  settingsDraft: null, draft: '', path: [], feedback: '', feedbackError: false, resultWord: null, expired: false, nextLocked: false };
-try { ui.name = localStorage.getItem('multiplayer:name') ?? ''; } catch { /* Optional storage. */ }
+  settingsDraft: null, draft: '', path: [], feedback: '', feedbackError: false, resultWord: null, expired: false, nextLocked: false, mobileTyping: false };
+try { ui.name = localStorage.getItem('multiplayer:name') ?? ''; ui.mobileTyping = localStorage.getItem('boggle:mobile-typing') === 'on'; } catch { /* Optional storage. */ }
 let room = null, view = null, screen = 'home', attempt = 0, supportError = '', testWarning = false;
 let pendingWord = null, pendingTimer, toastTimer, roundDeadline = 0, nextDeadline = 0, drag = null, worker = null, workerTask = null, workerSerial = 0;
-const chat = new ChatPanel((text, requestId) => room?.sendChat(text, requestId)); $('chat-root').append(chat.element);
+const chat = new ChatPanel((text, requestId) => room?.sendChat?.(text, requestId)); $('chat-root').append(chat.element);
 void checkMultiplayerSupport().then(ok => { testWarning = !ok; }, error => { supportError = error.message; if (screen === 'home') { ui.error = supportError; render(); } });
 const inviteURL = (inRoom = true) => {
   const url = new URL(location.origin + location.pathname);
-  if (inRoom && room) url.searchParams.set('room', room.roomCode);
+  if (inRoom && room && !room.isSolo) url.searchParams.set('room', room.roomCode);
   return url.href;
 };
 function toast(text) {
@@ -44,9 +45,11 @@ function render() {
   // patchChildren preserves active form controls. Select values need their live property too.
   if ($('settings-form')) for (const [key, value] of Object.entries(ui.settingsDraft ?? view.settings)) $('settings-form').elements[key].value = String(value);
   const connected = Boolean(room && view && !['connecting', 'error', 'home'].includes(screen));
-  $('leave').hidden = !connected; $('chat-section').hidden = !connected;
-  chat.setConnected(connected && screen !== 'disconnected', view?.me.id);
+  $('leave').hidden = !connected; $('chat-section').hidden = !connected || Boolean(view?.solo);
+  chat.setConnected(connected && !view?.solo && screen !== 'disconnected', view?.me.id);
   $('sound-toggle').textContent = sound.enabled ? 'SOUND ON' : 'SOUND OFF'; $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
+  $('mobile-typing-toggle').textContent = ui.mobileTyping ? 'MOBILE TYPING ON' : 'MOBILE TYPING OFF';
+  $('mobile-typing-toggle').setAttribute('aria-pressed', String(ui.mobileTyping));
   window.MoDITAds?.setVisible($('boggle-ad'), $('about-dialog').open);
   tick();
 }
@@ -55,7 +58,8 @@ function receive(next) {
   view = next;
   roundDeadline = performance.now() + next.remainingMs; nextDeadline = performance.now() + next.nextInMs;
   ui.expired = next.phase === 'playing' && next.remainingMs <= 0; ui.nextLocked = next.nextInMs > 0;
-  if (pendingWord && next.myWords.includes(pendingWord)) {
+  const wordAccepted = pendingWord && next.myWords.includes(pendingWord);
+  if (wordAccepted) {
     const accepted = pendingWord;
     if (normalizeWord(ui.draft) === accepted) { ui.draft = ''; ui.path = []; }
     clearPending(); feedback(`${accepted.toUpperCase()} · found!`); sound.play('card');
@@ -73,7 +77,12 @@ function receive(next) {
   screen = next.phase === 'disconnected' ? 'disconnected' : next.phase === 'lobby' ? 'lobby' : 'game';
   if (next.phase === 'disconnected') ui.error = `${next.disconnectedNames.join(', ')} disconnected. The host can reopen the lobby.`;
   history.replaceState(null, '', inviteURL()); render();
-  if (phaseChanged && next.phase === 'playing' && !matchMedia('(any-pointer: coarse)').matches) $('word-input')?.focus({ preventScroll: true });
+  if ((phaseChanged || wordAccepted) && next.phase === 'playing') focusWordInput();
+}
+function focusWordInput() {
+  if (view?.phase !== 'playing' || ui.expired || $('dialog').open || $('about-dialog').open ||
+      (!ui.mobileTyping && matchMedia('(any-pointer: coarse)').matches) || document.activeElement?.closest('#chat-section')) return;
+  $('word-input')?.focus({ preventScroll: true });
 }
 function send(type, payload = {}) {
   if (!room || ui.pending) return;
@@ -117,17 +126,18 @@ async function startRound(type) {
   finally { if (room === currentRoom) { ui.preparing = false; render(); } }
 }
 
-async function connect(form) {
+async function connect(form, solo = false) {
   let name, code;
   try {
-    if (supportError) throw new Error(supportError);
+    if (supportError && !solo) throw new Error(supportError);
     const data = new FormData(form); name = validateName(data.get('name')); code = normalizeRoomCode(data.get('room'));
-    if (ui.joining && !isValidRoomCode(code)) throw new Error('Enter the 8-character room code.');
+    if (!solo && ui.joining && !isValidRoomCode(code)) throw new Error('Enter the 8-character room code.');
   } catch (error) { ui.error = error.message; render(); return; }
   ui.name = name; ui.code = code; ui.error = ''; screen = 'connecting'; const current = ++attempt; status('Opening your room…'); render();
   try {
-    const Peer = await loadPeerJS(); if (current !== attempt) return;
-    const nextRoom = new GameRoom({ Peer, game: createBoggleGame(), appVersion: document.documentElement.dataset.appVersion ?? 'development',
+    const Peer = solo ? null : await loadPeerJS(); if (current !== attempt) return;
+    const Session = solo ? SoloSession : GameRoom;
+    const nextRoom = new Session({ Peer, game: createBoggleGame({ solo }), appVersion: document.documentElement.dataset.appVersion ?? 'development',
       onView: next => { if (room === nextRoom) receive(next); }, onStatus: text => { if (room === nextRoom) status(text); },
       onError: text => { if (room === nextRoom) { const wordError = Boolean(pendingWord); clearPending(); if (wordError) feedback(text, true); else toast(text); render(); } },
       onEnded: text => { if (room === nextRoom) { stopWorker(); clearPending(); ui.preparing = false; screen = 'disconnected'; ui.error = text; render(); } },
@@ -135,11 +145,11 @@ async function connect(form) {
       onChatError: (text, requestId) => { if (room === nextRoom) chat.fail(text, requestId); },
     });
     room = nextRoom;
-    if (ui.joining) await nextRoom.join(name, code); else await nextRoom.create(name);
+    if (!solo && ui.joining) await nextRoom.join(name, code); else await nextRoom.create(name);
     if (current !== attempt) { nextRoom.close(); return; }
-    status('Connected · words are better together');
+    status(solo ? 'Solo practice · your own pace, your own words' : 'Connected · words are better together');
     try { localStorage.setItem('multiplayer:name', name); } catch { /* Optional storage. */ }
-    if (testWarning) toast(MULTIPLAYER_TEST_WARNING);
+    if (testWarning && !solo) toast(MULTIPLAYER_TEST_WARNING);
   } catch (error) {
     if (current !== attempt) return;
     room?.close(); room = null; view = null; screen = 'error'; ui.error = error.message; render();
@@ -177,14 +187,15 @@ async function handle(name, node) {
     case 'ready': send('SET_READY', { ready: !view.me.ready }); break;
     case 'play-again': send('PLAY_AGAIN'); break;
     case 'return-lobby': send('RETURN_TO_LOBBY'); break;
-    case 'clear-word': ui.path = []; ui.draft = ''; feedback(''); render(); break;
+    case 'clear-word': ui.path = []; ui.draft = ''; feedback(''); render(); focusWordInput(); break;
     case 'show-path': ui.resultWord = node.dataset.word; render(); break;
     case 'rules': dialog(renderRules()); break;
     case 'close-dialog': $('dialog').close(); break;
     case 'about': $('about-dialog').showModal(); window.MoDITAds?.setVisible($('boggle-ad'), true); break;
     case 'close-about': $('about-dialog').close(); break;
     case 'toggle-sound': sound.setEnabled(!sound.enabled); render(); break;
-    case 'leave': dialog(el('div', {}, el('h2', {}, 'Leave the room?'), el('p', {}, room?.isHost ? 'Leaving closes the room for everyone.' : 'Leaving stops this game for everyone.'), button('LEAVE ROOM', 'confirm-leave', { class: 'button primary' }), button('STAY', 'close-dialog', { class: 'button secondary' }))); break;
+    case 'toggle-mobile-typing': ui.mobileTyping = !ui.mobileTyping; try { localStorage.setItem('boggle:mobile-typing', ui.mobileTyping ? 'on' : 'off'); } catch { /* Optional. */ } render(); if (ui.mobileTyping) focusWordInput(); break;
+    case 'leave': dialog(el('div', {}, el('h2', {}, room?.isSolo ? 'End practice?' : 'Leave the room?'), el('p', {}, room?.isSolo ? 'Leaving ends this practice session.' : room?.isHost ? 'Leaving closes the room for everyone.' : 'Leaving stops this game for everyone.'), button(room?.isSolo ? 'END PRACTICE' : 'LEAVE ROOM', 'confirm-leave', { class: 'button primary' }), button('STAY', 'close-dialog', { class: 'button secondary' }))); break;
     case 'confirm-leave': $('dialog').close(); leave(); break;
     case 'home': leave(); break;
   }
@@ -198,7 +209,7 @@ document.addEventListener('click', event => {
 document.addEventListener('submit', event => {
   const form = event.target, kind = form.dataset.form; if (!kind) return;
   event.preventDefault();
-  if (kind === 'connect') void connect(form);
+  if (kind === 'connect') void connect(form, event.submitter?.value === 'solo');
   else if (kind === 'word') submitWord();
   else if (kind === 'settings') {
     const data = new FormData(form);
@@ -225,6 +236,13 @@ document.addEventListener('change', event => {
 });
 document.addEventListener('keydown', event => {
   if ($('dialog').open || $('about-dialog').open) return;
+  const input = $('word-input'), editing = document.activeElement?.closest('input,textarea,select,[contenteditable="true"]');
+  if (ui.mobileTyping && view?.phase === 'playing' && !ui.pending && !ui.expired && input && !editing && !event.isComposing &&
+      /^[a-ząćęłńóśźż]$/iu.test(event.key) && !event.metaKey && ((!event.ctrlKey && !event.altKey) || event.getModifierState('AltGraph'))) {
+    event.preventDefault(); input.focus({ preventScroll: true });
+    input.setRangeText(event.key, input.selectionStart, input.selectionEnd, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true })); return;
+  }
   if (event.key === 'Escape' && !ui.pending && (ui.draft || ui.path.length)) { ui.path = []; ui.draft = ''; feedback(''); render(); }
 });
 document.addEventListener('pointerdown', event => {

@@ -1,5 +1,5 @@
 {
-  "version": "boggle1",
+  "version": "boggle2",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -70,6 +70,7 @@
     "./games/boggle/dictionary.mjs",
     "./games/boggle/dictionary-worker.mjs",
     "./games/boggle/game-core.mjs",
-    "./games/boggle/ui.mjs"
+    "./games/boggle/ui.mjs",
+    "./games/boggle/solo-session.mjs"
   ]
 }

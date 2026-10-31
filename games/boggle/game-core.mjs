@@ -7,12 +7,13 @@ export const DEFAULT_SETTINGS = Object.freeze({ language: 'pl', size: 4, minLeng
 const rule = (condition, text) => { if (!condition) throw new Error(text); };
 const player = (id, name, host = false) => ({ id, name: validateName(name), host, ready: host, connected: true, total: 0 });
 export const pointsFor = length => length < 3 ? 0 : length < 5 ? 1 : length === 5 ? 2 : length === 6 ? 3 : length === 7 ? 5 : 11;
-export const canStart = state => state.phase === 'lobby' && state.players.length >= 2 && state.players.every(p => p.connected && p.ready);
-export function createLobby(hostId, name) {
-  return { revision: 0, phase: 'lobby', hostId, players: [player(hostId, name, true)], settings: { ...DEFAULT_SETTINGS },
+export const canStart = state => state.phase === 'lobby' && state.players.length >= (state.solo ? 1 : 2) && state.players.every(p => p.connected && p.ready);
+export function createLobby(hostId, name, solo = false) {
+  return { revision: 0, phase: 'lobby', solo, hostId, players: [player(hostId, name, true)], settings: { ...DEFAULT_SETTINGS },
     round: 0, roundSerial: 0, board: [], solutions: new Map(), submissions: {}, startsAt: 0, endsAt: 0, results: [], result: null, disconnectedNames: [] };
 }
 export function addPlayer(state, id, name) {
+  rule(!state.solo, 'This is a solo practice session.');
   rule(state.phase === 'lobby' && state.players.length < 6, 'This room is full or a game is already in progress.');
   rule(typeof id === 'string' && !state.players.some(p => p.id === id), 'Player already joined.');
   return { ...state, revision: state.revision + 1, players: [...state.players, player(id, name)] };
@@ -44,7 +45,7 @@ function finishRound(state, now) {
 }
 
 /** Prepared solutions stay exclusively on the authoritative host; never sent as an intent. */
-export function createBoggleGame({ now = () => performance.now() } = {}) {
+export function createBoggleGame({ now = () => performance.now(), solo = false } = {}) {
   let prepared = null;
   const stageRound = round => { prepared = round; };
   function begin(state, timestamp) {
@@ -73,7 +74,7 @@ export function createBoggleGame({ now = () => performance.now() } = {}) {
       hostOnly(); rule(['game_result', 'disconnected'].includes(state.phase), 'Finish the game first.');
       rule(state.phase !== 'game_result' || timestamp >= state.nextAt, 'Take a breath before the next game.');
       prepared = null;
-      const lobby = createLobby(state.hostId, state.players.find(p => p.host).name);
+      const lobby = createLobby(state.hostId, state.players.find(p => p.host).name, state.solo);
       return { ...lobby, revision: state.revision + 1, roundSerial: state.roundSerial, settings: { ...state.settings }, players: state.players.filter(p => p.connected).map(p => player(p.id, p.name, p.host)) };
     }
     rule(type === 'BOGGLE_ACTION' && isBoggleAction(payload), 'Invalid word game action.');
@@ -94,7 +95,7 @@ export function createBoggleGame({ now = () => performance.now() } = {}) {
   function buildViewForPlayer(state, id) {
     const me = state.players.find(p => p.id === id); rule(me, 'Unknown player.');
     const timestamp = now();
-    return { revision: state.revision, phase: state.phase, hostId: state.hostId, me: { ...me }, players: state.players.map(p => ({ ...p })),
+    return { revision: state.revision, phase: state.phase, solo: state.solo, hostId: state.hostId, me: { ...me }, players: state.players.map(p => ({ ...p })),
       settings: { ...state.settings }, round: state.round, roundSerial: state.roundSerial, board: state.phase === 'countdown' ? [] : [...state.board],
       remainingMs: Math.max(0, (state.phase === 'countdown' ? state.startsAt : state.endsAt) - timestamp),
       nextInMs: Math.max(0, (state.nextAt ?? 0) - timestamp), myWords: [...(state.submissions[id] ?? [])],
@@ -110,5 +111,5 @@ export function createBoggleGame({ now = () => performance.now() } = {}) {
     // Simultaneous word intents tolerate other players' newer submissions. The round token and
     // authoritative deadline still reject delayed actions from a previous round.
     acceptsConcurrentAction: (type, payload) => type === 'BOGGLE_ACTION' && payload.action === 'SUBMIT',
-    adapter: Object.freeze({ createLobby, addPlayer, removePlayer, applyAction, buildViewForPlayer, automaticTransition }) });
+    adapter: Object.freeze({ createLobby: (id, name) => createLobby(id, name, solo), addPlayer, removePlayer, applyAction, buildViewForPlayer, automaticTransition }) });
 }

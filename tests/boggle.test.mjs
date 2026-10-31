@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { readDictionary, findPath, validPath, solveBoard, normalizeWord } from '../games/boggle/dictionary.mjs';
 import { prepareBoard } from '../games/boggle/board.mjs';
 import { createBoggleGame, DEFAULT_SETTINGS, pointsFor } from '../games/boggle/game-core.mjs';
+import { SoloSession } from '../games/boggle/solo-session.mjs';
 import { isClientMessage, isMessage, message } from '../shared/protocol.mjs';
 import { GAMES, COLLECTION_GAMES } from '../games/registry.mjs';
 
@@ -136,6 +137,47 @@ test('disconnects stop play and returning to the lobby drops disconnected player
   const t = table(); t.start(); const state = t.core.removePlayer(t.state, 'guest');
   assert.equal(state.phase, 'disconnected'); assert.equal(t.core.automaticTransition(state), null);
   const lobby = t.core.applyAction(state, 'host', 'RETURN_TO_LOBBY'); assert.equal(lobby.players.length, 1); assert.equal(lobby.round, 0);
+});
+test('solo practice starts with one player, stays solo on rematch and refuses extra players', () => {
+  let time = 0;
+  const game = createBoggleGame({ solo: true, now: () => time }), core = game.adapter;
+  let state = core.createLobby('host', 'Practice');
+  assert.equal(core.buildViewForPlayer(state, 'host').canStart, true);
+  assert.equal(core.buildViewForPlayer(state, 'host').solo, true);
+  assert.throws(() => core.addPlayer(state, 'guest', 'Guest'), /solo/);
+  state = core.applyAction(state, 'host', 'BOGGLE_ACTION', { action: 'SETTINGS', ...DEFAULT_SETTINGS, rounds: 1 });
+  game.stageRound(staged(state.settings)); state = core.applyAction(state, 'host', 'START_GAME');
+  time = 4000; state = core.automaticTransition(state).apply(state);
+  state = core.applyAction(state, 'host', 'BOGGLE_ACTION', { action: 'SUBMIT', word: 'cats', round: 1 });
+  time = state.endsAt; state = core.automaticTransition(state).apply(state);
+  assert.equal(state.phase, 'game_result'); assert.equal(state.players[0].total, 1);
+  assert.equal(state.result.scores[0].words[0].shared, false); assert.ok(state.result.longest.length);
+  time += 3000; state = core.applyAction(state, 'host', 'PLAY_AGAIN');
+  assert.equal(state.solo, true); assert.equal(state.players[0].total, 0); assert.equal(core.buildViewForPlayer(state, 'host').canStart, true);
+  const multiplayer = createBoggleGame().adapter;
+  assert.equal(multiplayer.buildViewForPlayer(multiplayer.createLobby('host', 'Host'), 'host').canStart, false);
+});
+test('local solo session uses real rules, ends the round automatically and reports invalid words', async t => {
+  let time = 0, resolvePlaying, resolveFinished;
+  const playing = new Promise(resolve => { resolvePlaying = resolve; }), finished = new Promise(resolve => { resolveFinished = resolve; });
+  const base = createBoggleGame({ solo: true, now: () => time }), core = base.adapter, errors = [];
+  const game = { ...base, adapter: { ...core, applyAction(...args) {
+    const state = core.applyAction(...args); return args[2] === 'START_GAME' ? { ...state, startsAt: 0, endsAt: 1000 } : state;
+  }, automaticTransition(state) {
+    const transition = core.automaticTransition(state);
+    return state.phase === 'playing' ? { delay: 10, apply: snapshot => { time = snapshot.endsAt; return core.automaticTransition(snapshot).apply(snapshot); } } : transition;
+  } } };
+  const session = new SoloSession({ game, onView: view => { if (view.phase === 'playing') resolvePlaying(); if (view.phase === 'round_result') resolveFinished(); }, onError: error => errors.push(error) });
+  t.after(() => session.close()); await session.create('Practice');
+  assert.equal(session.isSolo, true); assert.equal(session.network, undefined); assert.equal(session.view.canStart, true);
+  game.stageRound(staged()); session.act('START_GAME'); await playing;
+  session.act('BOGGLE_ACTION', { action: 'SUBMIT', word: 'cats', round: 1 });
+  session.act('BOGGLE_ACTION', { action: 'SUBMIT', word: 'cats', round: 1 }); assert.match(errors.at(-1), /already/);
+  session.act('BOGGLE_ACTION', { action: 'SUBMIT', word: 'zzzz', round: 1 }); assert.match(errors.at(-1), /dictionary/);
+  await finished; assert.equal(session.view.players[0].total, 1); assert.deepEqual(session.view.myWords, ['cats']);
+  time += 3000; game.stageRound(staged()); session.act('NEXT_HAND');
+  assert.equal(session.view.round, 2); session.close(); const revision = session.revision;
+  await new Promise(resolve => setTimeout(resolve, 20)); assert.equal(session.revision, revision);
 });
 test('protocol rejects forged identity, illegal settings and oversized word payloads', () => {
   const payload = { action: 'SUBMIT', word: 'kotami', round: 1 };

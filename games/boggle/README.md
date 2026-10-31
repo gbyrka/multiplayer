@@ -1,6 +1,6 @@
 # Boggle — Good words. Good company.
 
-An **unlisted** word game for **2–6 friends**, available directly at
+An **unlisted** word game for **2–6 friends** or **solo practice**, available directly at
 `/multiplayer/games/boggle/`. Neither public catalog includes it; the entry
 uses `noindex, nofollow`. Knowing the link is sufficient to open it: unlisted
 does not mean password-protected. No deployment or public catalog change is
@@ -15,6 +15,21 @@ other games, PeerJS 1.5.5 supplies reliable WebRTC connections and rooms need no
 account or application server. Leave the host's tab open and devices awake.
 
 ## Play
+
+Choose **PLAY ALONE** on the create screen for a local practice session, then
+adjust the settings and press **START**. This mode does not load PeerJS or
+connect to signaling/other players; it works even when WebRTC is unavailable.
+It uses the same dictionaries, deadlines, scoring and longest-word results as
+multiplayer. Rematches remain solo and immediately allow another start.
+
+The header's **MOBILE TYPING ON/OFF** switch saves a preference on this device.
+It defaults to off, so touch-only phones are not asked to open their keyboard
+when a round begins. Turn it on when using a Bluetooth keyboard: each round
+focuses the word field automatically, and typing a letter outside another form
+field restores word input. Chat, other editable fields and open dialogs retain
+their own keyboard input. Turning this on may open a phone's on-screen keyboard;
+desktop auto-focus is unchanged. The shared MoD-IT logo and Grzegorz Byrka's
+LinkedIn author credit are shown in the header and footer.
 
 Create a room, share its invitation, and have guests choose Ready. The host can
 choose Polish or English (UK + US), board size **4×4 / 5×5 / 6×6**, minimum word

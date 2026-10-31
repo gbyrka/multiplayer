@@ -28,8 +28,8 @@
 <body>
   <a class="skip-link" href="#main">Skip to game</a>
   <header class="site-header">
-    <a class="brand" href="../../" aria-label="All multiplayer games"><span class="brand-mark" aria-hidden="true">B<span>↗</span></span><span class="brand-title">Boggle<small>GOOD WORDS. GOOD COMPANY. · MoD-IT</small></span></a>
-    <nav class="header-actions" aria-label="Game navigation"><button class="button quiet" data-action="rules" type="button">HOW TO PLAY</button><button id="sound-toggle" class="button quiet" data-action="toggle-sound" aria-pressed="true" type="button">SOUND ON</button><button id="leave" class="button quiet" data-action="leave" type="button" hidden>LEAVE ROOM</button></nav>
+    <a class="brand" href="../../" aria-label="MoD-IT · All multiplayer games"><img class="brand-logo" src="../../assets/mod-it.jpg" alt="MoD-IT" width="600" height="323"><span class="brand-title">Boggle<small>GOOD WORDS. GOOD COMPANY.</small></span></a>
+    <nav class="header-actions" aria-label="Game navigation"><button class="button quiet" data-action="rules" type="button">HOW TO PLAY</button><button id="sound-toggle" class="button quiet" data-action="toggle-sound" aria-pressed="true" type="button">SOUND ON</button><button id="mobile-typing-toggle" class="button quiet" data-action="toggle-mobile-typing" aria-pressed="false" title="Automatically focus the word field on mobile devices. May open the on-screen keyboard." type="button">MOBILE TYPING OFF</button><button id="leave" class="button quiet" data-action="leave" type="button" hidden>LEAVE ROOM</button></nav>
   </header>
   <div class="page-shell"><main id="main"></main>
     <details id="chat-section" class="chat-section" hidden><summary>ROOM CHAT <span>Say hello to your word people ↗</span></summary><div id="chat-root"></div></details>
@@ -44,7 +44,7 @@
     <aside id="boggle-ad" class="ad-placement ad-placement-game" aria-label="Advertisement" hidden><p class="ad-placement-label">ADVERTISEMENT</p><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-3806610967714181" data-ad-slot="9380002810" data-ad-format="auto" data-full-width-responsive="true"></ins></aside>
   </dialog>
   <noscript><p class="boot">Enable JavaScript to play.</p></noscript>
-  <footer class="privacy-footer"><span>MoD-IT · Boggle</span><a href="../../../games/privacy.html">Privacy</a><button type="button" data-action="about">About &amp; sponsors</button></footer>
+  <footer class="privacy-footer"><span>MoD-IT · Boggle</span><p class="author-credit">Created by <a href="https://www.linkedin.com/in/grzegorz-byrka-81175515/" target="_blank" rel="noopener noreferrer">Grzegorz Byrka<span class="sr-only"> on LinkedIn (opens in a new tab)</span> ↗</a></p><a href="../../../games/privacy.html">Privacy</a><button type="button" data-action="about">About &amp; sponsors</button></footer>
   <script type="module">
     const refresh = new URL(location.href).searchParams.get('_refresh');
     const refreshApp = () => {

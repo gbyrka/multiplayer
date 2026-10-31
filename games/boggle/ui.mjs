@@ -28,12 +28,13 @@ export function renderHome(ui) {
   const letters = [...'boggiwelthfriend'];
   return el('section', { class: 'home' },
     el('div', { class: 'home-copy' }, el('h1', {}, 'A little wordplay'),
-      el('div', { class: 'facts' }, el('span', {}, '2–6 friends'), el('span', {}, 'Polski / English'), el('span', {}, 'Keyboard, mouse & touch')),
+      el('div', { class: 'facts' }, el('span', {}, '1–6 players'), el('span', {}, 'Polski / English'), el('span', {}, 'Keyboard, mouse & touch')),
       el('form', { 'data-form': 'connect', class: 'entry-form', novalidate: true },
         field('YOUR NAME', el('input', { id: 'your-name', name: 'name', value: ui.name, maxlength: 16, autocomplete: 'nickname', placeholder: 'What should we call you?', required: true })),
         ui.joining ? field('ROOM CODE', el('input', { id: 'room-code-input', name: 'room', value: ui.code, maxlength: 8, autocapitalize: 'characters', autocomplete: 'off', spellcheck: false, placeholder: 'ABCDEFGH' })) : null,
         el('p', { class: 'form-error', role: 'alert' }, ui.error),
         el('button', { type: 'submit', class: 'button primary' }, ui.joining ? 'JOIN GAME ↗' : 'CREATE GAME ↗'),
+        !ui.joining ? el('button', { type: 'submit', name: 'mode', value: 'solo', class: 'button secondary' }, 'PLAY ALONE') : null,
         button(ui.joining ? 'Create a new room' : 'Have an invite? Join a room', 'switch-mode', { class: 'button text-button' })),
       el('p', { class: 'small-note' }, 'No account. Just a name, an invite, and a way with words.')),
     el('div', { class: 'home-art' }, el('div', { class: 'art-caption' }, el('span', {}, 'FOLLOW YOUR CURIOSITY'), el('span', { 'aria-hidden': 'true' }, '↗')),
@@ -43,15 +44,15 @@ export function renderHome(ui) {
 export function renderLobby(view, code, url, ui) {
   const s = ui.settingsDraft ?? view.settings;
   return el('section', { class: 'lobby' }, eyebrow('GOOD WORDS. GOOD COMPANY.'),
-    el('div', { class: 'section-heading' }, el('h1', {}, 'Gather your word people.'), el('span', { class: 'badge' }, `${view.players.length} / 6 PLAYERS`)),
+    el('div', { class: 'section-heading' }, el('h1', {}, view.solo ? 'Practice on your own.' : 'Gather your word people.'), el('span', { class: 'badge' }, view.solo ? 'SOLO PRACTICE' : `${view.players.length} / 6 PLAYERS`)),
     el('div', { class: 'lobby-grid' },
-      el('div', { class: 'lobby-company' }, el('section', { class: 'panel invite-card' },
+      el('div', { class: 'lobby-company' }, !view.solo ? el('section', { class: 'panel invite-card' },
         el('div', { class: 'invite-code-row' }, el('div', {}, eyebrow('YOUR ROOM CODE'), el('strong', { class: 'room-code' }, code)), button('COPY INVITE ↗', 'copy-invite', { class: 'button primary' })),
-        field('INVITE LINK', el('input', { id: 'invite-link', readonly: true, value: url, 'aria-label': 'Invite link' }))),
+        field('INVITE LINK', el('input', { id: 'invite-link', readonly: true, value: url, 'aria-label': 'Invite link' }))) : el('section', { class: 'panel' }, el('h2', {}, 'A little solo practice.'), el('p', { class: 'small-note' }, 'Choose your settings and press Start. Find words against the clock, then compare your discoveries with the longest possible words.')),
         el('div', { class: 'lobby-players' }, view.players.map(p => el('div', { class: 'lobby-player', 'data-render-key': p.id },
           el('span', { class: 'avatar', 'aria-hidden': 'true' }, p.name[0].toUpperCase()), el('div', {}, el('strong', {}, p.name, p.id === view.me.id ? ' · you' : ''), el('small', {}, p.host ? 'HOST' : p.ready ? 'READY' : 'GETTING READY')),
           el('span', { class: `ready-dot${p.ready ? ' ready' : ''}`, 'aria-label': p.ready ? 'Ready' : 'Not ready' }))),
-          view.players.length < 2 ? el('p', { class: 'empty-seat' }, 'A good game starts with a friend. Share your invite.') : null)),
+          !view.solo && view.players.length < 2 ? el('p', { class: 'empty-seat' }, 'A good game starts with a friend. Share your invite.') : null)),
       view.me.host ? el('form', { id: 'settings-form', 'data-form': 'settings', class: 'panel settings-form' }, el('h2', {}, 'Make it your game.'),
         choice('language', 'DICTIONARY', s.language, [['pl', 'Polski'], ['en', 'English · British + American']], ui.pending || ui.preparing),
         el('div', { class: 'field-pair' }, choice('size', 'BOARD', s.size, [[4, '4 × 4'], [5, '5 × 5'], [6, '6 × 6']], ui.pending || ui.preparing),
@@ -61,15 +62,15 @@ export function renderLobby(view, code, url, ui) {
         el('p', { class: 'small-note' }, 'Inflected forms count. Names and abbreviations don’t. Shared words cancel out at the end of each round.'),
         el('button', { type: 'submit', class: 'button secondary', disabled: ui.pending || ui.preparing }, 'SAVE SETTINGS')) :
         el('section', { class: 'panel guest-settings' }, el('h2', {}, 'This is how we play.'), el('p', {}, settingsText(view.settings)), el('p', { class: 'small-note' }, 'The host chooses the settings. A change resets everyone’s ready status.'))),
-    el('div', { class: 'lobby-start' }, el('p', { class: 'muted', role: 'status' }, ui.preparing ? 'Loading the dictionary and finding a good board…' : ui.settingsDraft ? 'Save your settings before starting.' : view.canStart ? 'Everyone’s here. Everyone’s ready.' : 'Waiting for at least two connected, ready players.'),
-      view.me.host ? button(ui.preparing ? 'PREPARING…' : 'LET’S FIND SOME WORDS ↗', 'start', { class: 'button primary', disabled: !view.canStart || ui.pending || ui.preparing || Boolean(ui.settingsDraft) }) :
+    el('div', { class: 'lobby-start' }, el('p', { class: 'muted', role: 'status' }, ui.preparing ? 'Loading the dictionary and finding a good board…' : ui.settingsDraft ? 'Save your settings before starting.' : view.canStart ? view.solo ? 'Ready when you are.' : 'Everyone’s here. Everyone’s ready.' : 'Waiting for at least two connected, ready players.'),
+      view.me.host ? button(ui.preparing ? 'PREPARING…' : 'START', 'start', { class: 'button primary', disabled: !view.canStart || ui.pending || ui.preparing || Boolean(ui.settingsDraft) }) :
         button(view.me.ready ? 'READY · CLICK TO UNREADY' : 'I’M READY', 'ready', { class: 'button primary', disabled: ui.pending })),
-    el('p', { class: 'small-note' }, 'Keep the host’s tab open and devices awake throughout the game.'));
+    el('p', { class: 'small-note' }, view.solo ? 'Keep this tab open while you practice.' : 'Keep the host’s tab open and devices awake throughout the game.'));
 }
 
 function standings(view) {
   const ranking = [...view.players].sort((a, b) => b.total - a.total);
-  return el('section', { class: 'panel standings' }, el('div', { class: 'section-heading' }, el('h2', {}, 'The company'), el('small', {}, 'TOTAL POINTS')),
+  return el('section', { class: 'panel standings' }, el('div', { class: 'section-heading' }, el('h2', {}, view.solo ? 'Your score' : 'The company'), el('small', {}, 'TOTAL POINTS')),
     el('ol', {}, ranking.map(p => el('li', { 'data-render-key': p.id }, el('span', {}, p.name, p.id === view.me.id ? ' · you' : ''), el('strong', {}, p.total)))),
     el('p', { class: 'small-note' }, view.phase === 'playing' ? 'Your words stay private until time is up.' : 'Scores carry over between rounds.'));
 }
@@ -101,7 +102,7 @@ export function renderGame(view, ui) {
 function resultSummary(view, ui) {
   const final = view.phase === 'game_result';
   return el('section', { class: 'panel result-summary' }, eyebrow(final ? 'THE FINAL WORD' : 'ROUND COMPLETE'),
-    el('h2', {}, final ? `${view.players.filter(p => view.winnerIds.includes(p.id)).map(p => p.name).join(' & ')} ${view.winnerIds.length === 1 ? 'wins!' : 'tie!'}` : 'Nice finds, everyone.'),
+    el('h2', {}, final ? view.solo ? 'Practice complete.' : `${view.players.filter(p => view.winnerIds.includes(p.id)).map(p => p.name).join(' & ')} ${view.winnerIds.length === 1 ? 'wins!' : 'tie!'}` : view.solo ? 'Nice finds.' : 'Nice finds, everyone.'),
     el('p', { class: 'muted' }, final ? 'One board. Plenty of ways to see it.' : 'There’s another board around the corner.'),
     el('h3', {}, 'The longest trails'), el('p', { class: 'small-note' }, 'Longest words in this dictionary. Select one to follow its path.'),
     el('div', { class: 'longest-words' }, view.result.longest.map(entry => button(entry.word, 'show-path', { class: `longest-word${ui.resultWord === entry.word ? ' active' : ''}`, 'data-word': entry.word, 'aria-pressed': ui.resultWord === entry.word ? 'true' : 'false', lang: view.settings.language }))),
@@ -121,8 +122,10 @@ function roundWords(view) {
 
 export function renderRules() {
   return el('div', { class: 'rules-copy' }, eyebrow('Boggle'), el('h2', {}, 'Find your own way with words.'),
+    el('p', {}, 'Choose Play alone for a local practice session, or create a multiplayer room for 2–6 friends. Solo practice uses the same dictionaries, timer, scores and longest-word trails, without a multiplayer connection.'),
     el('p', {}, 'Everyone plays the same board at the same time. The host chooses Polish or English, a 4×4, 5×5 or 6×6 board, 1–3 minutes per round, 1, 3 or 5 rounds, and a minimum word length of 3, 4 or 5 letters.'),
     el('h3', {}, 'Type it. Trace it. Find it.'), el('p', {}, 'Type a word and press Enter, drag through the tiles and release to submit, or tap individual tiles and choose Add word. Move horizontally, vertically or diagonally. A tile can be used once per word. Trace back to the previous tile to undo a step; Clear or Escape starts again.'),
+    el('p', {}, 'With a Bluetooth keyboard on a tablet, turn Mobile typing on in the header to focus the word field automatically. This preference is saved on this device. On phones it may open the on-screen keyboard; leave it off if you prefer tracing words. Desktop typing stays automatic.'),
     el('h3', {}, 'Every form has a place.'), el('p', {}, 'Inflected forms and irregular forms count as separate words. Polish accents matter: l and ł are different letters. English accepts British and American spelling. Proper names, abbreviations, spaces, hyphens and apostrophes are excluded. A spelling that also has an ordinary meaning remains valid. Historical-only Polish entries are excluded. Dictionaries are fixed for this release; no dictionary covers every word.'),
     el('h3', {}, 'A word of your own.'), el('p', {}, 'Submit each spelling once per round. If multiple players find the same word, it earns no points for anyone. Different inflections count separately. Up to 250 accepted words per player per round.'),
     el('table', { class: 'scoring-table' }, el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, 'Letters'), el('th', { scope: 'col' }, 'Points'))),

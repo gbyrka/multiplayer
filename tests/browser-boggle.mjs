@@ -20,7 +20,7 @@ const server = createServer(async (request, response) => {
   const file = pathname.slice(1) + (pathname.endsWith('/') ? 'index.html' : '');
   try {
     const data = await readFile(new URL(file, root));
-    response.writeHead(200, { 'Content-Type': { mjs: 'text/javascript', js: 'text/javascript', css: 'text/css', json: 'application/json', svg: 'image/svg+xml', txt: 'text/plain', gz: 'application/gzip' }[file.split('.').at(-1)] ?? 'text/html' }).end(data);
+    response.writeHead(200, { 'Content-Type': { mjs: 'text/javascript', js: 'text/javascript', css: 'text/css', json: 'application/json', svg: 'image/svg+xml', jpg: 'image/jpeg', txt: 'text/plain', gz: 'application/gzip' }[file.split('.').at(-1)] ?? 'text/html' }).end(data);
   } catch { response.writeHead(404).end(); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -44,8 +44,9 @@ async function page(touch = false) {
 async function hooks(p) {
   await p.evaluate(async () => {
     const { GameRoom } = await import('../../shared/room.mjs');
-    const original = GameRoom.prototype.create, join = GameRoom.prototype.join;
-    GameRoom.prototype.create = function (...args) {
+    const { SoloSession } = await import('./solo-session.mjs');
+    const join = GameRoom.prototype.join;
+    const wrapCreate = original => function (...args) {
       window.__room = this; const adapter = this.game.adapter;
       this.game = { ...this.game, adapter: { ...adapter, applyAction(...args) {
         let next;
@@ -59,6 +60,8 @@ async function hooks(p) {
       } } };
       return original.apply(this, args);
     };
+    GameRoom.prototype.create = wrapCreate(GameRoom.prototype.create);
+    SoloSession.prototype.create = wrapCreate(SoloSession.prototype.create);
     GameRoom.prototype.join = function (...args) { window.__room = this; return join.apply(this, args); };
     window.__finish = () => { window.__finishNext = true; window.__room.act('SET_READY', { ready: false }); };
   });
@@ -111,6 +114,9 @@ async function dragWord(p, path) {
 }
 try {
   const host = await page(); await host.goto(base); await host.locator('.home').waitFor(); await hooks(host);
+  await host.locator('.brand-logo').evaluate(image => image.decode());
+  assert.equal(await host.locator('.brand-logo').getAttribute('alt'), 'MoD-IT');
+  assert.equal(await host.locator('.author-credit a').getAttribute('href'), 'https://www.linkedin.com/in/grzegorz-byrka-81175515/');
   assert.equal(await host.locator('meta[name="robots"]').getAttribute('content'), 'noindex, nofollow');
   assert.equal(dictionaryRequests.length, 0); await fits(host, 'home');
   pass('Unlisted entry loads without dictionaries; home fits desktop, mobile and landscape');
@@ -132,6 +138,10 @@ try {
   await host.locator('[name="size"]').selectOption(process.env.BOGGLE_FIRST_SIZE ?? '4');
   await host.getByRole('button', { name: 'SAVE SETTINGS' }).click();
   await guest.getByRole('button', { name: 'I’M READY', exact: true }).click(); await host.locator('[data-action="start"]:not(:disabled)').waitFor(); await fits(host, 'lobby');
+  assert.equal(await host.locator('[data-action="start"]').innerText(), 'START');
+  assert.equal(await guest.locator('#mobile-typing-toggle').getAttribute('aria-pressed'), 'false');
+  await guest.locator('#mobile-typing-toggle').click();
+  assert.equal(await guest.locator('#mobile-typing-toggle').getAttribute('aria-pressed'), 'true');
   pass('Actual two-player room, invite, ready state and all three minimum-length options synchronize');
   if (mobileAudit) await fits(guest, 'mobile-lobby');
   let failDictionary = true;
@@ -153,7 +163,16 @@ try {
   assert.equal((await guest.locator('.found-words').innerText()).trim(), 'Your first word is waiting on the board.');
   assert.equal(await guest.evaluate(() => JSON.stringify(window.__room.view).includes('solutions')), false);
   await host.locator('#word-input').fill(word1); await host.locator('#word-input').press('Enter'); assert.match(await host.locator('#word-feedback').innerText(), /already/);
-  await submit(guest, word1);
+  await guest.waitForFunction(() => document.activeElement.id === 'word-input');
+  await guest.keyboard.type(word1); await guest.keyboard.press('Enter');
+  await guest.locator('.found-words li > span').filter({ hasText: new RegExp(`^${word1}$`) }).waitFor();
+  await guest.evaluate(() => document.activeElement.blur());
+  const [keyboardWord] = words.at(-1);
+  await guest.keyboard.type(keyboardWord); await guest.keyboard.press('Enter');
+  await guest.locator('.found-words li > span').filter({ hasText: new RegExp(`^${keyboardWord}$`) }).waitFor();
+  const preference = await guest.context().newPage(); await preference.goto(base); await preference.locator('.home').waitFor();
+  assert.equal(await preference.locator('#mobile-typing-toggle').getAttribute('aria-pressed'), 'true'); await preference.close();
+  pass('Mobile auto-typing focuses at round start, accepts hardware typing without a tap and persists on the device');
   pass('Keyboard submissions validate; duplicates are rejected and other players’ words stay private');
   await host.locator('[data-action="clear-word"]').click(); await dragWord(host, path2);
   await host.locator('.found-words li > span').filter({ hasText: new RegExp(`^${word2}$`) }).waitFor();
@@ -253,6 +272,25 @@ try {
   await host.locator('[data-action="return-lobby"]').click(); await host.locator('.lobby').waitFor();
   assert.equal(await host.evaluate(() => window.__room.view.players.length), 1);
   pass('Real Polish dictionary, 6×6 board, 5-letter minimum, accents and disconnect recovery');
+  const solo = await page(true); let peerRequests = 0;
+  solo.on('request', request => { if (request.url().includes('peerjs@')) peerRequests++; });
+  await solo.addInitScript(() => { window.RTCPeerConnection = undefined; });
+  await solo.goto(base); await solo.locator('.home').waitFor(); await hooks(solo);
+  await solo.locator('#your-name').fill('Practice'); await solo.getByRole('button', { name: 'PLAY ALONE', exact: true }).click(); await solo.locator('.lobby').waitFor();
+  assert.equal(await solo.locator('#invite-link').count(), 0); assert.equal(await solo.locator('#chat-section').isHidden(), true);
+  assert.equal(new URL(solo.url()).searchParams.has('room'), false);
+  await solo.locator('[name="rounds"]').selectOption('1'); await solo.getByRole('button', { name: 'SAVE SETTINGS' }).click();
+  assert.equal(await solo.locator('[data-action="start"]').innerText(), 'START');
+  await solo.locator('[data-action="start"]:not(:disabled)').click(); await solo.locator('#word-input').waitFor();
+  assert.notEqual(await solo.evaluate(() => document.activeElement.id), 'word-input', 'Touch-only devices keep autofocus off by default');
+  const [soloWord] = (await candidates(solo))[0]; await submit(solo, soloWord);
+  await solo.evaluate(() => window.__finish()); await solo.locator('.results').waitFor();
+  assert.equal(await solo.locator('.player-review').count(), 1); assert.ok(await solo.locator('.longest-word').count() > 0);
+  assert.ok(await solo.evaluate(() => window.__room.view.players[0].total > 0));
+  await solo.locator('[data-action="play-again"]:not(:disabled)').click(); await solo.locator('.lobby').waitFor();
+  assert.equal(await solo.locator('[data-action="start"]').isEnabled(), true); assert.equal(peerRequests, 0);
+  await fits(solo, 'solo-lobby');
+  pass('Solo practice runs without WebRTC/PeerJS, validates words, scores, shows longest trails and supports a rematch');
   assert.deepEqual(errors, []); pass('No uncaught browser or worker errors');
   console.log(`${checks} browser checks passed; ${auditedViewports} phase/viewport combinations (${engine.name()}, ${process.env.BOGGLE_DEVICE ?? 'desktop + touch'}).`);
 } catch (error) {
