@@ -2,10 +2,11 @@
 .ad-placement {
   box-sizing: border-box;
   width: min(970px, calc(100% - 40px));
-  margin: 150px auto 32px;
-  padding: 18px 0 24px;
-  border-top: 1px solid #ffffff1c;
-  border-bottom: 1px solid #ffffff12;
+  margin: 180px auto;
+  padding: 24px 16px;
+  border-top: 1px solid #ffffff40;
+  border-bottom: 1px solid #ffffff40;
+  background: #ffffff04;
   color: inherit;
   text-align: center;
 }
@@ -13,12 +14,13 @@
 .ad-placement-label {
   margin: 0 0 16px;
   color: inherit;
-  opacity: .55;
-  font: 600 9px/1.5 Arial, Helvetica, sans-serif;
+  opacity: .85;
+  font: 600 11px/1.5 Arial, Helvetica, sans-serif;
   letter-spacing: .18em;
+  text-transform: uppercase;
 }
 .ad-placement .adsbygoogle { display: block; min-height: 100px; }
-.ad-placement-catalog { width: 100%; margin-top: 24px; }
+.ad-placement-catalog { width: min(970px, 100%); }
 .privacy-footer {
   display: block;
   width: min(970px, calc(100% - 40px));

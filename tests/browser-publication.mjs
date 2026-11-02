@@ -10,7 +10,7 @@ const output = process.env.SCREENSHOT_DIR ?? 'test-results/publication';
 await mkdir(output, { recursive: true });
 const server = createServer(async (request, response) => {
   const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-  if (!/^\/(games|multiplayer)\//.test(path) || path.includes('..')) return response.writeHead(404).end();
+  if (!/^\/(games|multiplayer|sokoban)\//.test(path) || path.includes('..')) return response.writeHead(404).end();
   const relative = path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
   try {
     const body = await readFile(new URL(relative, root));
@@ -78,7 +78,18 @@ try {
     await page.locator('.home').waitFor();
     assert.equal(new URL(page.url()).pathname, `/multiplayer/games/${game}/`);
   }
-  pass('All seven catalog links work, including CHESS and CHECKERS');
+  await page.goto(`${base}/games/`);
+  await page.getByRole('link', { name: 'Keyboard and mobile', exact: true }).click();
+  assert.equal(new URL(page.url()).hash, '#keyboard-mobile');
+  assert.equal(await page.locator('#keyboard-mobile .game-card').count(), 1);
+  await page.locator('#keyboard-mobile').getByRole('link', { name: /Play SOKOBAN/ }).click();
+  await page.locator('#board').waitFor();
+  assert.equal(new URL(page.url()).pathname, '/sokoban/');
+  await page.keyboard.press('ArrowUp');
+  assert.equal(await page.locator('#moves').textContent(), '1');
+  await page.getByRole('link', { name: '← Browse all games', exact: true }).click();
+  assert.equal(new URL(page.url()).pathname, '/games/');
+  pass('Catalog links work, including CHESS, CHECKERS and SOKOBAN with keyboard controls and a return link');
 
   for (const path of ['/games/', '/multiplayer/', '/multiplayer/games/tow/']) {
     await page.goto(base + path);

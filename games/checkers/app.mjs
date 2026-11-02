@@ -57,7 +57,6 @@ function render() {
   $('sound-toggle').textContent = sound.enabled ? 'SOUND ON' : 'SOUND OFF'; $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
   chat.setConnected(inRoom && screen !== 'disconnected', view?.me.id);
   syncPanels();
-  window.MoDITAds?.setVisible($('checkers-ad'), $('about-dialog').open);
   if (view && screen === 'game') $('announcer').textContent = `${statusText(view).title}. ${statusText(view).body}`;
 }
 function eyebrow(text) { return el('p', { class: 'eyebrow' }, text); }
@@ -130,7 +129,7 @@ async function handle(name, node) {
     case 'open-moves': openPanel('moves', node); break;
     case 'open-table': openPanel('table', node); break;
     case 'close-panel': closePanel(); break;
-    case 'about': $('about-dialog').showModal(); window.MoDITAds?.setVisible($('checkers-ad'), true); break;
+    case 'about': $('about-dialog').showModal(); break;
     case 'close-about': $('about-dialog').close(); break;
     case 'switch-mode': ui.name = $('your-name')?.value ?? ui.name; ui.code = $('room-code-input')?.value ?? ui.code; ui.joining = !ui.joining; ui.error = ''; render(); break;
     case 'copy-invite': try { await navigator.clipboard.writeText(inviteURL()); toast('Invite link copied.'); } catch { $('invite-link').select(); toast('Select and copy the invitation.'); } break;
@@ -177,7 +176,6 @@ document.addEventListener('keydown', event => {
     void handle(tabs[index].dataset.action, tabs[index]);
   }
 });
-$('about-dialog').addEventListener('close', () => window.MoDITAds?.setVisible($('checkers-ad'), false));
 document.addEventListener('submit', event => {
   const form = event.target; if (!form.dataset.form) return; event.preventDefault(); sound.unlock();
   if (form.dataset.form === 'connect') { void connect(form); return; }

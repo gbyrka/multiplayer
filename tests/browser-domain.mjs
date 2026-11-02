@@ -42,9 +42,7 @@ for (const entry of entries) {
     const location = new URL(url), redirects = [];
     location.replace = value => redirects.push(value);
     runInNewContext(guard, { location }, { timeout: 1000 });
-    if (entry.path === '/') {
-      assert.deepEqual(redirects, [`${origin}/games/${location.search}${location.hash}`]);
-    } else if (['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'].includes(location.hostname)
+    if (['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'].includes(location.hostname)
       && (location.protocol !== 'https:' || location.hostname !== 'mod-it.games')) {
       assert.deepEqual(redirects, [`${origin}${location.pathname}${location.search}${location.hash}`]);
     } else assert.deepEqual(redirects, [], `${entry.file}: canonical and local entry must not redirect`);
@@ -90,7 +88,7 @@ try {
     if (['/games/', '/multiplayer/', '/multiplayer/games/tow/', '/multiplayer/games/hamster/'].includes(entry.path)) {
       await page.waitForFunction(() => document.documentElement.dataset.appVersion);
     }
-    const targetPath = entry.path === '/' ? '/games/' : entry.path;
+    const targetPath = entry.path;
     assert.ok(navigation.slice(before).includes(`${origin}${targetPath}${query}`), `${entry.path}: canonical redirect lost parameters`);
     assert.ok(frames.includes(`${origin}${targetPath}${query}${fragment}`), `${entry.path}: canonical redirect lost the fragment`);
     const links = await page.locator('a[href]').evaluateAll(anchors => anchors.map(anchor => anchor.href));

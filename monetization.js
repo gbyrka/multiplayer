@@ -61,9 +61,21 @@
     },
   });
 
+  function eligible(placement) {
+    // Navigation, private chat and dialogs are never advertising surfaces.
+    if (!placement || placement.closest('dialog, [role="dialog"], nav, [role="navigation"], .room-chat, #chat-root, [role="log"]')) return false;
+    const label = placement.querySelector('.ad-placement-label')?.textContent.trim().toLowerCase();
+    if (!['advertisements', 'sponsored links'].includes(label)) return false;
+    const style = getComputedStyle(placement);
+    return !['fixed', 'sticky'].includes(style.position);
+  }
+
   function request(slot) {
+    const placement = slot.closest('.ad-placement');
     if (adsUnavailable || !slot.isConnected || slot.dataset.adRequested ||
-        slot.closest('[hidden]') || slot.getBoundingClientRect().width < 1) return;
+        !eligible(placement) || slot.closest('[hidden]') ||
+        document.querySelector('dialog[open]') ||
+        slot.getBoundingClientRect().width < 1) return;
     slot.dataset.adRequested = 'true';
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -78,11 +90,12 @@
       request(entry.target);
       if (entry.target.dataset.adRequested) observer.unobserve(entry.target);
     }
-  }, { rootMargin: '200px 0px' }) : null;
+  }, { rootMargin: '0px', threshold: 0.01 }) : null;
 
   function observe(placement) {
     const slot = placement.querySelector('.adsbygoogle');
     if (!slot || adsUnavailable) return;
+    if (!eligible(placement)) { placement.hidden = true; return; }
     if (!observed.has(slot)) {
       observed.add(slot);
       new MutationObserver(() => {
@@ -96,8 +109,11 @@
   window.MoDITAds = {
     setVisible(placement, visible) {
       if (!placement) return;
-      placement.hidden = adsUnavailable || !visible ||
-        placement.querySelector('.adsbygoogle')?.dataset.adStatus === 'unfilled';
+      const slot = placement.querySelector('.adsbygoogle');
+      // Once requested, keep a filled unit stable across SPA navigation. Never hide,
+      // recreate or refresh a served ad when players open a room or make a move.
+      placement.hidden = adsUnavailable || !eligible(placement) ||
+        slot?.dataset.adStatus === 'unfilled' || (!visible && !slot?.dataset.adRequested);
       if (!placement.hidden) observe(placement);
     },
     unavailable() {
@@ -114,6 +130,15 @@
     }
     document.querySelectorAll('.ad-placement').forEach(observe);
   }
+  document.addEventListener('close', event => {
+    if (event.target.tagName !== 'DIALOG') return;
+    // Re-arm only unrequested slots: an observer entry may have been consumed
+    // while the modal was open. Requested units must never be requested again.
+    document.querySelectorAll('.ad-placement .adsbygoogle').forEach(slot => {
+      if (!slot.dataset.adRequested) observer?.unobserve(slot);
+    });
+    ready();
+  }, true);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready, { once: true });
   else ready();
 })();

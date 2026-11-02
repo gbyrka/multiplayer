@@ -40,8 +40,8 @@
     [hidden] { display: none !important; }
     .skip-link:not(:focus) { position: absolute; left: -10000px; }
   </style>
-  <link rel="stylesheet" href="./ads.css?v=adlaunch1">
-  <script src="./monetization.js?v=adlaunch1"></script>
+  <link rel="stylesheet" href="./ads.css?v=adnav1">
+  <script src="./monetization.js?v=adnav1"></script>
   <script id="adsense-script" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3806610967714181"
           crossorigin="anonymous" onerror="window.MoDITAds.unavailable()"></script>
 </head>
@@ -49,10 +49,16 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <header id="site-header" class="site-header"></header>
   <main id="main" tabindex="-1">
-    <div class="boot-message"><h1>Good games. Good company.</h1><p>Setting the table…</p></div>
+    <section class="boot-message" aria-labelledby="collection-intro-title">
+      <h1 id="collection-intro-title">Good games. Good company.</h1>
+      <p>Play browser games with friends. Create a room, share the invitation, and start when everyone is ready. No account or download is required.</p>
+      <p>Multiplayer requires JavaScript and WebRTC. Keep the host's tab open during play. TOW needs a keyboard; the board and card games support mouse and touch.</p>
+      <nav aria-label="Multiplayer games"><a href="./games/catana/">Catana Codex</a> · <a href="./games/hamster/">HAMSTER multiplayer</a> · <a href="./games/tow/">TOW</a> · <a href="./games/chess/">CHESS</a> · <a href="./games/checkers/">CHECKERS</a> · <a href="?game=plan">PLAN</a></nav>
+      <p><a href="../games/">Browse all games</a> · <a href="../games/privacy.html">Privacy policy</a></p>
+    </section>
   </main>
   <aside class="ad-placement ad-placement-game" aria-label="Advertisement" id="multiplayer-ad" hidden>
-    <p class="ad-placement-label">ADVERTISEMENT</p>
+    <p class="ad-placement-label">Advertisements</p>
     <ins class="adsbygoogle"
          style="display:block"
          data-ad-client="ca-pub-3806610967714181"
@@ -60,7 +66,7 @@
          data-ad-format="auto"
          data-full-width-responsive="true"></ins>
   </aside>
-  <footer class="privacy-footer"><a href="../games/privacy.html">Privacy Policy</a></footer>
+  <footer class="privacy-footer"><a href="../games/">All games</a> · <a href="../games/privacy.html">Privacy Policy</a></footer>
   <div id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <dialog id="modal" aria-labelledby="modal-title">

@@ -201,9 +201,18 @@ Register another game in `games/registry.mjs` with a unique ID and PeerJS namesp
 
 ## Advertising and consent
 
-One responsive AdSense `game_footer` unit (`9380002810`) lives outside `#main`, below the complete game/chat layout with at least 150px of separation. It is available in the collection, game entry and active PLAN game/result screens. TOW has its own persistent footer unit on the home, race, pause and results screens; all TOW screens share the same consent-aware Analytics helper. It is hidden while connecting, in the lobby and on error/disconnection screens. Private chat is never the advertising surface; the active page's primary content is the game.
+Eligible entries (PLAN/collection, TOW, HAMSTER and Catana) keep one responsive
+`game_footer` unit (`9380002810`) outside the changing game/chat DOM, separated
+from both the game and footer navigation by 180px. CHESS, CHECKERS and Boggle
+have **no manual ad unit**: their About dialogs contain game information only.
+No advertising is placed inside dialogs, chat or navigation.
 
-The ad node stays attached across every move, bid and score update. The renderer only toggles visibility; it never recreates or refreshes the ad. Ads are requested once when near the viewport, and blocked/unfilled units hide their section. There are no sticky ads, overlays or ads inside the card table or chat panel.
+Before a unit is requested, lobby/connection/error screens can suppress it. Once
+requested, the footer remains stable and visible through navigation, rounds and
+moves; it is never hidden and re-shown to create impressions, recreated or
+refreshed. Blocked or unfilled units hide their section. Requests are made only
+when the unit is in the viewport. The shared runtime also rejects placements in
+navigation/private chat/dialogs, fixed/sticky placements and misleading labels.
 
 Publish `ads.css` and `monetization.js` alongside the usual files. Keep their copies in sync with the other game projects when changing shared advertising behaviour, and update their `?v=` URLs as well as the release manifest. In the AdSense Google CMP settings, enable Consent Mode for advertising and analytics; keep Auto ads off for the manual layout. Analytics remains unloaded until the CMP permits analytics storage or declares it inapplicable. Unknown or unconfigured consent stays denied. The shared policy is at `../games/privacy.html`; the root `gbyrka.github.io` repository supplies `ads.txt`.
 

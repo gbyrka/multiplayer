@@ -129,7 +129,7 @@ test('wire schema rejects fake identities, invalid squares, settings and promoti
 test('chess is listed in the public multiplayer collection and indexable, with versioned modules and local licensed rules', async () => {
   const {COLLECTION_GAMES}=await import('../games/registry.mjs'); assert.equal(COLLECTION_GAMES.find(g=>g.id==='chess')?.href,'./games/chess/');
   const root=new URL('../',import.meta.url), html=await readFile(new URL('games/chess/index.html',root),'utf8');
-  assert.doesNotMatch(html,/noindex|nofollow/); assert.match(html,/monetization\.js/); assert.match(html,/9380002810/);
+  assert.doesNotMatch(html,/noindex|nofollow/); assert.match(html,/monetization\.js/); assert.doesNotMatch(html,/<ins[^>]*adsbygoogle|data-ad-slot/);
   const config=JSON.parse(await readFile(new URL('config.json',root),'utf8'));
   const files=(await readdir(root,{recursive:true})).filter(f=>f.endsWith('.mjs')&&!f.startsWith('tests/')&&!f.startsWith('node_modules/')).map(f=>'./'+f).sort();
   assert.deepEqual([...config.modules].sort(),files); assert.match(await readFile(new URL('games/chess/vendor/LICENSE',root),'utf8'),/Jeff Hlywa/);

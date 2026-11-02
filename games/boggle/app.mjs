@@ -50,7 +50,6 @@ function render() {
   $('sound-toggle').textContent = sound.enabled ? 'SOUND ON' : 'SOUND OFF'; $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
   $('mobile-typing-toggle').textContent = ui.mobileTyping ? 'MOBILE TYPING ON' : 'MOBILE TYPING OFF';
   $('mobile-typing-toggle').setAttribute('aria-pressed', String(ui.mobileTyping));
-  window.MoDITAds?.setVisible($('boggle-ad'), $('about-dialog').open);
   tick();
 }
 function receive(next) {
@@ -191,7 +190,7 @@ async function handle(name, node) {
     case 'show-path': ui.resultWord = node.dataset.word; render(); break;
     case 'rules': dialog(renderRules()); break;
     case 'close-dialog': $('dialog').close(); break;
-    case 'about': $('about-dialog').showModal(); window.MoDITAds?.setVisible($('boggle-ad'), true); break;
+    case 'about': $('about-dialog').showModal(); break;
     case 'close-about': $('about-dialog').close(); break;
     case 'toggle-sound': sound.setEnabled(!sound.enabled); render(); break;
     case 'toggle-mobile-typing': ui.mobileTyping = !ui.mobileTyping; try { localStorage.setItem('boggle:mobile-typing', ui.mobileTyping ? 'on' : 'off'); } catch { /* Optional. */ } render(); if (ui.mobileTyping) focusWordInput(); break;
@@ -279,7 +278,6 @@ document.addEventListener('pointerup', event => {
 document.addEventListener('pointercancel', () => { drag = null; });
 addEventListener('orientationchange', () => { drag = null; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) drag = null; else tick(); });
-$('about-dialog').addEventListener('close', () => window.MoDITAds?.setVisible($('boggle-ad'), false));
 addEventListener('pagehide', () => { stopWorker(); room?.close(); });
 function tick() {
   if (!view) return;

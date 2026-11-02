@@ -159,7 +159,7 @@ try {
   await host.waitForFunction(() => document.querySelector('#tow-ad ins').dataset.adRequested === 'true');
   await host.screenshot({ path: `${output}/home-desktop.png`, fullPage: true });
   await host.locator('#your-name').fill('Greg'); await host.locator('#connect').click(); await host.locator('#lobby').waitFor();
-  assert.ok(await host.locator('#tow-ad').isHidden());
+  assert.ok(await host.locator('#tow-ad').isVisible(), 'A requested footer unit remains stable during lobby navigation.');
   const link = await host.locator('#invite-link').inputValue(), code = await host.locator('#room-code').textContent();
   assert.equal(new URL(link).pathname, new URL(base).pathname); assert.equal(new URL(link).searchParams.get('room'), code);
   assert.ok(await host.locator('#start').isDisabled());

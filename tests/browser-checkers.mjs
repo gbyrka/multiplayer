@@ -110,9 +110,9 @@ try {
 
   const audit=await page();let ga=0;audit.on('request',r=>{if(r.url().includes('googletagmanager.com'))ga++;});await audit.goto(base);await audit.locator('.home').waitFor();assert.equal(ga,0);
   const analytics=audit.waitForRequest('**/www.googletagmanager.com/**');await audit.evaluate(()=>{window.googlefc.getGoogleConsentModeValues=()=>({analyticsStoragePurposeConsentStatus:1});window.googlefc.callbackQueue.find(c=>c.CONSENT_MODE_DATA_READY).CONSENT_MODE_DATA_READY();});await analytics;assert.equal(ga,1);
-  await audit.getByRole('button',{name:'About & sponsors',exact:true}).click();assert.equal(await audit.locator('#checkers-ad').isVisible(),true);await audit.getByRole('button',{name:'Close about',exact:true}).click();await noOverflow(audit,375,667);
+  await audit.getByRole('button',{name:'About this game',exact:true}).click();assert.equal(await audit.locator('#about-dialog .adsbygoogle, #checkers-ad').count(),0);await audit.getByRole('button',{name:'Close about',exact:true}).click();await noOverflow(audit,375,667);
   for(const path of ['/multiplayer/','/games/']){await audit.goto(origin+path);if(path==='/multiplayer/')await audit.locator('.featured-game').first().waitFor();assert.equal(await audit.locator('a[href*="games/checkers"]').count(),1);}
-  assert.deepEqual(errors,[]);console.log('PASS catalog entry, consent-based Analytics, separate sponsors dialog and no browser exceptions');
+  assert.deepEqual(errors,[]);console.log('PASS catalog entry, consent-based Analytics, advertisement-free About dialog and no browser exceptions');
 }catch(error){failed=true;for(let i=0;i<contexts.length;i++){const p=contexts[i].pages()[0];if(p)await p.screenshot({path:`${output}/failure-${i}.png`,fullPage:true}).catch(()=>{});}console.error(error);}
 finally{for(const c of contexts)await c.close();await browser.close();server.close();signal.close();}
 process.exit(failed?1:0);

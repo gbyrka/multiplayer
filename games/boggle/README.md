@@ -63,7 +63,7 @@ guest readiness. A four-second countdown hides the board until play begins.
 ## Architecture and limits
 
 The existing `GameRoom`, private views, PeerJS transport, chat, synthesized sound,
-consent-aware Analytics and About/sponsor dialog are reused. No bitmap assets,
+consent-aware Analytics and advertisement-free About dialog are reused. No bitmap assets,
 fonts or frontend dependencies are added. The local dictionary graphs are
 prepared offline and shipped with the game. Only the host downloads a dictionary,
 in a module worker; dictionary/worker failure leaves the lobby available to retry.
