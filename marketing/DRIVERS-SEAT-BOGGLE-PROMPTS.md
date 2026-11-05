@@ -1,5 +1,15 @@
 # Driver’s Seat and Boggle launch artwork
 
+## Current Boggle LinkedIn revision
+
+The current Boggle poster removes the italic tagline and says `Polish & English. 1–6 players.`. Updated with the built-in image tool; the PNG master, upload-ready JPEG and social-preview JPEG use this revision. Earlier prompts below document the original generation.
+
+Final edit prompt:
+
+```text
+undefined
+```
+
 Generated with the built-in `image_gen` tool (imagegen skill); no CLI/API fallback. References: existing `tow-social.png`, `tow-cover.png` and `chess-linkedin.png`. The English campaign typography, emerald/ivory/gold palette and tactile art follow those earlier posters. Both new LinkedIn posters include the exact homepage URL `https://mod-it.games`.
 
 Masters and exports:
