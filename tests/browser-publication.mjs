@@ -10,8 +10,8 @@ const output = process.env.SCREENSHOT_DIR ?? 'test-results/publication';
 await mkdir(output, { recursive: true });
 const server = createServer(async (request, response) => {
   const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-  if (!/^\/(games|multiplayer|sokoban)\//.test(path) || path.includes('..')) return response.writeHead(404).end();
-  const relative = path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
+  if (!(path === '/' || /^\/(games|multiplayer|sokoban)\//.test(path)) || path.includes('..')) return response.writeHead(404).end();
+  const relative = path === '/' ? 'gbyrka.github.io/index.html' : path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
   try {
     const body = await readFile(new URL(relative, root));
     const extension = relative.split('.').at(-1);
@@ -42,7 +42,7 @@ try {
   await page.goto(`${base}/games/`);
   await page.waitForFunction(() => document.documentElement.dataset.appVersion);
   const section = page.locator('#multiplayer');
-  assert.equal(await section.locator('a').count(), 7);
+  assert.equal(await section.locator('a').count(), 9);
   await section.getByRole('link', { name: /Play PLAN/ }).click();
   await page.locator('#entry-form').waitFor();
   assert.equal(new URL(page.url()).searchParams.get('game'), 'plan');
@@ -52,7 +52,7 @@ try {
   assert.equal(new URL(page.url()).pathname, '/multiplayer/games/tow/');
   await page.getByRole('link', { name: '← All multiplayer' }).click();
   await page.locator('.featured-game').first().waitFor();
-  assert.equal(await page.locator('.featured-game').count(), 6);
+  assert.equal(await page.locator('.featured-game').count(), 8);
   await page.goto(`${base}/games/`);
   await section.getByRole('link', { name: /Play Catana Codex/ }).click();
   await page.locator('#entry-form').waitFor();
@@ -78,6 +78,36 @@ try {
     await page.locator('.home').waitFor();
     assert.equal(new URL(page.url()).pathname, `/multiplayer/games/${game}/`);
   }
+  for (const [game, ready] of [['tow-drivers-seat', '#home:not([hidden])'], ['boggle', '.home']]) {
+    for (const path of ['/', '/games/', '/multiplayer/']) {
+      await page.goto(base + path);
+      if (path === '/multiplayer/') await page.locator('.featured-game').first().waitFor();
+      await page.locator(`a[href$="games/${game}/"]`).click();
+      await page.locator(ready).waitFor();
+      assert.equal(new URL(page.url()).pathname, `/multiplayer/games/${game}/`);
+      assert.equal(await page.locator('meta[name="robots"]').count(), 0);
+      assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), `https://mod-it.games/multiplayer/games/${game}/`);
+      const preview = await page.locator('meta[property="og:image"]').getAttribute('content');
+      assert.equal(new URL(preview).pathname, `/multiplayer/assets/${game}-social.jpg`);
+      const response = await page.request.get(base + new URL(preview).pathname);
+      assert.ok(response.ok());
+      const dimensions = await page.evaluate(async src => {
+        const image = new Image(); image.src = src; await image.decode();
+        return { width: image.naturalWidth, height: image.naturalHeight };
+      }, base + new URL(preview).pathname);
+      assert.equal(Number(await page.locator('meta[property="og:image:width"]').getAttribute('content')), dimensions.width);
+      assert.equal(Number(await page.locator('meta[property="og:image:height"]').getAttribute('content')), dimensions.height);
+    }
+  }
+  await page.goto(`${base}/`);
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 950 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Homepage overflows at ${width}px`);
+  }
+  await page.locator('a[href="/sokoban/"]').click();
+  await page.locator('#board').waitFor();
+  assert.equal(new URL(page.url()).pathname, '/sokoban/');
+  pass('All three lists open Driver’s Seat and Boggle; both entries are indexable with distinct correctly sized social previews; homepage links to SOKOBAN');
   await page.goto(`${base}/games/`);
   await page.getByRole('link', { name: 'Keyboard and mobile', exact: true }).click();
   assert.equal(new URL(page.url()).hash, '#keyboard-mobile');
@@ -85,6 +115,7 @@ try {
   await page.locator('#keyboard-mobile').getByRole('link', { name: /Play SOKOBAN/ }).click();
   await page.locator('#board').waitFor();
   assert.equal(new URL(page.url()).pathname, '/sokoban/');
+  await page.waitForLoadState('load');
   await page.keyboard.press('ArrowUp');
   assert.equal(await page.locator('#moves').textContent(), '1');
   await page.getByRole('link', { name: '← Browse all games', exact: true }).click();
@@ -105,9 +136,9 @@ try {
         const titles = await cards.locator('h2, h3').allTextContents();
         const catalog = path === '/games/';
         assert.deepEqual(titles, catalog
-          ? ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']
-          : ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'CHESS', 'CHECKERS', 'PLAN']);
-        const columns = catalog ? (width > 900 ? 3 : width > 540 ? 2 : 1) : (width > 1000 ? 3 : width > 600 ? 2 : 1);
+          ? ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'TOW: Driver’s Seat', 'Boggle', 'CHESS', 'CHECKERS', 'PLAN']
+          : ['Catana Codex', 'HAMSTER multiplayer', 'TOW', 'TOW: Driver’s Seat', 'Boggle', 'CHESS', 'CHECKERS', 'PLAN']);
+        const columns = catalog ? (width > 900 ? 4 : width > 540 ? 2 : 1) : (width > 1000 ? 4 : width > 600 ? 2 : 1);
         const boxes = await cards.evaluateAll(nodes => nodes.map(node => {
           const { x, y } = node.getBoundingClientRect(); return { x, y };
         }));

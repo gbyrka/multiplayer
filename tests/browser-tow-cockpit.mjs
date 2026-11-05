@@ -30,7 +30,7 @@ try {
   await page.goto(`${base}/multiplayer/games/tow-drivers-seat/`);
   await page.locator('#home:not([hidden])').waitFor();
   assert.match(await page.title(), /Driver’s Seat/);
-  assert.match(await page.locator('meta[name=robots]').getAttribute('content'), /noindex/);
+  assert.equal(await page.locator('meta[name=robots]').count(), 0);
   for (const width of [320,390,768,1440]) {
     await page.setViewportSize({width,height:1000});
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth<=innerWidth+1), `home overflow at ${width}`);
@@ -38,9 +38,9 @@ try {
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:`${output}/home.png`,fullPage:true});
   for(const path of ['/games/','/multiplayer/']) {
-    const html=await (await page.request.get(base+path)).text();assert.doesNotMatch(html,/tow-drivers-seat/);
+    const html=await (await page.request.get(base+path)).text();assert.match(html,/tow-drivers-seat/);
   }
-  pass('Unlisted entry loads, opts out of indexing and fits 320–1440px');
+  pass('Public entry loads, appears in both catalogs and fits 320–1440px');
   await page.evaluate(async () => {
     const {CockpitScene}=await import('/multiplayer/games/tow-drivers-seat/scene.mjs');
     const {createRace}=await import('/multiplayer/games/tow/race.mjs');

@@ -624,7 +624,7 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 }
 
 /* Standalone games share the collection's cover artwork layout. */
-.game-collection{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.game-collection{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
 .game-collection .featured-game{display:flex;flex-direction:column;min-width:0}
 .game-collection .game-art{min-height:0;aspect-ratio:3/2}
 .game-collection .featured-content{display:flex;flex-direction:column;flex:1;padding:22px}
@@ -632,7 +632,7 @@ dialog::backdrop { background: #07120ed4; backdrop-filter: blur(5px); }
 .game-collection .game-subtitle{font-size:21px;margin-bottom:12px}
 .game-collection .featured-content>.muted{max-width:none;flex:1;font-size:13px}
 .game-collection .game-facts{margin:18px 0}
-.game-collection .featured-content .primary{align-self:flex-start}
+.game-collection .featured-content .primary{align-self:flex-start;min-width:0;max-width:100%;letter-spacing:.035em;padding:13px 16px}
 @media(max-width:1000px){.game-collection{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.game-collection{grid-template-columns:1fr}}
 @media(max-width:560px){.game-collection .featured-content{padding:22px}}

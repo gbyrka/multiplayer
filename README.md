@@ -1,18 +1,20 @@
 # Multiplayer — good games, good company
 
-A small collection of browser games to play with friends. Choose **PLAN — Predict your tricks.**, **TOW — Keep your trailer close.** **Catana Codex — A world worth building.** or **HAMSTER multiplayer — Little paws. Big company.** from the collection.
+A small collection of browser games to play with friends. Choose **Catana Codex**, **HAMSTER multiplayer**, **TOW**, **TOW: Driver’s Seat**, **Boggle**, **CHESS**, **CHECKERS** or **PLAN** from the collection.
 
-**Boggle — Good words. Good company.** is an unlisted word game for 2–6 friends or local solo practice at `./games/boggle/`, with local Polish/English inflection dictionaries, keyboard/mouse/touch input, a saved mobile auto-typing option, a host-selected minimum of 3, 4 or 5 letters, and longest-word paths after each round. It is omitted from both public catalogs and opts out of indexing. See [its rules, dictionary policy and checks](games/boggle/README.md).
+**Boggle — Good words. Good company.** is a public word game for 2–6 friends or local solo practice at `./games/boggle/`, with local Polish/English inflection dictionaries, keyboard/mouse/touch input, a saved mobile auto-typing option, a host-selected minimum of 3, 4 or 5 letters, and longest-word paths after each round. It is linked from both public catalogs and the homepage, and is indexable. See [its rules, dictionary policy and checks](games/boggle/README.md).
 
 **TOW** is online multiplayer trailer racing for **2–4 drivers**, available at `./games/tow/`. **Keyboard controls only for now.** The collection links to TOW's independent realtime racing entry point; its physics and networking modules are loaded only when opening that game. See [TOW's controls, advertising and test instructions](games/tow/README.md).
 
-**TOW: Driver’s Seat** is an unlisted cockpit variant at `./games/tow-drivers-seat/`, with a live left mirror, an animated steering wheel and hands, and all-driver progress bars. It shares TOW’s original controls, generated tracks, physics and sound. It is omitted from both public catalogs and opts out of search indexing. See [its rendering budget, controls and checks](games/tow-drivers-seat/README.md).
+**TOW: Driver’s Seat** is a public cockpit variant at `./games/tow-drivers-seat/`, with a live left mirror, an animated steering wheel and hands, and all-driver progress bars. It shares TOW’s original controls, generated tracks, physics and sound. It is linked from both public catalogs and the homepage, and is indexable. See [its rendering budget, controls and checks](games/tow-drivers-seat/README.md).
 
 PLAN is a complete, turn-based card game for **2–6 players**, including the host. It works with a mouse or touch, on desktops, tablets and portrait phones down to 320px. Everything in the interface is in English. PLAN cards are drawn with HTML/CSS; TOW uses local cover/social images and Canvas vehicle art. There are no external fonts, frameworks or sound assets.
 
 **Preview:** a dark emerald card table, cream and gold details, white playing cards, a lobby with an invite link, mobile player tiles, bidding controls and a scoreboard grouped by round and deal. A gold/mint victory animation follows the visual style of Sokoban. Running the optional browser tests saves screenshots in `test-results/`.
 
 **Campaign artwork:** `marketing/plan-social.png` is the full-resolution PLAN image for LinkedIn and Facebook posts. `marketing/PROMPTS.md` records the final prompt used with the built-in image tool. The optimized `assets/plan-social.jpg` is linked in the static HTML's [Open Graph](https://ogp.me/) and large-image card metadata, so social link previews do not depend on JavaScript. The catalog keeps its own optimized copy for its PLAN link.
+
+The Driver’s Seat and Boggle launch includes generated local cover artwork and independent social previews. Full-resolution LinkedIn posters, upload-ready 1200px JPEGs and exact prompts are in [marketing/DRIVERS-SEAT-BOGGLE-PROMPTS.md](marketing/DRIVERS-SEAT-BOGGLE-PROMPTS.md). Both posters show `https://mod-it.games`.
 
 ## Run locally
 
@@ -147,13 +149,13 @@ Dealing is an atomic host operation immediately before bidding. A host-only time
 
 ## Shared code and adding another game
 
-**CHECKERS — A table for two** is a two-player game at `./games/checkers/`. It uses the fullscreen CHESS layout, with no clock, host-selected colors and compulsory longest captures on an 8×8 board. Men capture backwards, kings fly along diagonals and multiple captures must be completed. See [CHECKERS rules, implementation and tests](games/checkers/README.md). Prepared [covers for both board games and the chess LinkedIn campaign](marketing/BOARD-GAMES-PROMPTS.md) are saved; the sibling games catalog links to both games, while the multiplayer collection omits them.
+**CHECKERS — A table for two** is a two-player game at `./games/checkers/`. It uses the fullscreen CHESS layout, with no clock, host-selected colors and compulsory longest captures on an 8×8 board. Men capture backwards, kings fly along diagonals and multiple captures must be completed. See [CHECKERS rules, implementation and tests](games/checkers/README.md). Prepared [covers for both board games and the chess LinkedIn campaign](marketing/BOARD-GAMES-PROMPTS.md) are saved; both catalogs link to these games.
 
 **CHESS — A table for two** is a two-player game available at `./games/chess/`. It is listed in both catalogs and is indexable. It shares the room, chat, advertising and consent-based Google Analytics helper, with legal move guidance, per-player board orientation, host-selected colors and an optional chess clock. See [CHESS rules, controls, limitations and tests](games/chess/README.md).
 
 **Catana Codex**, a board game for **2–4 friends**, is listed in both the multiplayer collection and the sibling games catalog, linking to `./games/catana/`. It uses PLAN's existing authoritative `GameRoom`, transport and private views, with an original terrain atlas and a complete resource-trading rules engine. Three or four players play to 10 VP; two players play to 12 VP with dice-directed robber destinations. Its game modules load only when opening its standalone entry. The generated cover master and prompt are in [marketing/CATANA-PROMPT.md](marketing/CATANA-PROMPT.md). See [Catana's rules, architecture and tests](games/catana/README.md).
 
-**HAMSTER multiplayer** lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is listed after Catana Codex in both public collections. The multiplayer collection has two columns; the sibling games catalog has three columns on desktop. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
+**HAMSTER multiplayer** lives at `./games/hamster/`, beside PLAN and TOW. It supports 2–4 friends in the original 3D HAMSTER habitat, with a shared three-minute score competition, playful nudges and golden snack events. It is listed after Catana Codex in both public collections. Both catalogs have four columns on desktop: Catana Codex / HAMSTER multiplayer / TOW / TOW: Driver’s Seat, then Boggle / CHESS / CHECKERS / PLAN. This collection uses two columns at 601–1000px and one at 600px or below; the sibling catalog uses two at 541–900px and one at 540px or below. See [HAMSTER's rules, controls and tests](games/hamster/README.md).
 
 ```text
 index.html                 Inline version loader, shell, dialog and announcements

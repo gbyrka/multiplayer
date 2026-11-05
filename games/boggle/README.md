@@ -1,10 +1,9 @@
 # Boggle — Good words. Good company.
 
-An **unlisted** word game for **2–6 friends** or **solo practice**, available directly at
-`/multiplayer/games/boggle/`. Neither public catalog includes it; the entry
-uses `noindex, nofollow`. Knowing the link is sufficient to open it: unlisted
-does not mean password-protected. No deployment or public catalog change is
-required to test it locally.
+A public word game for **2–6 friends** or **solo practice**, available at
+`/multiplayer/games/boggle/`. Both catalogs list it before CHESS; the homepage
+also links to it. Its entry is indexable and has a dedicated social preview.
+No account is needed to open it and share a room invitation.
 
 The previous `/multiplayer/games/word-trail/` URL redirects here and preserves
 room invitation parameters and fragments.
@@ -63,8 +62,8 @@ guest readiness. A four-second countdown hides the board until play begins.
 ## Architecture and limits
 
 The existing `GameRoom`, private views, PeerJS transport, chat, synthesized sound,
-consent-aware Analytics and advertisement-free About dialog are reused. No bitmap assets,
-fonts or frontend dependencies are added. The local dictionary graphs are
+consent-aware Analytics and advertisement-free About dialog are reused. Gameplay needs no bitmap assets,
+fonts or frontend dependencies; catalog and social artwork live in the collection’s assets/marketing folders. The local dictionary graphs are
 prepared offline and shipped with the game. Only the host downloads a dictionary,
 in a module worker; dictionary/worker failure leaves the lobby available to retry.
 All possible words and one path each are solved **before** the countdown.

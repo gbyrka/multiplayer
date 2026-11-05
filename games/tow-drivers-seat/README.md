@@ -1,6 +1,6 @@
 # TOW: Driver’s Seat
 
-An **unlisted, first-person version of TOW multiplayer for 2–4 drivers**. Its production path is **https://mod-it.games/multiplayer/games/tow-drivers-seat/** after publishing this repository. It is deliberately absent from both game catalogs and the game registry. The entry includes `noindex, nofollow, noarchive`. Anyone with its direct link can open it and share a room invitation.
+A **first-person version of TOW multiplayer for 2–4 drivers**. Its production path is **https://mod-it.games/multiplayer/games/tow-drivers-seat/**. It is publicly listed immediately after TOW in both catalogs and on the homepage, with an indexable entry and its own social preview. Anyone can open it and share a room invitation.
 
 Serve the workspace root with `python3 -m http.server 8080`, then open **http://localhost:8080/multiplayer/games/tow-drivers-seat/**. Serve `multiplayer/` alone to use **http://localhost:8080/games/tow-drivers-seat/** instead. ES modules require HTTP; use HTTPS for other devices.
 
@@ -25,7 +25,7 @@ Rooms use their own `tow-cockpit-v1-` discovery namespace, so a room code from t
 ## Rendering budget
 
 - One WebGL renderer for the road, physical cabin and mirror. Static cabin surfaces and hand details are merged; only the steering assembly and arms move. A small instrument texture updates only when its displayed values change. The transparent screen overlay is used only for a graphics-context restoration message.
-- Low-poly vehicles with merged static parts; spatially batched trees, markings, barrels and crates. Short road chunks and distant batches are frustum-culled for each camera.
+- Warm daylight, a cool distant haze and a more readable road sit over low-poly vehicles with merged static parts. Trees, roadside shrubs, markings, barrels and crates are spatially batched; short road chunks and distant batches are frustum-culled for each camera.
 - No live shadow maps, post-processing or giant route-sized texture.
 - The mirror renders at **256 × 180**, at most **15 times per second**, sharing vehicle geometry with the main view.
 - Paused/results scenes redraw only when needed. Software rendering is capped at 30 graphics frames per second, without changing simulation, input or sound updates.

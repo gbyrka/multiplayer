@@ -89,7 +89,7 @@ async function performUI(page, intent, phase) {
 try {
   const collection = await page(); await collection.goto(new URL('../../', base).href); await collection.locator('.featured-game').first().waitFor();
   assert.equal(await collection.locator('a[href="./games/catana/"]').count(), 1);
-  assert.equal(await collection.locator('.featured-game').count(), 3);
+  assert.equal(await collection.locator('.featured-game').count(), 8);
   const catanaCard = collection.locator('.featured-game').filter({ hasText: 'Catana Codex' });
   await catanaCard.scrollIntoViewIfNeeded(); await catanaCard.locator('img').evaluate(image => image.decode());
   assert.match(await catanaCard.locator('img').getAttribute('src'), /catana-cover/);

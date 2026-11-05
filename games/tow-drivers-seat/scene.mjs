@@ -12,9 +12,9 @@ const cylinder = new THREE.CylinderGeometry(1, 1, 1, 10);
 const cone = new THREE.ConeGeometry(1, 1, 7);
 const shadow = new THREE.CircleGeometry(1, 16); shadow.rotateX(-Math.PI / 2);
 const material = color => new THREE.MeshLambertMaterial({ color });
-const asphalt = material('#62685f'), shoulder = material('#b6b49a'), paint = material('#e9dfb7');
-const dark = material('#283d35'), tyres = material('#24302b'), glass = material('#66877e');
-const chrome = material('#a7b2a0'), cream = material('#e2e2ce');
+const asphalt = material('#515955'), shoulder = material('#b7ad91'), paint = material('#e9dfb7');
+const dark = material('#283d35'), tyres = material('#202a27'), glass = material('#71918c');
+const chrome = material('#bdc1a8'), cream = material('#e7e2cf');
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#344a36', transparent: true, opacity: .36, depthWrite: false });
 
 function part(parent, geometry, mat, x, y, z, sx, sy, sz) {
@@ -109,9 +109,9 @@ export class CockpitScene {
     this.pixelRatio = Math.min(devicePixelRatio || 1, this.software ? .65 : 1.4);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.info.autoReset = false;
-    this.world = new THREE.Scene(); this.world.background = new THREE.Color('#d6dfcf'); this.world.fog = new THREE.Fog('#d6dfcf', 95, 245);
-    this.world.add(new THREE.HemisphereLight('#fff5dc', '#647652', 2.15));
-    const sun = new THREE.DirectionalLight('#ffe0a3', 1.55); sun.position.set(-80, 130, -70); this.world.add(sun);
+    this.world = new THREE.Scene(); this.world.background = new THREE.Color('#c7dce0'); this.world.fog = new THREE.Fog('#c7dce0', 110, 270);
+    this.world.add(new THREE.HemisphereLight('#edf5f2', '#61734f', 1.9));
+    const sun = new THREE.DirectionalLight('#ffe2b0', 1.7); sun.position.set(-80, 130, -70); this.world.add(sun);
     this.camera = new THREE.PerspectiveCamera(70, 1, .08, 290);
     this.rearCamera = new THREE.PerspectiveCamera(76, 1.43, .08, 200);
     this.mirrorTarget = new THREE.WebGLRenderTarget(256, 180, { depthBuffer: true, stencilBuffer: false });
@@ -137,7 +137,7 @@ export class CockpitScene {
     this.track = track; this.environment = new THREE.Group(); this.world.add(this.environment);
     this.progress.configure(track); this.mirrorAt = -Infinity; this.cockpit.angle = 0;
     const env = this.environment;
-    this.ground = part(env, box, material('#879870'), 0, -.09, 0, 600, .1, 600);
+    this.ground = part(env, box, material('#84936b'), 0, -.09, 0, 600, .1, 600);
     // Short road chunks are independently culled instead of drawing a map-sized mesh.
     for (let start = 0; start < track.points.length - 1; start += 20) {
       const end = Math.min(start + 20, track.points.length - 1);
@@ -146,11 +146,11 @@ export class CockpitScene {
     }
     const marks = [];
     for(let s=40;s<track.length;s+=70) {
-      const p=pointAt(track,s); marks.push({x:p.x*SCALE,y:.025,z:p.y*SCALE,a:-p.a,sx:.10,sy:.015,sz:1.35});
+      const p=pointAt(track,s); marks.push({x:p.x*SCALE,y:.025,z:p.y*SCALE,a:-p.a,sx:.14,sy:.015,sz:1.4});
     }
     instances(env,box,material('#d7d4b0'),marks);
     // Repeated objects use a few draw calls; no real-time shadow maps or post effects.
-    const trunks=[],leaves=[],rocks=[],verges=[]; const rand=seededRandom(track.seed);
+    const trunks=[],leaves=[],rocks=[],verges=[],shrubs=[]; const rand=seededRandom(track.seed);
     for(let s=0;s<track.length;s+=125) for(const side of [-1,1]) {
       const p=pointAt(track,s),lateral=side*(235+rand()*480),x=(p.x+p.nx*lateral)*SCALE,z=(p.y+p.ny*lateral)*SCALE;
       const size=1.5+rand()*2.8;
@@ -159,8 +159,14 @@ export class CockpitScene {
       if(rand()>.5) rocks.push({x:x+2,y:.30,z:z+3,sx:.9,sy:.6,sz:.8,a:rand()*6});
       const edge=side*(187+rand()*20);verges.push({x:(p.x+p.nx*edge)*SCALE,y:.12,z:(p.y+p.ny*edge)*SCALE,sx:.10,sy:.24,sz:.10});
     }
-    instances(env,cylinder,material('#76694e'),trunks); instances(env,cone,material('#587654'),leaves);
-    instances(env,new THREE.DodecahedronGeometry(1,0),material('#9b9e84'),rocks); instances(env,box,paint,verges);
+    for(let s=80;s<track.length;s+=300) for(const side of [-1,1]) {
+      if(rand()<.35)continue;
+      const p=pointAt(track,s),size=.55+rand()*.45,lateral=side*(198+rand()*100);
+      shrubs.push({x:(p.x+p.nx*lateral)*SCALE,y:size*.48,z:(p.y+p.ny*lateral)*SCALE,sx:size*1.4,sy:size,sz:size,a:rand()*6});
+    }
+    instances(env,cylinder,material('#75654b'),trunks); instances(env,cone,material('#557451'),leaves);
+    instances(env,cone,material('#758454'),shrubs);
+    instances(env,new THREE.DodecahedronGeometry(1,0),material('#a19e80'),rocks); instances(env,box,paint,verges);
     const barrels=[],bands=[],crates=[],braces=[];
     for(const o of track.obstacles) {
       const x=o.x*SCALE,z=o.y*SCALE,a=-o.a;

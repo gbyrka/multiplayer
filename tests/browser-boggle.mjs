@@ -117,9 +117,9 @@ try {
   await host.locator('.brand-logo').evaluate(image => image.decode());
   assert.equal(await host.locator('.brand-logo').getAttribute('alt'), 'MoD-IT');
   assert.equal(await host.locator('.author-credit a').getAttribute('href'), 'https://www.linkedin.com/in/grzegorz-byrka-81175515/');
-  assert.equal(await host.locator('meta[name="robots"]').getAttribute('content'), 'noindex, nofollow');
+  assert.equal(await host.locator('meta[name="robots"]').count(), 0);
   assert.equal(dictionaryRequests.length, 0); await fits(host, 'home');
-  pass('Unlisted entry loads without dictionaries; home fits desktop, mobile and landscape');
+  pass('Public entry loads without dictionaries; home fits desktop, mobile and landscape');
   await host.locator('#your-name').fill('Alex'); await host.getByRole('button', { name: 'CREATE GAME ↗', exact: true }).click(); await host.locator('.lobby').waitFor();
   const invite = await host.locator('#invite-link').inputValue(); assert.match(invite, /games\/boggle\/\?room=/);
   const guest = await page(true), legacyInvite = new URL(invite);

@@ -18,13 +18,14 @@ test('cockpit progress follows host positions and resets, reserving 100% for a c
   assert.equal(driverProgress(state, track, 1).fraction, 0);
 });
 
-test('Driver’s Seat is unlisted with noindex metadata, and its complete module graph is versioned', async () => {
+test('Driver’s Seat is public with its own social image, and its complete module graph is versioned', async () => {
   const root = new URL('../', import.meta.url);
-  assert.ok(!COLLECTION_GAMES.some(game => game.href?.includes('tow-drivers-seat')));
+  assert.equal(COLLECTION_GAMES.find(game => game.id === 'tow-drivers-seat')?.href, './games/tow-drivers-seat/');
   const [entry, catalog, collection] = await Promise.all(['games/tow-drivers-seat/index.html', '../games/index.html', 'index.html'].map(path => readFile(new URL(path, root), 'utf8')));
-  assert.match(entry, /name="robots" content="noindex, nofollow, noarchive"/);
+  assert.doesNotMatch(entry, /noindex|nofollow|noarchive/);
+  assert.match(entry, /assets\/tow-drivers-seat-social\.jpg/);
   assert.match(entry, /canonical.*https:\/\/mod-it.games\/multiplayer\/games\/tow-drivers-seat\//);
-  assert.doesNotMatch(catalog, /tow-drivers-seat/); assert.doesNotMatch(collection, /tow-drivers-seat/);
+  assert.match(catalog, /tow-drivers-seat/); assert.match(collection, /tow-drivers-seat/);
   const files = (await readdir(root, { recursive:true })).filter(path => path.endsWith('.mjs') && !path.startsWith('tests/') && !path.startsWith('node_modules/')).map(path => `./${path}`).sort();
   const config = JSON.parse(await readFile(new URL('config.json', root), 'utf8'));
   assert.deepEqual([...config.modules].sort(), files);

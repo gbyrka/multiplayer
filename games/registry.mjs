@@ -35,6 +35,21 @@ export const COLLECTION_GAMES = Object.freeze([Object.freeze({
   coverAlt: 'Four colorful cars towing ivory trailers around a winding forest road',
   controls: 'Keyboard controls only for now',
 }), Object.freeze({
+  id: 'tow-drivers-seat', title: 'TOW: Driver’s Seat', subtitle: 'Keep your trailer close.',
+  description: 'Take the wheel in first person. Watch your trailer in the mirror and race friends along a new winding road.',
+  players: '2–4 drivers', duration: '1–3 min', category: 'FIRST-PERSON RACING · ONLINE MULTIPLAYER',
+  href: './games/tow-drivers-seat/', cover: './assets/tow-drivers-seat-cover.jpg',
+  coverSrcset: './assets/tow-drivers-seat-cover-600.webp 600w, ./assets/tow-drivers-seat-cover-1200.webp 1200w',
+  coverAlt: 'A driver’s view of a forest road, rival cars towing ivory trailers and the driver’s own trailer in the left mirror',
+  controls: 'Keyboard controls only for now',
+}), Object.freeze({
+  id: 'boggle', title: 'Boggle', subtitle: 'Good words. Good company.',
+  description: 'Follow neighboring letters to find words in Polish or English. Play with friends or practice solo.',
+  players: '2–6 players or solo', duration: '1–3 min / round', inputLabel: 'Keyboard, mouse & touch', category: 'WORD GAMES · ONLINE MULTIPLAYER',
+  href: './games/boggle/', cover: './assets/boggle-cover.jpg',
+  coverSrcset: './assets/boggle-cover-600.webp 600w, ./assets/boggle-cover-1200.webp 1200w',
+  coverAlt: 'Sixteen ivory letter cubes in a walnut-framed four-by-four tray on emerald felt',
+}), Object.freeze({
   id: 'chess', title: 'CHESS', subtitle: 'A table for two.',
   description: 'Classic chess with legal move hints and an optional clock.',
   players: '2 players', duration: 'Optional clock', category: 'BOARD GAMES · ONLINE MULTIPLAYER',

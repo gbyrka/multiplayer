@@ -197,9 +197,11 @@ test('six-player maximum result stays inside the configured wire limit', () => {
   const view = core.buildViewForPlayer(state, 'host');
   assert.ok(isMessage(message('STATE_UPDATE', { view }), game.maxStateMessageLength));
 });
-test('game is unlisted and noindex; all production modules are in the release manifest', () => {
-  assert.equal([...GAMES, ...COLLECTION_GAMES].some(game => game.id === 'boggle'), false);
-  const html = readFileSync(new URL('index.html', root), 'utf8'); assert.match(html, /name="robots" content="noindex, nofollow"/);
+test('Boggle is public with its own social image; all production modules are in the release manifest', () => {
+  assert.equal(COLLECTION_GAMES.find(game => game.id === 'boggle')?.href, './games/boggle/');
+  assert.equal(GAMES.some(game => game.id === 'boggle'), false, 'Boggle keeps its independent entry point');
+  const html = readFileSync(new URL('index.html', root), 'utf8'); assert.doesNotMatch(html, /noindex|nofollow/);
+  assert.match(html, /assets\/boggle-social\.jpg/);
   const config = JSON.parse(readFileSync(new URL('../config.json', import.meta.url)));
   for (const name of ['action-schema', 'app', 'board', 'dictionary', 'dictionary-worker', 'game-core', 'ui']) assert.ok(config.modules.includes(`./games/boggle/${name}.mjs`));
 });

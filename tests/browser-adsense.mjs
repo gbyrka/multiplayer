@@ -141,7 +141,7 @@ try {
   const page = await plain.newPage(); await page.goto(origin + '/');
   assert.equal(new URL(page.url()).pathname, '/'); assert.ok(await page.getByRole('link', { name:/Browse all games/ }).isVisible());
   await page.getByRole('link', { name:/Browse all games/ }).click(); assert.equal(new URL(page.url()).pathname, '/games/');
-  assert.equal(await page.locator('.game-card').count(), 10);
+  assert.equal(await page.locator('.game-card').count(), 12);
   pass('Root and catalog work without JavaScript and without forced redirects');
   assert.deepEqual(missing, []); assert.deepEqual(errors, []);
   pass('No missing local resources or uncaught browser errors; all Google/ad requests were stubbed');

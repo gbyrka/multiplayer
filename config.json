@@ -1,5 +1,5 @@
 {
-  "version": "adnav1",
+  "version": "launch26nov5",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
