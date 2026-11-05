@@ -20,7 +20,7 @@ Masters and exports:
 - Both catalogs keep independent `assets/*-cover.jpg` (1200 × 800) and `*-cover-600.webp` / `*-cover-1200.webp` copies.
 - `../assets/tow-drivers-seat-social.jpg` and `../assets/boggle-social.jpg`: optimized poster exports for each game’s Open Graph and large-image previews.
 
-Exports only resize/compress the generated artwork. All covers are 1536 × 1024. Social masters are approximately 1732 × 908; the actual 1200px JPEG export heights are recorded in each game’s Open Graph metadata (629px).
+Exports only resize/compress the generated artwork. All covers are 1536 × 1024. Social masters are approximately 1732 × 908; the actual 1200px JPEG export heights are recorded in each game’s Open Graph metadata (629px for Driver’s Seat, 630px for the revised Boggle poster).
 
 The Boggle poster received one final built-in edit to restore the omitted free-play line:
 
