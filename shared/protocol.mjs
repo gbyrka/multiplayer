@@ -4,6 +4,7 @@ import { isCatanaAction } from '../games/catana/action-schema.mjs';
 import { isChessAction } from '../games/chess/action-schema.mjs';
 import { isCheckersAction } from '../games/checkers/action-schema.mjs';
 import { isBoggleAction } from '../games/boggle/action-schema.mjs';
+import { isScrabbleAction } from '../games/scrabble/action-schema.mjs';
 
 export const PROTOCOL_VERSION = 1;
 export const MESSAGE = Object.freeze(Object.fromEntries([
@@ -15,6 +16,7 @@ export const MESSAGE = Object.freeze(Object.fromEntries([
   'CHESS_ACTION',
   'CHECKERS_ACTION',
   'BOGGLE_ACTION',
+  'SCRABBLE_ACTION',
 ].map(type => [type, type])));
 
 export const ACTION_TYPES = new Set([
@@ -24,6 +26,7 @@ export const ACTION_TYPES = new Set([
   MESSAGE.CHESS_ACTION,
   MESSAGE.CHECKERS_ACTION,
   MESSAGE.BOGGLE_ACTION,
+  MESSAGE.SCRABBLE_ACTION,
 ]);
 const KNOWN_TYPES = new Set(Object.keys(MESSAGE));
 const EMPTY_PAYLOAD_TYPES = new Set([
@@ -51,6 +54,7 @@ export function isClientMessage(value) {
   if (type === 'CHESS_ACTION') return isChessAction(payload);
   if (type === 'CHECKERS_ACTION') return isCheckersAction(payload);
   if (type === 'BOGGLE_ACTION') return isBoggleAction(payload);
+  if (type === 'SCRABBLE_ACTION') return isScrabbleAction(payload);
   if (type === 'CHAT_SEND') return keys.length === 1 && typeof payload.text === 'string' && payload.text.length <= CHAT_LIMITS.length;
   if (EMPTY_PAYLOAD_TYPES.has(type)) return keys.length === 0;
   if (type === 'JOIN_REQUEST') return keys.every(key => ['nickname', 'appVersion'].includes(key)) &&

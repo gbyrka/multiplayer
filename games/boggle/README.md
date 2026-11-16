@@ -40,6 +40,11 @@ guest readiness. A four-second countdown hides the board until play begins.
   Validation on the host accepts any valid path, including repeated letters on
   different tiles. The input supports Polish characters and Unicode NFC.
 - **Mouse or touch drag:** follow neighboring tiles, then release to submit.
+- **Touch tracing:** after the initial contact, only the central 60% of each
+  tile's width and height activates it. The 20% margin on every side lets a
+  diagonal swipe graze a side tile without selecting it. Full-size tap targets,
+  visual tile sizes and mouse tracing are preserved. Fast swipes still sample
+  intermediate tiles, and tracing back to the previous tile still undoes a step.
 - **Tap or accessible tile buttons:** select a trail, then choose Add word.
   Moving to the immediately previous tile undoes one step. Clear or Escape resets
   the selection. Canceled gestures never submit.

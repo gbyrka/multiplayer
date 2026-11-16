@@ -249,7 +249,7 @@ document.addEventListener('pointerdown', event => {
   if (!tile || tile.disabled || !event.isPrimary || event.button !== 0 || ui.pending || view?.phase !== 'playing') return;
   event.preventDefault(); sound.unlock();
   if (event.pointerType === 'touch' && document.activeElement?.matches('input, textarea')) document.activeElement.blur();
-  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, moved: false };
+  drag = { id: event.pointerId, touch: event.pointerType === 'touch', x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, moved: false };
   $('letter-board').setPointerCapture(event.pointerId); selectTile(Number(tile.dataset.tile));
 });
 function tracePointer(event) {
@@ -262,8 +262,16 @@ function tracePointer(event) {
     const steps = Math.min(256, Math.max(1, Math.ceil(Math.hypot(sample.clientX - fromX, sample.clientY - fromY) / spacing)));
     // Mobile browsers can deliver a fast swipe with several tiles between events.
     for (let step = 1; step <= steps; step++) {
-      const tile = document.elementFromPoint(fromX + (sample.clientX - fromX) * step / steps, fromY + (sample.clientY - fromY) * step / steps)?.closest('[data-tile]');
-      if (tile && !tile.disabled) selectTile(Number(tile.dataset.tile));
+      const x = fromX + (sample.clientX - fromX) * step / steps, y = fromY + (sample.clientY - fromY) * step / steps;
+      const tile = document.elementFromPoint(x, y)?.closest('[data-tile]');
+      if (!tile || tile.disabled) continue;
+      if (drag.touch) {
+        // Keep full-size tap targets, but leave a 20% margin on each side during
+        // touch tracing so diagonal swipes can graze neighbouring tile corners.
+        const bounds = tile.getBoundingClientRect(), insetX = bounds.width * .2, insetY = bounds.height * .2;
+        if (x < bounds.left + insetX || x > bounds.right - insetX || y < bounds.top + insetY || y > bounds.bottom - insetY) continue;
+      }
+      selectTile(Number(tile.dataset.tile));
     }
     drag.lastX = sample.clientX; drag.lastY = sample.clientY;
   }

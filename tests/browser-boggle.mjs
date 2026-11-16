@@ -112,6 +112,49 @@ async function dragWord(p, path) {
   for (const index of path.slice(1)) { const target = await point(p, index); await p.mouse.move(target.x, target.y, { steps: 4 }); }
   await p.mouse.up();
 }
+async function diagonalTouch(p) {
+  if (engine !== chromium) return; // CDP supplies actual touch streams, rather than synthetic pointer events.
+  const viewport = p.viewportSize(), size = await p.evaluate(() => window.__room.view.settings.size);
+  const cdp = await p.context().newCDPSession(p);
+  const touch = async (type, touchPoints = []) => {
+    await cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+    // Chromium can deliver a native touch move on the next compositor frame.
+    await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  };
+  for (const [width, height] of [[390, 844], [1024, 768]]) {
+    await p.setViewportSize({ width, height });
+    for (const [start, end, side, right, bottom] of [[0, size+1, 1, false, true], [1, size, 0, true, true], [size, 1, size+1, false, false], [size+1, 0, size, true, false]]) {
+      if (await p.locator('[data-action="clear-word"]').isEnabled()) await p.locator('[data-action="clear-word"]').click();
+      await p.locator('#letter-board').scrollIntoViewIfNeeded();
+      const bounds = await p.evaluate(indices => indices.map(i => {
+        const rect = document.querySelector(`[data-tile="${i}"]`).getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      }), [start, end, side]);
+      const centre = r => ({ x: r.x + r.width/2, y: r.y + r.height/2, id: 1 });
+      const nearCorner = { x: bounds[2].x + bounds[2].width * (right ? .94 : .06), y: bounds[2].y + bounds[2].height * (bottom ? .94 : .06), id: 1 };
+      await touch('touchStart', [centre(bounds[0])]);
+      await touch('touchMove', [nearCorner]);
+      assert.equal((await p.locator('#word-input').inputValue()).length, 1, 'Grazing the corner of a side tile must not select it');
+      await touch('touchMove', [centre(bounds[1])]);
+      const expected = await p.evaluate(([a,b]) => window.__room.view.board[a] + window.__room.view.board[b], [start,end]);
+      assert.equal(await p.locator('#word-input').inputValue(), expected, `Diagonal ${start} → ${end} at ${width}px must select only the intended tiles`);
+      await touch('touchMove', [nearCorner]);
+      await touch('touchMove', [centre(bounds[0])]);
+      assert.equal((await p.locator('#word-input').inputValue()).length, 1, 'Diagonal backtracking must undo just the last tile');
+      await touch('touchCancel');
+    }
+    // Fast horizontal movement must still capture the intermediate letter.
+    await p.locator('[data-action="clear-word"]').click();
+    const first = await point(p,0), third = await point(p,2);
+    await touch('touchStart', [{ ...first, id: 1 }]);
+    await touch('touchMove', [{ ...third, id: 1 }]);
+    assert.equal(await p.locator('#word-input').inputValue(), await p.evaluate(() => window.__room.view.board.slice(0,3).join('')), 'Smaller activation areas must not skip intermediate tiles');
+    await touch('touchCancel');
+    await p.locator('[data-action="clear-word"]').click();
+  }
+  await cdp.detach(); await p.setViewportSize(viewport);
+  pass(`${size}×${size} touch traces tolerate all four diagonal corner grazes, backtrack and retain fast horizontal swipes on phone and tablet`);
+}
 try {
   const host = await page(); await host.goto(base); await host.locator('.home').waitFor(); await hooks(host);
   await host.locator('.brand-logo').evaluate(image => image.decode());
@@ -200,6 +243,7 @@ try {
   }
   await guest.locator('.found-words li > span').filter({ hasText: new RegExp(`^${touchDragWord}$`) }).waitFor();
   pass(engine === chromium ? 'Touch dragging and release submits without scrolling the board' : 'WebKit drag and release submits on a touch device layout');
+  await diagonalTouch(guest);
   if (mobileAudit) {
     const original = devices[process.env.BOGGLE_DEVICE].viewport;
     await guest.setViewportSize({ width: original.width, height: Math.max(300, original.height - 350) });
@@ -263,6 +307,7 @@ try {
   await host.locator('[data-action="start"]:not(:disabled)').click(); await guest.locator('#word-input').waitFor();
   assert.equal(await guest.locator('[data-tile]').count(), 36); await fits(host, 'polish-6x6');
   if (mobileAudit) await fits(guest, 'mobile-6x6');
+  await diagonalTouch(guest);
   const [polish] = (await candidates(host, 5)).find(([word]) => /[ąćęłńóśźż]/.test(word)) ?? (await candidates(host, 5))[0];
   await guest.locator('#word-input').fill(polish.slice(0, 4)); await guest.locator('#word-input').press('Enter');
   assert.match(await guest.locator('#word-feedback').innerText(), /at least 5/);

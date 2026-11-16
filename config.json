@@ -1,5 +1,5 @@
 {
-  "version": "launch26nov5",
+  "version": "boggle16nov",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",
@@ -71,6 +71,14 @@
     "./games/boggle/dictionary-worker.mjs",
     "./games/boggle/game-core.mjs",
     "./games/boggle/ui.mjs",
-    "./games/boggle/solo-session.mjs"
+    "./games/boggle/solo-session.mjs",
+    "./games/scrabble/constants.mjs",
+    "./games/scrabble/action-schema.mjs",
+    "./games/scrabble/rules.mjs",
+    "./games/scrabble/editor.mjs",
+    "./games/scrabble/dictionary.mjs",
+    "./games/scrabble/game-core.mjs",
+    "./games/scrabble/ui.mjs",
+    "./games/scrabble/app.mjs"
   ]
 }

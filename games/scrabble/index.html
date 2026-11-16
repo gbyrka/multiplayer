@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script data-site-https>(()=>{const{hostname,protocol,pathname,search,hash}=location;if(['mod-it.games','www.mod-it.games','gbyrka.github.io'].includes(hostname)&&(protocol!=='https:'||hostname!=='mod-it.games'))location.replace(`https://mod-it.games${pathname}${search}${hash}`);})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142923">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Play Scrabble with 2–4 friends or practise solo. Polish and English, with an optional time limit per move. No sign-up.">
+  <title>Scrabble · MoD-IT</title>
+  <link rel="canonical" href="https://mod-it.games/multiplayer/games/scrabble/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Scrabble · MoD-IT">
+  <meta property="og:description" content="Polish and English. 1–4 players. Optional time limit per move. No sign-up.">
+  <meta property="og:url" content="https://mod-it.games/multiplayer/games/scrabble/">
+  <meta property="og:image" content="https://mod-it.games/multiplayer/marketing/scrabble-linkedin.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://mod-it.games/multiplayer/marketing/scrabble-linkedin.png">
+  <link rel="icon" href="./favicon.svg">
+  <style>body{margin:0;background:#142923;color:#f5f0df;font-family:system-ui,sans-serif}[hidden]{display:none!important}.boot{padding:48px;text-align:center}</style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to game</a>
+  <header class="site-header">
+    <a class="brand" href="../../" aria-label="MoD-IT games"><img src="../../assets/mod-it.jpg" alt="MoD-IT" width="600" height="323"><span>Scrabble</span></a>
+    <nav class="header-actions" aria-label="Game navigation"><button class="button quiet" data-action="rules" type="button">How to play</button><button id="sound-toggle" class="button quiet" data-action="toggle-sound" aria-pressed="true" type="button">Sound on</button><button id="leave" class="button quiet" data-action="leave" type="button" hidden>Leave game</button></nav>
+  </header>
+  <div class="page-shell"><main id="main"></main><details id="chat-section" class="chat-section" hidden><summary>Room chat</summary><div id="chat-root"></div></details></div>
+  <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <div id="boot" class="boot">Loading Scrabble…</div>
+  <dialog id="dialog"><button class="button quiet dialog-close" data-action="close-dialog" type="button" aria-label="Close dialog">Close ×</button><div id="dialog-content"></div></dialog>
+  <noscript><p class="boot">Enable JavaScript to play.</p></noscript>
+  <footer class="privacy-footer"><a href="../../../games/">All games</a><a href="https://www.linkedin.com/in/grzegorz-byrka-81175515/" target="_blank" rel="noopener noreferrer">Created by Grzegorz Byrka</a><a href="../../../games/privacy.html">Privacy</a><button type="button" class="button quiet" data-action="about">About</button></footer>
+  <script type="module">
+    const refresh = new URL(location.href).searchParams.get('_refresh');
+    const refreshApp = () => {
+      const url = new URL(location.href);
+      url.searchParams.set('_refresh', Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+      location.replace(url.href);
+    };
+    try {
+      if (!HTMLScriptElement.supports?.('importmap')) throw new Error('Please update your browser to play.');
+      const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+      let config;
+      try {
+        const response = await fetch(`../../config.json?check=${Date.now().toString(36)}`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Configuration unavailable.');
+        config = await response.json();
+      } finally { clearTimeout(timeout); }
+      if (!/^[a-z0-9]{3,16}$/i.test(config.version) || !Array.isArray(config.modules) || !config.modules.includes('./games/scrabble/app.mjs')) throw new Error('Invalid configuration.');
+      const assetQuery = `?v=${encodeURIComponent(config.version)}${refresh ? `&refresh=${encodeURIComponent(refresh)}` : ''}`;
+      const imports = {}, root = new URL('../../', location.href);
+      for (const path of config.modules) {
+        if (!/^\.\/[a-z0-9/-]+\.mjs$/i.test(path)) throw new Error('Invalid module path.');
+        const url = new URL(path, root); imports[url.href] = url.href + assetQuery;
+      }
+      document.documentElement.dataset.appVersion = config.version;
+      document.querySelector('link[rel="icon"]').href = './favicon.svg' + assetQuery;
+      const map = document.createElement('script'); map.type = 'importmap'; map.textContent = JSON.stringify({ imports }); document.head.append(map);
+      const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = './style.css' + assetQuery;
+      const styled = new Promise((resolve, reject) => { style.onload = resolve; style.onerror = () => reject(new Error('Styles unavailable.')); }); document.head.append(style);
+      await styled; await import(imports[new URL('./app.mjs', location.href).href]);
+    } catch (error) {
+      console.error('Scrabble startup failed:', error);
+      if (!refresh && error.message !== 'Please update your browser to play.') { document.querySelector('#boot').textContent = 'Refreshing app files…'; refreshApp(); }
+      else {
+        const boot = document.querySelector('#boot'); boot.replaceChildren();
+        const text = document.createElement('p'); text.textContent = `Scrabble unavailable. ${error.message} Please reload.`;
+        const button = document.createElement('button'); button.textContent = 'RELOAD'; button.onclick = refreshApp; boot.append(text, button);
+      }
+    }
+    addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+  </script>
+</body>
+</html>
