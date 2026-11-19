@@ -26,11 +26,12 @@ try{
  pass('Old catalog URLs redirect directly to root, preserve queries/fragments and do not trap Back navigation');
  for(const path of [...destinations,'/multiplayer/','/multiplayer/games/scrabble/','/games/pop/','/games/privacy.html']){
   await p.goto(origin+path);await p.waitForLoadState('load');
-  if(path.startsWith('/multiplayer/'))await p.waitForFunction(()=>document.documentElement.dataset.appVersion);
+  if(path.startsWith('/multiplayer/')){await p.waitForFunction(()=>document.documentElement.dataset.appVersion);await p.locator('#boot').waitFor({state:'hidden'});}
   if(path.startsWith('/games/')&&path!=='/games/privacy.html')await p.waitForFunction(()=>document.querySelector('#boot').hidden);
   const stale=await p.locator('a[href]').evaluateAll(nodes=>nodes.filter(a=>new URL(a.href).pathname==='/games/').map(a=>a.outerHTML));assert.deepEqual(stale,[],path);
   const footer=p.locator('footer a[href="/"], .privacy-footer a[href="/"]');
-  const home=await footer.count()?footer.first():p.getByRole('link',{name:/^(All games|← Browse all games|Browse all games|← Back to MoD-IT Games)$/}).first();await home.waitFor();assert.equal(await home.evaluate(a=>new URL(a.href).pathname),'/');// WebKit's automated scroll can stall inside the animated HAMSTER viewport.
+  const home=await footer.count()?footer.first():p.getByRole('link',{name:/^(All games|← Browse all games|Browse all games|← Back to MoD-IT Games)$/}).first();await home.waitFor();assert.equal(await home.evaluate(a=>new URL(a.href).pathname),'/');
+  // WebKit's automated scroll can stall inside the animated HAMSTER viewport.
   // Chromium exercises physical clicks; WebKit activates the same DOM anchor.
   if(engine.name()==='webkit')await home.evaluate(anchor=>anchor.click());else await home.click();await p.waitForURL(origin+'/');await p.locator('#main .game-card').first().waitFor();
  }
