@@ -13,8 +13,8 @@ const root = new URL('../../', import.meta.url), output = process.env.SCREENSHOT
 let signal; await new Promise(resolve => PeerServer({ host: '127.0.0.1', port: 0, path: '/signal' }, s => { signal = s; resolve(); }));
 const server = createServer(async (request, response) => {
   const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-  if (!/^\/(games|multiplayer)\//.test(path) || path.includes('..')) return response.writeHead(404).end();
-  const file = path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
+  if (!(path === '/' || /^\/(games|multiplayer)\//.test(path)) || path.includes('..')) return response.writeHead(404).end();
+  const file = path === '/' ? 'gbyrka.github.io/index.html' : path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
   try { const data = await readFile(new URL(file, root)); response.writeHead(200, { 'Content-Type': { mjs:'text/javascript', js:'text/javascript', css:'text/css', json:'application/json', svg:'image/svg+xml', png:'image/png', webp:'image/webp', jpg:'image/jpeg' }[file.split('.').at(-1)] ?? 'text/html' }).end(data); }
   catch { response.writeHead(404).end(); }
 });

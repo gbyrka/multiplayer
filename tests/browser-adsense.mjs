@@ -43,7 +43,7 @@ await context.addInitScript(() => {
   };
 });
 const entries = [
-  ['/', '#main', 0], ['/games/', '#main', 1], ['/dock/', '#overlay-title', 1], ['/park/', '#overlay-title', 1],
+  ['/', '#main', 1], ['/dock/', '#overlay-title', 1], ['/park/', '#overlay-title', 1],
   ['/hamster/', '#overlay-title', 1], ['/sokoban/', '#board', 1], ['/multiplayer/', '.featured-game', 1],
   ['/multiplayer/?game=plan', '#entry-form', 1], ['/multiplayer/games/tow/', '#home', 1],
   ['/multiplayer/games/tow-drivers-seat/', '#home', 1], ['/multiplayer/games/hamster/', '#home', 1],
@@ -59,7 +59,7 @@ try {
     assert.equal(await page.locator('ins.adsbygoogle').count(), slots, path);
     assert.equal(await page.locator('dialog ins.adsbygoogle, nav ins.adsbygoogle, .room-chat ins.adsbygoogle').count(), 0, path);
     if (slots) {
-      if (path === '/games/') {
+      if (path === '/') {
         await page.evaluate(() => { const dialog = document.createElement('dialog'); dialog.id = 'test-info'; dialog.textContent = 'Game information'; document.body.append(dialog); dialog.showModal(); });
         await page.locator('.ad-placement').evaluate(ad => ad.scrollIntoView());
         await page.waitForTimeout(100);
@@ -111,7 +111,7 @@ try {
       assert.equal(await page.locator('#about-dialog ins').count(), 0); await page.getByRole('button', { name:'Close about', exact:true }).click();
       assert.equal(await page.evaluate(() => window.adsbygoogle.length), 0);
     }
-    if (path === '/games/') {
+    if (path === '/') {
       await page.evaluate(() => {
         window.__before = window.adsbygoogle.length;
         for (const kind of ['nav','dialog','private','fixed','label']) {
@@ -139,10 +139,11 @@ try {
   }
   const plain = await browser.newContext({ javaScriptEnabled:false, viewport:{width:390,height:844} });
   const page = await plain.newPage(); await page.goto(origin + '/');
-  assert.equal(new URL(page.url()).pathname, '/'); assert.ok(await page.getByRole('link', { name:/Browse all games/ }).isVisible());
-  await page.getByRole('link', { name:/Browse all games/ }).click(); assert.equal(new URL(page.url()).pathname, '/games/');
-  assert.equal(await page.locator('.game-card').count(), 12);
-  pass('Root and catalog work without JavaScript and without forced redirects');
+  assert.equal(new URL(page.url()).pathname, '/');
+  assert.equal(await page.locator('.game-card').count(), 13);
+  await page.goto(origin + '/games/'); await page.waitForURL(origin + '/');
+  assert.equal(await page.locator('.game-card').count(), 13);
+  pass('The root catalog works without JavaScript; the old catalog redirects to it without JavaScript');
   assert.deepEqual(missing, []); assert.deepEqual(errors, []);
   pass('No missing local resources or uncaught browser errors; all Google/ad requests were stubbed');
   await plain.close(); console.log(`${checks} AdSense/browser audit checks passed.`);

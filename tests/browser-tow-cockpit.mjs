@@ -10,7 +10,7 @@ const server = createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   if (path.includes('..')) return res.writeHead(404).end();
   try {
-    const file = path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
+    const file = path === '/' ? 'gbyrka.github.io/index.html' : path.slice(1) + (path.endsWith('/') ? 'index.html' : '');
     const body = await readFile(new URL(file, root));
     const type = { html:'text/html', mjs:'text/javascript', json:'application/json', css:'text/css', svg:'image/svg+xml', js:'text/javascript', jpg:'image/jpeg', webp:'image/webp' }[file.split('.').at(-1)];
     res.writeHead(200, { 'Content-Type':type ?? 'application/octet-stream' }).end(body);
@@ -37,7 +37,7 @@ try {
   }
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:`${output}/home.png`,fullPage:true});
-  for(const path of ['/games/','/multiplayer/']) {
+  for(const path of ['/','/multiplayer/']) {
     const html=await (await page.request.get(base+path)).text();assert.match(html,/tow-drivers-seat/);
   }
   pass('Public entry loads, appears in both catalogs and fits 320–1440px');

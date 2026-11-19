@@ -42,7 +42,10 @@ for (const entry of entries) {
     const location = new URL(url), redirects = [];
     location.replace = value => redirects.push(value);
     runInNewContext(guard, { location }, { timeout: 1000 });
-    if (['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'].includes(location.hostname)
+    if (entry.path === '/games/') {
+      const target = ['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'].includes(location.hostname) ? origin + '/' : '/';
+      assert.deepEqual(redirects, [target + location.search + location.hash]);
+    } else if (['mod-it.games', 'www.mod-it.games', 'gbyrka.github.io'].includes(location.hostname)
       && (location.protocol !== 'https:' || location.hostname !== 'mod-it.games')) {
       assert.deepEqual(redirects, [`${origin}${location.pathname}${location.search}${location.hash}`]);
     } else assert.deepEqual(redirects, [], `${entry.file}: canonical and local entry must not redirect`);
@@ -88,7 +91,7 @@ try {
     if (['/games/', '/multiplayer/', '/multiplayer/games/tow/', '/multiplayer/games/hamster/'].includes(entry.path)) {
       await page.waitForFunction(() => document.documentElement.dataset.appVersion);
     }
-    const targetPath = entry.path;
+    const targetPath = entry.path === '/games/' ? '/' : entry.path;
     assert.ok(navigation.slice(before).includes(`${origin}${targetPath}${query}`), `${entry.path}: canonical redirect lost parameters`);
     assert.ok(frames.includes(`${origin}${targetPath}${query}${fragment}`), `${entry.path}: canonical redirect lost the fragment`);
     const links = await page.locator('a[href]').evaluateAll(anchors => anchors.map(anchor => anchor.href));
@@ -108,14 +111,14 @@ try {
   await page.goto(`${origin}/games/`);
   const paths = ['/dock/', '/park/', '/hamster/', '/multiplayer/?game=plan', '/multiplayer/games/tow/'];
   for (const path of paths) {
-    const link = page.locator(`a[href="..${path}"]`).first();
+    const link = page.locator(`a[href="${path}"]`).first();
     assert.equal(await link.evaluate(anchor => anchor.href), origin + path);
   }
   assert.equal(await page.locator('a[href*="multiplayer/games/hamster"]').count(), 1);
-  await page.locator('a[href="../dock/"]').first().click();
+  await page.locator('a[href="/dock/"]').first().click();
   await page.waitForURL(origin + '/dock/');
   await page.getByRole('link', { name: '← Browse all games' }).click();
-  await page.waitForURL(origin + '/games/');
+  await page.waitForURL(origin + '/');
   pass('Catalog and return navigation use custom-domain HTTPS URLs, including the public HAMSTER multiplayer link');
 
   await page.goto(`${origin}/dock/`);

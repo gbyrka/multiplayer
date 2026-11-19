@@ -71,11 +71,14 @@ test('every local navigation link and fragment resolves, including root, invitat
 });
 test('the root has real navigable content without JavaScript; catalog categories are populated', async () => {
   const home = await readFile(new URL('gbyrka.github.io/index.html', root), 'utf8');
-  assert.match(home, /<main id="main"/); assert.match(home, /Play with friends/);
+  assert.match(home, /<main id="main"/); assert.match(home, /Browser games/);
   assert.doesNotMatch(home, /http-equiv="refresh"|location\.replace\(`https:\/\/mod-it\.games\/games\//);
-  assert.doesNotMatch(home, /adsbygoogle|googletagmanager/);
+  assert.match(home, /data-ad-slot="7475979927"/);
   const catalog = await readFile(new URL('games/index.html', root), 'utf8');
-  assert.doesNotMatch(catalog, /Coming soon|href="#mobile"|href="#cross-platform"/);
+  assert.doesNotMatch(home, /Coming soon|href="#mobile"|href="#cross-platform"/);
+  assert.match(catalog, /location\.replace/);
+  assert.match(catalog, /canonical" href="https:\/\/mod-it\.games\/"/);
+  assert.doesNotMatch(catalog, /adsbygoogle|googletagmanager|class="game-card/);
   const collection = await readFile(new URL('multiplayer/index.html', root), 'utf8');
   assert.match(collection, /aria-label="Multiplayer games"/);
 });

@@ -4,7 +4,7 @@ export function renderHeader({ game, room, view, status, soundEnabled = true }) 
   return el('div', { class: 'header-inner' },
     button([el('img', { class: 'brand-logo', src: new URL(`../assets/mod-it.jpg?v=${document.documentElement.dataset.appVersion ?? 'dev'}`, import.meta.url).href, alt: 'MoD-IT', width: 600, height: 323 }), el('span', { class: 'brand-name' }, 'MULTIPLAYER')], 'collection', { class: 'brand', 'aria-label': 'MoD-IT multiplayer game collection' }),
     el('nav', { class: 'header-nav', 'aria-label': 'Main navigation' },
-      !game && !room ? el('a', { class: 'button text-button collection-link', href: '../games/' }, '← Browse all games') : null,
+      !game && !room ? el('a', { class: 'button text-button collection-link', href: '/' }, '← Browse all games') : null,
       room ? el('span', { class: 'connection-status', id: 'connection-status' }, el('i', { 'aria-hidden': 'true' }), el('span', {}, status)) : null,
       view && view.phase !== 'lobby' ? button('SCOREBOARD', 'scoreboard', { class: 'button text-button' }) : null,
       game ? button('HOW TO PLAY', 'rules', { class: 'button text-button' }) : null,

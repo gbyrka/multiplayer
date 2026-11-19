@@ -1,5 +1,5 @@
 {
-  "version": "boggle16nov",
+  "version": "home19nov1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

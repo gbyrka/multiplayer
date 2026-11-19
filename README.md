@@ -286,3 +286,10 @@ Verification on **2026-10-08** passed **100/100 Node tests** and **51/51 browser
 - `?debug=1` logs only phases and revisions. Neither normal mode nor debug mode logs cards or raw state. The app never captures camera or microphone media.
 
 The existing MIT license applies.
+
+## Main catalog navigation
+
+The illustrated all-games catalog lives at `https://mod-it.games/`. Every All
+games/Browse all games link in this collection and its standalone game footers
+points directly to `/`. `/games/` is only a compatibility redirect; privacy stays
+at `/games/privacy.html` and game URLs below `/multiplayer/games/` are unchanged.

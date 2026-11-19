@@ -21,7 +21,7 @@ test('cockpit progress follows host positions and resets, reserving 100% for a c
 test('Driver’s Seat is public with its own social image, and its complete module graph is versioned', async () => {
   const root = new URL('../', import.meta.url);
   assert.equal(COLLECTION_GAMES.find(game => game.id === 'tow-drivers-seat')?.href, './games/tow-drivers-seat/');
-  const [entry, catalog, collection] = await Promise.all(['games/tow-drivers-seat/index.html', '../games/index.html', 'index.html'].map(path => readFile(new URL(path, root), 'utf8')));
+  const [entry, catalog, collection] = await Promise.all(['games/tow-drivers-seat/index.html', '../gbyrka.github.io/index.html', 'index.html'].map(path => readFile(new URL(path, root), 'utf8')));
   assert.doesNotMatch(entry, /noindex|nofollow|noarchive/);
   assert.match(entry, /assets\/tow-drivers-seat-social\.jpg/);
   assert.match(entry, /canonical.*https:\/\/mod-it.games\/multiplayer\/games\/tow-drivers-seat\//);
