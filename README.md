@@ -216,7 +216,7 @@ refreshed. Blocked or unfilled units hide their section. Requests are made only
 when the unit is in the viewport. The shared runtime also rejects placements in
 navigation/private chat/dialogs, fixed/sticky placements and misleading labels.
 
-Publish `ads.css` and `monetization.js` alongside the usual files. Keep their copies in sync with the other game projects when changing shared advertising behaviour, and update their `?v=` URLs as well as the release manifest. In the AdSense Google CMP settings, enable Consent Mode for advertising and analytics; keep Auto ads off for the manual layout. Analytics remains unloaded until the CMP permits analytics storage or declares it inapplicable. Unknown or unconfigured consent stays denied. The shared policy is at `../games/privacy.html`; the root `gbyrka.github.io` repository supplies `ads.txt`.
+Publish `ads.css` and `monetization.js` alongside the usual files. Keep their copies in sync with the other game projects and update their `?v=` URLs and the release manifest when changing them. Scrabble and pages where the Google CMP cannot supply an analytics choice use the optional visit statistics panel. Keep Auto ads off for the manual layout. See the [shared consent and GA4 stream settings](../games/README.md#advertising-and-consent) and the [privacy policy](../games/privacy.html). The root `gbyrka.github.io` repository supplies `ads.txt`.
 
 ## Automated checks
 

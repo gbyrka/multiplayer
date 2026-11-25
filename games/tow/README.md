@@ -42,7 +42,7 @@ Browser checks need Playwright and Chromium, plus `peer` (local signaling server
 
 ## Analytics, advertising and artwork
 
-Every screen shares the root `../../monetization.js` and `../../ads.css` helper. Google Analytics (`G-WTPHWDLQ7K`) loads only when the existing Google CMP grants analytics consent or reports it not applicable. Unknown/denied consent discards events. `game_start` and `game_end` contain the game name, driver count and local finish status, without names, room codes or invite links; each fires once per race, not per snapshot.
+Every screen shares the root `../../monetization.js` and `../../ads.css` helper. Google Analytics (`G-WTPHWDLQ7K`) follows the shared multiplayer consent flow. Events before permission and after withdrawal are discarded. `game_start` and `game_end` contain the game name, driver count and local finish status, without names, room codes or invite links; each fires once per race, not per snapshot.
 
 One persistent responsive `game_footer` AdSense unit (`9380002810`, publisher `ca-pub-3806610967714181`) stays outside the app. It is available on the home, race, pause and results screens, with at least 150px separation after all controls. Connecting, lobby, disconnected and loader-error screens hide it. Blocked/unfilled ads hide their section. Moving through the game never recreates or refreshes the unit. The shared Privacy Policy is linked in the footer.
 

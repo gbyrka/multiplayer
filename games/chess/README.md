@@ -29,7 +29,7 @@ fullscreen entry, avoiding ads behind a navigation button or inside a modal.
 The shared bootstrap still supports the existing CMP/Analytics integration; keep
 Auto ads off in the AdSense account.
 
-`../../monetization.js` supplies Google Analytics `G-WTPHWDLQ7K` and the same consent behavior as PLAN, TOW, HAMSTER and Catana. Analytics loads only after Google CMP allows it; pre-consent/denied gameplay events are discarded. Chess emits `game_start`/`game_end` with the game name, clock presence and ending, without names, messages, room codes or positions. Keep AdSense/CMP configured for the existing domain as described in the parent README.
+`../../monetization.js` supplies Google Analytics `G-WTPHWDLQ7K` and the same consent behavior as PLAN, TOW, HAMSTER and Catana. The shared consent flow discards gameplay events before permission and after withdrawal. Chess emits `game_start`/`game_end` with the game name, clock presence and ending, without names, messages, room codes or positions. Keep AdSense/CMP configured for the existing domain as described in the parent README.
 
 ## Validation
 

@@ -12,7 +12,7 @@ const contexts=[],errors=[],missing=[];let checks=0;
 const pass=label=>console.log(`PASS ${++checks}: ${label}`);
 async function context(js=true){const c=await browser.newContext({javaScriptEnabled:js,reducedMotion:'reduce',viewport:{width:1280,height:950}});contexts.push(c);await c.route('**/*',route=>{const url=new URL(route.request().url());return url.origin===origin||['blob:','data:'].includes(url.protocol)?route.continue():route.abort();});c.on('page',p=>{p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{if(r.url().startsWith(origin)&&r.status()>=400&&!r.url().endsWith('/favicon.ico'))missing.push(r.url());});});return c;}
 try{
- const c=await context(),p=await c.newPage();await p.goto(origin+'/');await p.waitForFunction(()=>document.documentElement.dataset.appVersion==='home19nov1');
+ const c=await context(),p=await c.newPage();await p.goto(origin+'/');await p.waitForFunction(()=>document.documentElement.dataset.appVersion==='analytics1');
  const cards=p.locator('.game-card'),destinations=await cards.evaluateAll(nodes=>nodes.map(a=>new URL(a.href).pathname+new URL(a.href).search));
  assert.equal(destinations.length,13);assert.equal(new Set(destinations).size,13);assert.equal(await p.locator('#keyboard .game-card').first().locator('h3').textContent(),'SimCity');
  assert.equal(await p.locator('link[rel=canonical]').getAttribute('href'),'https://mod-it.games/');assert.equal(await p.locator('meta[property="og:url"]').getAttribute('content'),'https://mod-it.games/');

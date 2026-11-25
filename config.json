@@ -1,5 +1,5 @@
 {
-  "version": "home19nov1",
+  "version": "analytics1",
   "modules": [
     "./app.mjs",
     "./shared/random.mjs",

@@ -35,7 +35,7 @@ Casual draw handling: the third occurrence of the same completed position with t
 
 The persistent room chat preserves drafts/focus through updates and between games. Chat, history and table controls share the desktop sidebar or mobile drawer. Long messages/history scroll within their panel; the game page stays in the viewport. No test hooks are exposed by the production app.
 
-The shared local `monetization.js` supplies Google Analytics **G-WTPHWDLQ7K**, subject to the same Google CMP consent handling as the other multiplayer games. Pre-consent/denied events are discarded. `game_start`/`game_end` carry only the game name and ending, without room codes, names, board positions or chat. There are no manual ad units on this fullscreen entry. **About this game** opens information only; keep Auto ads off in AdSense so the account cannot inject a replacement placement.
+The shared local `monetization.js` supplies Google Analytics **G-WTPHWDLQ7K**, subject to the shared multiplayer consent flow. Pre-consent/denied events are discarded. `game_start`/`game_end` carry only the game name and ending, without room codes, names, board positions or chat. There are no manual ad units on this fullscreen entry. **About this game** opens information only; keep Auto ads off in AdSense so the account cannot inject a replacement placement.
 
 ## Prepared artwork
 

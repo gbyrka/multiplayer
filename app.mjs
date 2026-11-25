@@ -253,6 +253,7 @@ function openDialog(title, content, kind) {
 function closeDialog() { modal.close(); dialogKind = ''; }
 
 function goHome(collection = false) {
+  const changedPage = collection && screen !== 'collection';
   ++attempt;
   room?.close();
   chat.reset();
@@ -266,6 +267,7 @@ function goHome(collection = false) {
   joining = false;
   updateURL();
   render();
+  if (changedPage) window.MoDITAnalytics?.pageView();
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -293,7 +295,15 @@ document.addEventListener('click', async event => {
   const action = target.dataset.action;
   switch (action) {
     case 'toggle-sound': sound.setEnabled(!sound.enabled); render(); showToast(sound.enabled ? 'Sounds on.' : 'Sounds muted.'); break;
-    case 'select-game': game = getGame(target.dataset.game); screen = 'game-home'; joining = false; updateURL(); render(); window.scrollTo({ top: 0 }); break;
+    case 'select-game':
+      game = getGame(target.dataset.game);
+      screen = 'game-home';
+      joining = false;
+      updateURL();
+      render();
+      window.MoDITAnalytics?.pageView();
+      window.scrollTo({ top: 0 });
+      break;
     case 'collection': rememberForm(); leave(true); break;
     case 'home': goHome(); break;
     case 'show-join': rememberForm(); joining = true; render(); document.querySelector(name ? '#room-code-input' : '#your-name').focus(); break;
